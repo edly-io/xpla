@@ -1,3 +1,5 @@
+import confetti from "https://esm.sh/canvas-confetti";
+
 export function setup(activity) {
   const form = activity.querySelector("form");
 
@@ -12,6 +14,11 @@ export function setup(activity) {
       form.after(feedback);
     }
 
-    feedback.textContent = answer === "right" ? "Correct!" : "Try again.";
+    if (answer === "right") {
+      confetti();
+      feedback.textContent = "Correct!";
+    } else {
+      feedback.textContent = "Wrong :(";
+    }
   });
 }
