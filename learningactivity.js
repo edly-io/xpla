@@ -1,7 +1,6 @@
 export class LearningActivity extends HTMLElement {
   constructor() {
     super();
-    console.log("Element constructor");
     this.shadow = this.attachShadow({ mode: "closed" });
   }
 
@@ -27,5 +26,22 @@ export class LearningActivity extends HTMLElement {
     `;
   }
 }
-// Attach <learning-activity> elements to the LearningActivity component
+class ActivityTitle extends HTMLElement {
+  constructor() {
+    super();
+    this.slot = "title";
+  }
+}
+
+class ActivityContent extends HTMLElement {
+  constructor() {
+    super();
+    this.slot = "content";
+  }
+}
+
+// Attach elements to classes
 customElements.define("learning-activity", LearningActivity);
+// TODO revisit child class names
+customElements.define("activity-title", ActivityTitle);
+customElements.define("activity-content", ActivityContent);
