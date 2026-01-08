@@ -10,9 +10,14 @@
             }
         </style>
     </head>
-    <script src="/learningactivity.js"></script>
+    <script type="module" src="/learningactivity.js"></script>
     <body>
         <p>Not in the shadow DOM</p>
-        <learning-activity></learning-activity>
+        <learning-activity>
+            <span slot="title">My Learning Activity</span>
+            <p slot="content">
+                This content is slotted into the default component.
+            </p>
+        </learning-activity>
     </body>
 </html>

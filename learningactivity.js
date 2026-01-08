@@ -1,4 +1,4 @@
-class LearningActivity extends HTMLElement {
+export class LearningActivity extends HTMLElement {
   constructor() {
     super();
     console.log("Element constructor");
@@ -7,10 +7,25 @@ class LearningActivity extends HTMLElement {
 
   connectedCallback() {
     console.log("Element connected callback");
-    const child = document.createElement("p");
-    child.textContent = "I'm in the shadow DOM";
-    this.shadow.appendChild(child);
+    this.shadow.innerHTML = `
+      <style>
+        :host {
+          display: block;
+        }
+        .content {
+          padding: 1em;
+          border: 1px solid #ccc;
+        }
+      </style>
+      <!-- TODO custom header depth -->
+      <h1>
+        <slot name="title">Default Title</slot>
+      </h1>
+      <div class="content">
+        <slot name="content"></slot>
+      </div>
+    `;
   }
 }
-
+// Attach <learning-activity> elements to the LearningActivity component
 customElements.define("learning-activity", LearningActivity);
