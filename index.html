@@ -13,7 +13,7 @@
     <script type="module" src="/learningactivity.js"></script>
     <body>
         <p>Not in the shadow DOM</p>
-        <learning-activity>
+        <learning-activity src="/quiz.js">
             <activity-title>My Learning Activity</activity-title>
             <activity-content>
                 <p>This content is slotted into the component.</p>
@@ -26,6 +26,7 @@
                         for="wrong"
                         >Wrong answer</label
                     >
+                    <button type="submit">Check</button>
                 </form>
             </activity-content>
         </learning-activity>

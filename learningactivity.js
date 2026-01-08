@@ -5,7 +5,14 @@ export class LearningActivity extends HTMLElement {
   }
 
   connectedCallback() {
-    console.log("Element connected callback");
+    this.render();
+    const src = this.getAttribute("src");
+    if (src) {
+      this.loadScript(src);
+    }
+  }
+
+  render() {
     this.shadow.innerHTML = `
       <style>
         :host {
@@ -25,7 +32,19 @@ export class LearningActivity extends HTMLElement {
       </div>
     `;
   }
+
+  async loadScript(url) {
+    try {
+      const module = await import(url);
+      if (typeof module.setup === "function") {
+        module.setup(this);
+      }
+    } catch (error) {
+      console.error("Failed to load activity script:", error);
+    }
+  }
 }
+
 class ActivityTitle extends HTMLElement {
   constructor() {
     super();
