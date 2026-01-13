@@ -26,6 +26,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from host_functions import create_host_functions
 from runtime import PluginRuntime
 
 
@@ -59,7 +60,8 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
     runtime: PluginRuntime | None = None
 
     if plugin_path.exists():
-        runtime = PluginRuntime(plugin_path)
+        host_functions = create_host_functions(activity_dir)
+        runtime = PluginRuntime(plugin_path, host_functions=host_functions)
         runtime.load()
 
     @app.post("/api/plugin/{function_name}")
@@ -80,6 +82,44 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
         """Clean up plugin on shutdown."""
         if runtime is not None:
             runtime.close()
+
+    # KV store API endpoints (for frontend and debugging)
+    from host_functions import _kv_store
+
+    @app.get("/api/kv/{key}")
+    async def kv_get_endpoint(key: str) -> JSONResponse:
+        """Get a value from the KV store."""
+        if _kv_store is None:
+            raise HTTPException(status_code=503, detail="KV store not initialized")
+        value = _kv_store.get(key)
+        if value is None:
+            raise HTTPException(status_code=404, detail="Key not found")
+        return JSONResponse(content={"key": key, "value": value})
+
+    @app.put("/api/kv/{key}")
+    async def kv_set_endpoint(key: str, request: Request) -> JSONResponse:
+        """Set a value in the KV store."""
+        if _kv_store is None:
+            raise HTTPException(status_code=503, detail="KV store not initialized")
+        body = await request.body()
+        _kv_store.set(key, body.decode("utf-8"))
+        return JSONResponse(content={"key": key, "status": "ok"})
+
+    @app.delete("/api/kv/{key}")
+    async def kv_delete_endpoint(key: str) -> JSONResponse:
+        """Delete a key from the KV store."""
+        if _kv_store is None:
+            raise HTTPException(status_code=503, detail="KV store not initialized")
+        if _kv_store.delete(key):
+            return JSONResponse(content={"key": key, "status": "deleted"})
+        raise HTTPException(status_code=404, detail="Key not found")
+
+    @app.get("/api/kv")
+    async def kv_list_endpoint() -> JSONResponse:
+        """List all keys in the KV store."""
+        if _kv_store is None:
+            raise HTTPException(status_code=503, detail="KV store not initialized")
+        return JSONResponse(content={"keys": _kv_store.keys()})
 
     # Serve core library from lib_dir (learningactivity.js)
     app.mount("/lib", StaticFiles(directory=lib_dir), name="lib")
