@@ -56,8 +56,8 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
         """Return the activity manifest."""
         return JSONResponse(content=manifest)
 
-    # Initialize host functions (KV store, LMS, etc.)
-    host_functions = create_host_functions(activity_dir, activity_id)
+    # Initialize host functions (KV store, LMS, etc.) with capability enforcement
+    host_functions = create_host_functions(activity_dir, activity_id, manifest)
 
     # Load plugin if present
     plugin_path = activity_dir / "plugin.wasm"

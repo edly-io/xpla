@@ -64,26 +64,40 @@ class KVStore:
 # Module-level instances (set by create_host_functions)
 _kv_store: KVStore | None = None
 _lms: "LMSSimulator | None" = None  # type: ignore[name-defined]
+_checker: "CapabilityChecker | None" = None  # type: ignore[name-defined]
 
 
-def create_host_functions(activity_dir: Path, activity_id: str = "unknown") -> list:
+def create_host_functions(
+    activity_dir: Path,
+    activity_id: str = "unknown",
+    manifest: dict[str, object] | None = None,
+) -> list:
     """Create host functions configured for an activity.
 
     Args:
         activity_dir: Path to the activity directory for storage.
         activity_id: ID of the activity (from manifest).
+        manifest: Optional manifest dict for capability enforcement.
 
     Returns:
         List of host functions to register with the plugin.
     """
-    global _kv_store, _lms
+    global _kv_store, _lms, _checker
 
-    # Lazy import to avoid circular dependency
+    # Lazy imports to avoid circular dependencies
+    from capabilities import CapabilityChecker, parse_capabilities
     from lms import LMSSimulator
 
     storage_path = activity_dir / "kv_store.json"
     _kv_store = KVStore(storage_path)
     _lms = LMSSimulator(activity_dir, activity_id)
+
+    # Set up capability checker if manifest provided
+    if manifest is not None:
+        capabilities = parse_capabilities(manifest)
+        _checker = CapabilityChecker(capabilities)
+    else:
+        _checker = None
 
     return [
         kv_get,
@@ -102,6 +116,12 @@ def kv_get(key: str) -> str:
 
     Returns empty string if key not found.
     """
+    if _checker is not None:
+        try:
+            _checker.check_kv_access()
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
     if _kv_store is None:
         return ""
     return _kv_store.get(key) or ""
@@ -114,6 +134,12 @@ def kv_set(input_data: Annotated[dict[str, str], Json]) -> str:
     Expects JSON: {"key": "...", "value": "..."}
     Returns "ok" on success.
     """
+    if _checker is not None:
+        try:
+            _checker.check_kv_write(input_data["key"], input_data["value"])
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
     if _kv_store is None:
         return "error: store not initialized"
     _kv_store.set(input_data["key"], input_data["value"])
@@ -126,6 +152,12 @@ def kv_delete(key: str) -> str:
 
     Returns "deleted" if key existed, "not_found" otherwise.
     """
+    if _checker is not None:
+        try:
+            _checker.check_kv_access()
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
     if _kv_store is None:
         return "error: store not initialized"
     if _kv_store.delete(key):
@@ -139,6 +171,12 @@ def kv_keys(_input: str) -> str:
 
     Returns JSON array of keys.
     """
+    if _checker is not None:
+        try:
+            _checker.check_kv_access()
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
     if _kv_store is None:
         return "[]"
     return json.dumps(_kv_store.keys())
@@ -156,11 +194,16 @@ def http_request(request_data: Annotated[dict[str, object], Json]) -> str:
     }
 
     Returns response body as string, or error message.
-
-    Note: In production, this should check manifest for allowed_hosts.
     """
-    method = str(request_data.get("method", "GET"))
     url = str(request_data["url"])
+
+    if _checker is not None:
+        try:
+            _checker.check_http_request(url)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    method = str(request_data.get("method", "GET"))
     headers = {str(k): str(v) for k, v in dict(request_data.get("headers", {})).items()}
     body = request_data.get("body")
 
@@ -188,6 +231,12 @@ def lms_get_user(_input: str) -> str:
 
     Returns JSON: {"id": "...", "name": "...", "email": "...", "roles": [...]}
     """
+    if _checker is not None:
+        try:
+            _checker.check_lms_function("get_user")
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
     if _lms is None:
         return json.dumps({"error": "LMS not initialized"})
 
@@ -209,6 +258,12 @@ def lms_submit_grade(grade_data: Annotated[dict[str, object], Json]) -> str:
     Expects JSON: {"score": 85, "max_score": 100, "comment": "..."}
     Returns JSON: {"status": "submitted", "timestamp": "..."}
     """
+    if _checker is not None:
+        try:
+            _checker.check_lms_function("submit_grade")
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
     if _lms is None:
         return json.dumps({"error": "LMS not initialized"})
 
