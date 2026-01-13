@@ -1,0 +1,7 @@
+{
+  "name": "quiz-demo",
+  "version": "1.0.0",
+  "title": "Demo Quiz Activity",
+  "description": "A simple quiz demonstrating the learning activity framework",
+  "capabilities": {}
+}
