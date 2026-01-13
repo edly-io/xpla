@@ -94,6 +94,10 @@ learning-activity/
 | `/api/kv/{key}` | GET | Get value |
 | `/api/kv/{key}` | PUT | Set value |
 | `/api/kv/{key}` | DELETE | Delete key |
+| `/api/lms/user` | GET | Current user info |
+| `/api/lms/grade` | POST | Submit grade `{"score": 85}` |
+| `/api/lms/grades` | GET | All grades for activity |
+| `/api/lms/grades/best` | GET | Best grade for user |
 
 ## Building Plugins
 
@@ -120,3 +124,11 @@ Plugins can call these host functions:
 | `kv_delete` | key (string) | "deleted" or "not_found" | Delete key |
 | `kv_keys` | any | JSON array of keys | List all keys |
 | `http_request` | `{"method": "...", "url": "...", "headers": {...}, "body": "..."}` | response body | Make HTTP request |
+| `lms_get_user` | any | JSON user object | Get current user |
+| `lms_submit_grade` | `{"score": 85, "max_score": 100}` | JSON status | Submit grade |
+
+## Running Tests
+
+```bash
+./test_server.py
+```

@@ -61,25 +61,39 @@ class KVStore:
         return list(self._data.keys())
 
 
-# Module-level store instance (set by create_host_functions)
+# Module-level instances (set by create_host_functions)
 _kv_store: KVStore | None = None
+_lms: "LMSSimulator | None" = None  # type: ignore[name-defined]
 
 
-def create_host_functions(activity_dir: Path) -> list:
+def create_host_functions(activity_dir: Path, activity_id: str = "unknown") -> list:
     """Create host functions configured for an activity.
 
     Args:
         activity_dir: Path to the activity directory for storage.
+        activity_id: ID of the activity (from manifest).
 
     Returns:
         List of host functions to register with the plugin.
     """
-    global _kv_store
+    global _kv_store, _lms
+
+    # Lazy import to avoid circular dependency
+    from lms import LMSSimulator
 
     storage_path = activity_dir / "kv_store.json"
     _kv_store = KVStore(storage_path)
+    _lms = LMSSimulator(activity_dir, activity_id)
 
-    return [kv_get, kv_set, kv_delete, kv_keys, http_request]
+    return [
+        kv_get,
+        kv_set,
+        kv_delete,
+        kv_keys,
+        http_request,
+        lms_get_user,
+        lms_submit_grade,
+    ]
 
 
 @host_fn()
@@ -166,3 +180,46 @@ def http_request(request_data: Annotated[dict[str, object], Json]) -> str:
         return json.dumps({"error": str(e.reason)})
     except urllib.error.HTTPError as e:
         return json.dumps({"error": f"HTTP {e.code}: {e.reason}"})
+
+
+@host_fn()
+def lms_get_user(_input: str) -> str:
+    """Get current LMS user info as JSON.
+
+    Returns JSON: {"id": "...", "name": "...", "email": "...", "roles": [...]}
+    """
+    if _lms is None:
+        return json.dumps({"error": "LMS not initialized"})
+
+    user = _lms.get_current_user()
+    return json.dumps(
+        {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "roles": user.roles,
+        }
+    )
+
+
+@host_fn()
+def lms_submit_grade(grade_data: Annotated[dict[str, object], Json]) -> str:
+    """Submit a grade for the current user.
+
+    Expects JSON: {"score": 85, "max_score": 100, "comment": "..."}
+    Returns JSON: {"status": "submitted", "timestamp": "..."}
+    """
+    if _lms is None:
+        return json.dumps({"error": "LMS not initialized"})
+
+    record = _lms.submit_grade(
+        score=float(grade_data["score"]),
+        max_score=float(grade_data.get("max_score", 100)),
+        comment=str(grade_data.get("comment", "")),
+    )
+    return json.dumps(
+        {
+            "status": "submitted",
+            "timestamp": record.timestamp.isoformat(),
+        }
+    )

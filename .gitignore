@@ -1,5 +1,6 @@
 # Runtime data
 kv_store.json
+grades.json
 
 # Python
 __pycache__/
