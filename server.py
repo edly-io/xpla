@@ -4,6 +4,7 @@
 # dependencies = [
 #     "fastapi>=0.115.0",
 #     "uvicorn[standard]>=0.32.0",
+#     "extism>=1.0.0",
 # ]
 # ///
 """
@@ -21,9 +22,11 @@ from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+from runtime import PluginRuntime
 
 
 def load_manifest(activity_dir: Path) -> dict[str, Any]:
@@ -50,6 +53,33 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
     async def get_manifest() -> JSONResponse:
         """Return the activity manifest."""
         return JSONResponse(content=manifest)
+
+    # Load plugin if present
+    plugin_path = activity_dir / "plugin.wasm"
+    runtime: PluginRuntime | None = None
+
+    if plugin_path.exists():
+        runtime = PluginRuntime(plugin_path)
+        runtime.load()
+
+    @app.post("/api/plugin/{function_name}")
+    async def call_plugin(function_name: str, request: Request) -> JSONResponse:
+        """Execute a function in the activity plugin."""
+        if runtime is None:
+            raise HTTPException(status_code=404, detail="No plugin loaded")
+
+        body = await request.body()
+        try:
+            result = runtime.call(function_name, body)
+            return JSONResponse(content={"result": result.decode("utf-8")})
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.on_event("shutdown")
+    async def shutdown_event() -> None:
+        """Clean up plugin on shutdown."""
+        if runtime is not None:
+            runtime.close()
 
     # Serve core library from lib_dir (learningactivity.js)
     app.mount("/lib", StaticFiles(directory=lib_dir), name="lib")
