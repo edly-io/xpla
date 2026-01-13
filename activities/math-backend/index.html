@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math Quiz - WASM Backend Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .question {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 1rem 0;
+    }
+    input[type="number"] {
+      font-size: 1.2rem;
+      padding: 0.5rem;
+      width: 100px;
+    }
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+    #feedback {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 4px;
+    }
+    #feedback.correct {
+      background: #d4edda;
+      color: #155724;
+    }
+    #feedback.incorrect {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    #grade-history {
+      margin-top: 2rem;
+      border-top: 1px solid #ccc;
+      padding-top: 1rem;
+    }
+    #grade-history h3 {
+      margin-bottom: 0.5rem;
+    }
+    .grade-entry {
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <script type="module" src="/lib/learningactivity.js"></script>
+  <learning-activity src="/activity.js">
+    <activity-title>Math Quiz (WASM Backend)</activity-title>
+    <activity-content>
+      <p>Answer the math question below. Your answer will be validated by the WASM backend and your grade will be submitted to the LMS.</p>
+
+      <form id="quiz-form">
+        <div class="question" id="question">Loading...</div>
+        <label for="answer">Your answer: </label>
+        <input type="number" id="answer" name="answer" required>
+        <button type="submit">Submit</button>
+      </form>
+
+      <div id="feedback" style="display: none;"></div>
+
+      <div id="grade-history">
+        <h3>Grade History</h3>
+        <div id="grades">Loading...</div>
+      </div>
+    </activity-content>
+  </learning-activity>
+</body>
+</html>

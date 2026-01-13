@@ -1,0 +1,9 @@
+{
+  "name": "math-backend",
+  "version": "1.0.0",
+  "title": "Math Quiz with WASM Backend",
+  "description": "A math quiz demonstrating WASM plugin for answer validation and LMS grade submission",
+  "capabilities": {
+    "lms": ["get_user", "submit_grade"]
+  }
+}

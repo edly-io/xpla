@@ -101,17 +101,48 @@ learning-activity/
 
 ## Building Plugins
 
-To compile JavaScript to WebAssembly:
+To compile JavaScript to WebAssembly, you need to install `extism-js` and `binaryen`.
+
+### Installing extism-js
 
 ```bash
-# Install dependencies (once)
 curl -O https://raw.githubusercontent.com/extism/js-pdk/main/install.sh
 bash install.sh
-brew install binaryen  # macOS
+```
 
-# Build plugin
+Verify installation:
+```bash
+extism-js --version
+```
+
+### Installing binaryen
+
+The `extism-js` compiler requires `wasm-merge` and `wasm-opt` from binaryen.
+
+**macOS:**
+```bash
+brew install binaryen
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install binaryen
+```
+
+**Debian/Ubuntu:**
+```bash
+sudo apt install binaryen
+```
+
+**From source:** See [binaryen releases](https://github.com/WebAssembly/binaryen/releases)
+
+### Building a plugin
+
+```bash
 ./build_plugin.py activities/my-activity/plugin.js
 ```
+
+This produces `plugin.wasm` in the same directory.
 
 ## Host Functions
 
