@@ -13,7 +13,7 @@ A Python server for developing and testing interactive learning activities with 
 
 ```bash
 # Run the server with an activity
-./server.py activities/quiz-demo
+python -m server activities/quiz-demo
 
 # Open http://127.0.0.1:8000/ in your browser
 ```
@@ -22,17 +22,30 @@ A Python server for developing and testing interactive learning activities with 
 
 ```
 learning-activity/
-  server.py              # Main server (run with ./server.py <activity_dir>)
-  runtime.py             # Extism plugin wrapper
-  host_functions.py      # Host functions (kv, http)
-  build_plugin.py        # Compile JS to WASM
-  learningactivity.js    # Web component library
-  activities/
-    quiz-demo/           # Example activity
-      manifest.json      # Activity metadata
-      index.html         # Activity page
-      activity.js        # Frontend interactivity
-      plugin.wasm        # Backend logic (optional)
+├── server/              # Python server package
+│   ├── __main__.py      # CLI entry point (python -m server)
+│   ├── app.py           # FastAPI application factory
+│   ├── runtime.py       # Extism plugin wrapper
+│   ├── host_functions.py
+│   ├── capabilities.py
+│   └── lms.py
+├── lib/                 # Frontend JS library
+│   ├── learningactivity.js
+│   └── quiz.js
+├── activities/          # Activity packages
+│   ├── quiz-demo/       # Example activity
+│   │   ├── manifest.json
+│   │   ├── index.html
+│   │   ├── activity.js
+│   │   └── plugin.wasm
+│   └── math-backend/
+├── tools/               # Build utilities
+│   └── build_plugin.py
+├── tests/               # Unit tests
+│   └── test_server.py
+├── docs/                # Research documentation
+└── examples/            # Demo files
+    └── index.html
 ```
 
 ## Creating an Activity
@@ -139,7 +152,7 @@ sudo apt install binaryen
 ### Building a plugin
 
 ```bash
-./build_plugin.py activities/my-activity/plugin.js
+./tools/build_plugin.py activities/my-activity/plugin.js
 ```
 
 This produces `plugin.wasm` in the same directory.
@@ -161,5 +174,5 @@ Plugins can call these host functions:
 ## Running Tests
 
 ```bash
-./test_server.py
+./tests/test_server.py
 ```

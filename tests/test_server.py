@@ -12,12 +12,16 @@
 """
 Unit tests for the learning activity server.
 
-Run with: ./test_server.py or pytest test_server.py
+Run with: ./tests/test_server.py or pytest tests/test_server.py
 """
 
 import json
+import sys
 import tempfile
 from pathlib import Path
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 from fastapi.testclient import TestClient
@@ -48,8 +52,8 @@ def activity_dir() -> Path:
 
 @pytest.fixture
 def lib_dir() -> Path:
-    """Return the library directory (project root)."""
-    return Path(__file__).parent
+    """Return the library directory."""
+    return Path(__file__).parent.parent / "lib"
 
 
 @pytest.fixture
@@ -200,7 +204,7 @@ class TestCapabilities:
 
     def test_capabilities_parsing(self) -> None:
         """Should parse capabilities from manifest."""
-        from capabilities import parse_capabilities
+        from server.capabilities import parse_capabilities
 
         manifest = {
             "name": "test",
@@ -220,7 +224,7 @@ class TestCapabilities:
 
     def test_kv_namespace_enforcement(self) -> None:
         """Should enforce KV namespace prefix."""
-        from capabilities import CapabilityChecker, CapabilityError, parse_capabilities
+        from server.capabilities import CapabilityChecker, CapabilityError, parse_capabilities
 
         manifest = {
             "name": "test",
@@ -238,7 +242,7 @@ class TestCapabilities:
 
     def test_http_host_enforcement(self) -> None:
         """Should enforce HTTP allowed hosts."""
-        from capabilities import CapabilityChecker, CapabilityError, parse_capabilities
+        from server.capabilities import CapabilityChecker, CapabilityError, parse_capabilities
 
         manifest = {
             "name": "test",
@@ -256,7 +260,7 @@ class TestCapabilities:
 
     def test_lms_function_enforcement(self) -> None:
         """Should enforce LMS allowed functions."""
-        from capabilities import CapabilityChecker, CapabilityError, parse_capabilities
+        from server.capabilities import CapabilityChecker, CapabilityError, parse_capabilities
 
         manifest = {
             "name": "test",
@@ -274,7 +278,7 @@ class TestCapabilities:
 
     def test_missing_capability_rejected(self) -> None:
         """Should reject operations when capability not declared."""
-        from capabilities import CapabilityChecker, CapabilityError, parse_capabilities
+        from server.capabilities import CapabilityChecker, CapabilityError, parse_capabilities
 
         manifest = {"name": "test", "capabilities": {}}
         caps = parse_capabilities(manifest)

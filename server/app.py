@@ -1,33 +1,17 @@
-#!/usr/bin/env -S uv run
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "fastapi>=0.115.0",
-#     "uvicorn[standard]>=0.32.0",
-#     "extism>=1.0.0",
-# ]
-# ///
 """
-Learning Activity Development Server.
-
-A minimal LMS simulation for testing learning activities locally.
-
-Usage: ./server.py [activity_dir]
+FastAPI application factory for the learning activity server.
 """
 
-import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
-import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from host_functions import create_host_functions
-from runtime import PluginRuntime
+from server.host_functions import create_host_functions
+from server.runtime import PluginRuntime
 
 
 def load_manifest(activity_dir: Path) -> dict[str, Any]:
@@ -87,7 +71,7 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
             runtime.close()
 
     # KV store API endpoints (for frontend and debugging)
-    from host_functions import _kv_store
+    from server.host_functions import _kv_store
 
     @app.get("/api/kv/{key}")
     async def kv_get_endpoint(key: str) -> JSONResponse:
@@ -125,7 +109,7 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
         return JSONResponse(content={"keys": _kv_store.keys()})
 
     # LMS simulation endpoints (use the LMS initialized by host functions)
-    from host_functions import _lms as lms
+    from server.host_functions import _lms as lms
     assert lms is not None  # Guaranteed by create_host_functions
 
     @app.get("/api/lms/user")
@@ -181,54 +165,3 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
     app.mount("/", StaticFiles(directory=activity_dir, html=True), name="activity")
 
     return app
-
-
-def parse_args(args: list[str]) -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Learning Activity Development Server"
-    )
-    parser.add_argument(
-        "activity_dir",
-        type=Path,
-        help="Path to activity directory containing manifest.json",
-    )
-    parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help="Host to bind to (default: 127.0.0.1)",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="Port to bind to (default: 8000)",
-    )
-    return parser.parse_args(args)
-
-
-def main() -> None:
-    """Entry point for the server."""
-    args = parse_args(sys.argv[1:])
-
-    activity_dir = args.activity_dir.resolve()
-    if not activity_dir.is_dir():
-        print(f"Error: {activity_dir} is not a directory", file=sys.stderr)
-        sys.exit(1)
-
-    lib_dir = Path(__file__).parent
-
-    try:
-        app = create_app(activity_dir, lib_dir)
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Serving activity from: {activity_dir}")
-    print(f"Library files from: {lib_dir}")
-    print(f"Open http://{args.host}:{args.port}/ in your browser")
-    uvicorn.run(app, host=args.host, port=args.port)
-
-
-if __name__ == "__main__":
-    main()

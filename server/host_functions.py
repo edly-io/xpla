@@ -85,8 +85,8 @@ def create_host_functions(
     global _kv_store, _lms, _checker
 
     # Lazy imports to avoid circular dependencies
-    from capabilities import CapabilityChecker, parse_capabilities
-    from lms import LMSSimulator
+    from server.capabilities import CapabilityChecker, parse_capabilities
+    from server.lms import LMSSimulator
 
     storage_path = activity_dir / "kv_store.json"
     _kv_store = KVStore(storage_path)
