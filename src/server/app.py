@@ -35,13 +35,12 @@ class Activity:
         """
         manifest = load_manifest(activity_dir)
 
-        # Initialize host functions (KV store, LMS, etc.) with capability enforcement
-        host_functions = create_host_functions(activity_dir, manifest)
-
         # Load plugin if present
         plugin_path = activity_dir / "plugin.wasm"
 
         if plugin_path.exists():
+            # Initialize host functions (KV store, LMS, etc.) with capability enforcement
+            host_functions = create_host_functions(activity_dir, manifest)
             cls.RUNTIME = PluginRuntime(plugin_path, host_functions=host_functions)
             cls.RUNTIME.load()
 
