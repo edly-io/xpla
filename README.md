@@ -17,8 +17,25 @@ Then install the project with:
 
 ## Running the server with an activity
 
+### No-WASM demo
+
 ```bash
 python -m server samples/quiz-demo
+# Open http://127.0.0.1:8000/ in your browser
+```
+
+### WASM demo
+
+Build the plugin:
+
+```bash
+./src/tools/build_plugin.py samples/math-backend/plugin.js
+```
+
+Run the server:
+
+```bash
+python -m server samples/math-backend
 # Open http://127.0.0.1:8000/ in your browser
 ```
 
