@@ -1,6 +1,5 @@
 # Runtime data
 kv_store.json
-grades.json
 samples/**/*.wasm
 
 # Python

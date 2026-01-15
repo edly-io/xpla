@@ -62,22 +62,7 @@ class PluginRuntime:
         result = self._plugin.call(function_name, input_data)
         return bytes(result)
 
-    def close(self) -> None:
-        """Close the plugin and release resources."""
-        if self._plugin is not None:
-            self._plugin.close()
-            self._plugin = None
-
     def __enter__(self) -> "PluginRuntime":
         """Context manager entry."""
         self.load()
         return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: Any,
-    ) -> None:
-        """Context manager exit."""
-        self.close()

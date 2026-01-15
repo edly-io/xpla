@@ -12,8 +12,6 @@ from urllib.parse import urlparse
 class CapabilityError(Exception):
     """Raised when a capability check fails."""
 
-    pass
-
 
 @dataclass
 class Capabilities:
