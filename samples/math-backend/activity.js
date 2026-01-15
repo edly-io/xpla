@@ -1,6 +1,5 @@
 // Activity script for math-backend
-// Demonstrates backend integration via LMS API for grade submission
-// Can also use WASM plugin when available (requires extism-js to build)
+// Demonstrates backend validation via WASM plugin with LMS grade submission
 
 // Generate a random math question
 function generateQuestion() {
@@ -26,14 +25,21 @@ function generateQuestion() {
     return { expression: `${a} ${op} ${b}`, a, op, b };
 }
 
-// Evaluate a math expression
-function evaluate(a, op, b) {
-    switch (op) {
-        case "+": return a + b;
-        case "-": return a - b;
-        case "*": return a * b;
-        default: return NaN;
+// Call WASM plugin to validate answer (plugin also submits grade)
+async function checkAnswer(question, answer) {
+    const response = await fetch("/api/plugin/check_answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, answer: String(answer) }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Plugin call failed: ${response.status}`);
     }
+
+    const data = await response.json();
+    // Plugin returns { result: '{"correct":true,"score":100,"feedback":"..."}' }
+    return JSON.parse(data.result);
 }
 
 // Load and display grade history from LMS API
@@ -55,20 +61,6 @@ async function loadGrades(gradesEl) {
     }
 }
 
-// Submit grade to LMS backend
-async function submitGrade(score, comment) {
-    try {
-        const response = await fetch("/api/lms/grade", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ score, max_score: 100, comment }),
-        });
-        return response.ok;
-    } catch {
-        return false;
-    }
-}
-
 export function setup(activity) {
     const form = activity.querySelector("#quiz-form");
     const questionEl = activity.querySelector("#question");
@@ -86,25 +78,24 @@ export function setup(activity) {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const userAnswer = parseInt(answerInput.value, 10);
-        const correctAnswer = evaluate(current.a, current.op, current.b);
-        const correct = userAnswer === correctAnswer;
+        const userAnswer = answerInput.value.trim();
 
-        const score = correct ? 100 : 0;
-        const feedback = correct
-            ? "Correct! Well done."
-            : `Incorrect. ${current.expression} = ${correctAnswer}`;
+        try {
+            // Call WASM plugin to validate answer (plugin also submits grade)
+            const result = await checkAnswer(current.expression, userAnswer);
 
-        // Submit grade to LMS backend (HTTP API call)
-        await submitGrade(score, feedback);
+            // Display feedback from plugin
+            feedbackEl.style.display = "block";
+            feedbackEl.textContent = result.feedback;
+            feedbackEl.className = result.correct ? "correct" : "incorrect";
 
-        // Display feedback
-        feedbackEl.style.display = "block";
-        feedbackEl.textContent = feedback;
-        feedbackEl.className = correct ? "correct" : "incorrect";
-
-        // Reload grades from backend
-        await loadGrades(gradesEl);
+            // Reload grades from backend (plugin already submitted the grade)
+            await loadGrades(gradesEl);
+        } catch (err) {
+            feedbackEl.style.display = "block";
+            feedbackEl.textContent = `Error: ${err.message}`;
+            feedbackEl.className = "incorrect";
+        }
 
         // Generate a new question after a short delay
         setTimeout(() => {
