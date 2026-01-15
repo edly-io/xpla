@@ -2,29 +2,31 @@
 
 A Python server for developing and testing interactive learning activities with WebAssembly plugin support.
 
-# Requirements
+# Installation
+
+Make sure to install the following requirements:
 
 - Python 3.11+
 - [extism-js](https://github.com/extism/js-pdk): for building JS plugins to WebAssembly (remember to also install [binaryen](https://github.com/WebAssembly/binaryen))
 
-Install Python requirements with:
+Then install the project with:
 
-    pip install -r requirements/base.in
+    pip install -e .
 
 # Usage
 
 ## Running the server with an activity
 
 ```bash
-python -m server activities/quiz-demo
+python -m server samples/quiz-demo
 # Open http://127.0.0.1:8000/ in your browser
 ```
 
 ## Creating an Activity
 
-1. Create a directory under `activities/`:
+1. Create a directory under `samples/`:
    ```
-   activities/my-activity/
+   samples/my-activity/
      manifest.json
      index.html
      activity.js
@@ -72,7 +74,7 @@ python -m server activities/quiz-demo
 ## Building Plugins
 
 ```bash
-./tools/build_plugin.py activities/my-activity/plugin.js
+./src/tools/build_plugin.py samples/my-activity/plugin.js
 ```
 
 This produces `plugin.wasm` in the same directory.
@@ -81,20 +83,20 @@ This produces `plugin.wasm` in the same directory.
 
 ## API endpoints
 
-The server exposes several `/api/*` endpoints which are defined in [./server/app.py](./server/app.py).
+The server exposes several `/api/*` endpoints which are defined in [./src/server/app.py](./src/server/app.py).
 
 ## Host Functions
 
-Plugins can call host functions which are defined in [./server/host_functions.py](./server/host_functions.py).
+Plugins can call host functions which are defined in [./src/server/host_functions.py](./src/server/host_functions.py).
 
 # Development
 
-Install requirements with:
+Install requirements:
 
     pip install -r requirements/dev.in
 
-## Running Tests
+Run tests:
 
 ```bash
-python ./tests/test_server.py
+pytest ./src/tests
 ```

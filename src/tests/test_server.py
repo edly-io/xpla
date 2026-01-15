@@ -299,7 +299,3 @@ class TestCapabilities:
 
         with pytest.raises(CapabilityError, match="lms capability not declared"):
             checker.check_lms_function("get_user")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

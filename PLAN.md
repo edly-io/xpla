@@ -12,7 +12,7 @@ learning-activity/
   lms.py                 # LMS simulation (user, grades)
   capabilities.py        # Manifest enforcement (Phase 6)
   learningactivity.js    # Existing web component
-  activities/
+  samples/
     quiz-demo/
       manifest.json      # Activity metadata
       index.html         # Activity page
@@ -30,14 +30,14 @@ learning-activity/
 - **Validate:** `./server.py` → browse `http://127.0.0.1:8000/` → existing demo works
 
 ### Phase 2: Activity Directory Loading
-**Files:** `server.py` (modify), `activities/quiz-demo/*` (create)
+**Files:** `server.py` (modify), `samples/quiz-demo/*` (create)
 
 - Add CLI args: `./server.py [activity_dir]`
 - Load `manifest.json` from activity directory
-- Serve `/lib/learningactivity.js` from project root
+- Serve `./src/lib/learningactivity.js` from project root
 - Serve activity files from activity directory
 - Add `/api/manifest` endpoint
-- **Validate:** `./server.py activities/quiz-demo/` → quiz works, manifest endpoint returns JSON
+- **Validate:** `./server.py samples/quiz-demo/` → quiz works, manifest endpoint returns JSON
 
 ### Phase 3: Extism Plugin Integration
 **Files:** `runtime.py` (create), `server.py` (modify), `build_plugin.py` (create)
@@ -102,4 +102,4 @@ learning-activity/
 | `host_functions.py` | 4-6 | Host function definitions |
 | `lms.py` | 5 | LMS simulation |
 | `capabilities.py` | 6 | Manifest enforcement |
-| `activities/quiz-demo/*` | 2 | Example activity |
+| `samples/quiz-demo/*` | 2 | Example activity |

@@ -49,11 +49,7 @@ def main() -> None:
 
     lib_dir = Path(__file__).parent.parent / "lib"
 
-    try:
-        app = create_app(activity_dir, lib_dir)
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    app = create_app(activity_dir, lib_dir)
 
     print(f"Serving activity from: {activity_dir}")
     print(f"Library files from: {lib_dir}")

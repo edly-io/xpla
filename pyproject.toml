@@ -1,0 +1,20 @@
+[project]
+name = "learning-activity"
+version = "0.1.0"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "extism",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "httpx",
+    "mypy",
+    "pylint",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
