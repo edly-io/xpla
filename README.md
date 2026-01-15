@@ -29,13 +29,13 @@ python -m server samples/quiz-demo
 Build the plugin:
 
 ```bash
-./src/tools/build_plugin.py samples/math-backend/plugin.js
+./src/tools/build_plugin.py samples/math/plugin.js
 ```
 
 Run the server:
 
 ```bash
-python -m server samples/math-backend
+python -m server samples/math
 # Open http://127.0.0.1:8000/ in your browser
 ```
 
