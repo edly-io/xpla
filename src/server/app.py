@@ -25,6 +25,7 @@ class Activity:
     """
     Static class to handle WASM runtime
     """
+
     RUNTIME: PluginRuntime | None = None
 
     @classmethod
@@ -45,7 +46,7 @@ class Activity:
             cls.RUNTIME.load()
 
     @classmethod
-    def unload(cls):
+    def unload(cls) -> None:
         """
         Call this whenever the activity runtime is no longer needed to free memory.
         """
@@ -57,7 +58,8 @@ def load_manifest(activity_dir: Path) -> dict[str, Any]:
     """Load the activity manifest from the directory."""
     manifest_path = activity_dir / "manifest.json"
     with manifest_path.open() as f:
-        return json.load(f)
+        manifest: dict[str, Any] = json.load(f)
+        return manifest
 
 
 def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:

@@ -212,7 +212,8 @@ def http_request(request_data: Annotated[dict[str, object], Json]) -> str:
 
     try:
         with urllib.request.urlopen(req, timeout=10) as response:
-            return response.read().decode("utf-8")
+            content: str = response.read().decode("utf-8")
+            return content
     except urllib.error.HTTPError as e:
         return json.dumps({"error": f"HTTP {e.code}: {e.reason}"})
     except urllib.error.URLError as e:

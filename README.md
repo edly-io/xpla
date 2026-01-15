@@ -29,7 +29,7 @@ python -m server samples/quiz-demo
 Build the plugin:
 
 ```bash
-./src/tools/build_plugin.py samples/math/plugin.js
+./src/tools/js2wasm.py samples/math/plugin.js
 ```
 
 Run the server:
@@ -91,7 +91,7 @@ python -m server samples/math
 ## Building Plugins
 
 ```bash
-./src/tools/build_plugin.py samples/my-activity/plugin.js
+./src/tools/js2wasm.py samples/my-activity/plugin.js
 ```
 
 This produces `plugin.wasm` in the same directory.
@@ -114,6 +114,4 @@ Install requirements:
 
 Run tests:
 
-```bash
-pytest ./src/tests
-```
+    make test

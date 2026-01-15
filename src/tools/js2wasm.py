@@ -4,10 +4,18 @@ Build utility for compiling JavaScript plugins to WebAssembly.
 """
 
 import argparse
-import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def main() -> None:
+    """Entry point."""
+    args = parse_args(sys.argv[1:])
+
+    input_js = args.input.resolve()
+    output_wasm = args.output or input_js.with_suffix(".wasm")
+    build_plugin(input_js, output_wasm)
 
 
 def build_plugin(input_js: Path, output_wasm: Path) -> bool:
@@ -64,15 +72,6 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         help="Output WebAssembly file (default: <input>.wasm)",
     )
     return parser.parse_args(args)
-
-
-def main() -> None:
-    """Entry point."""
-    args = parse_args(sys.argv[1:])
-
-    input_js = args.input.resolve()
-    output_wasm = args.output or input_js.with_suffix(".wasm")
-    build_plugin(input_js, output_wasm)
 
 
 if __name__ == "__main__":
