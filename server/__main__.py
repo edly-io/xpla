@@ -1,12 +1,4 @@
-#!/usr/bin/env -S uv run
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "fastapi>=0.115.0",
-#     "uvicorn[standard]>=0.32.0",
-#     "extism>=1.0.0",
-# ]
-# ///
+#!/bin/env python
 """
 Learning Activity Development Server.
 
@@ -26,9 +18,7 @@ from server.app import create_app
 
 def parse_args(args: list[str]) -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Learning Activity Development Server"
-    )
+    parser = argparse.ArgumentParser(description="Learning Activity Development Server")
     parser.add_argument(
         "activity_dir",
         type=Path,

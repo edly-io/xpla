@@ -110,6 +110,7 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
 
     # LMS simulation endpoints (use the LMS initialized by host functions)
     from server.host_functions import _lms as lms
+
     assert lms is not None  # Guaranteed by create_host_functions
 
     @app.get("/api/lms/user")
