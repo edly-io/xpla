@@ -20,7 +20,7 @@ At the moment, a limitation of the current approach is the unsafe client code: a
 | **Portability** | ✅ Excellent – self-contained packages work across any compliant LMS | ⚠️ Limited – protocol connects external tools, but tools aren't packaged or transferable | ❌ None – tightly coupled to Open edX | ✅ Excellent – self-contained packages with explicit capability declarations |
 | **Graded assessments** | ❌ Available – but cheating is trivial | ✅ Yes – grade passback via Assignment and Grades Service (LTI 1.3) | ✅ Yes – full grading integration within Open edX | ✅ Yes – sandboxed backend handles grading securely |
 | **Sandboxed backend code execution** | ❌ No – client-side JavaScript only | ⚠️ Depends – possible in theory, but servers typically run code unsafely | ⚠️ Unsafe – arbitrary Python with full server access | ✅ Sandboxed – WebAssembly with capability-based permissions |
-| **Offline access** | ⚠️ Partially - modules can be downloaded but may require network access at runtime. | ❌ No – HTTP server required | ❌ No – Connection to an Open edX platform is assumed | ✅ Yes – thanks to event-driven client-to-server communication |
+| **Offline access** | ⚠️ Partial – modules can be downloaded but may require network access at runtime | ❌ No – HTTP server required | ❌ No – connection to an Open edX platform is assumed | ✅ Yes – thanks to event-driven client-to-server communication |
 
 ## Installation
 
@@ -73,7 +73,7 @@ my-activity/
 ```
 
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
-- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, incuding: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
+- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 
 #### `activity.html` (optional)
 
@@ -82,7 +82,7 @@ If present, the content of this file will be added to the `<learning-activity>` 
 - `<activity-title>`: which will be displayed as the title of the activity.
 - `<activity-content>`: the actual content of the activity.
 
-At the moment, the learning activity is added as a [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM) element. This means that the rest of the page does not have access to the learning activity element -- but the shadow element does. In other words: we do not have true client-side sandboxing of learning activities. We expect to support iframe sandboxing in the future, but this is not the case yet; in addition, not all platforms might want to support iframe-embedded activities, because of the many issues typically associated with iframes. 
+At the moment, the learning activity is added as a [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM) element. This means that the rest of the page does not have access to the learning activity element -- but the shadow element does. In other words: we do not have true client-side sandboxing of learning activities. We expect to support iframe sandboxing in the future, but this is not the case yet; in addition, not all platforms may want to support iframe-embedded activities, because of the many issues typically associated with iframes.
 
 #### `activity.js` (optional)
 
@@ -99,15 +99,15 @@ export function setup(activity) {
 }
 ```
 
-The `Activity` class is implemented in [`learningactivity.js`](./src/server/static/js/learningactivity.js). Note in particular the presence of a `callSandboxFunction` method which allows arbitrary calling of backend, sandboxed functions from the frontend. This is particularly useful to submit student responses to an assessment. 
+The `Activity` class is implemented in [`learningactivity.js`](./src/server/static/js/learningactivity.js). Note in particular the presence of a `callSandboxFunction` method which allows calling backend sandboxed functions from the frontend. This is particularly useful for submitting student responses to an assessment.
 
 Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 
 #### `sandbox.wasm` (optional)
 
-If present, this is a [WebAssembly](https://webassembly.org/) module that will be called as a sandbox from the platform backend. In particular, it is particularly useful for submission assessments: we don't want assessment code to run in the frontend, because it would then be trivially vulnerable to cheating. 
+If present, this is a [WebAssembly](https://webassembly.org/) module that will be called as a sandbox from the platform backend. In particular, it is useful for grading assessments: we don't want assessment code to run in the frontend, because it would be trivially vulnerable to cheating.
 
-It is language-agnostic, as the original script can be written in any of the languages supported by WebAssembly. We use [Extism](https://extism.org/) both to build and call these modules. Since Extism supports a wide variety of host languages, that sandboxes are portable and can be run from any platform ([Open edX](https://openedx.org/), [Moodle](https://moodle.org), [Canvas](https://canvas.instructure.com/)...).
+It is language-agnostic, as the original script can be written in any of the languages supported by WebAssembly. We use [Extism](https://extism.org/) both to build and call these modules. Since Extism supports a wide variety of host languages, sandboxes are portable and can be run from any platform ([Open edX](https://openedx.org/), [Moodle](https://moodle.org), [Canvas](https://canvas.instructure.com/)...).
 
 Note that sandboxes do not persist state. Thus, to get access to configuration settings, user-specific values, etc. the sandbox should have the key-value store read/write capabilities (see `manifest.json` above).
 
@@ -119,7 +119,7 @@ Sandboxes have access to a standard list of host functions. See "host functions"
 ./src/tools/js2wasm.py samples/my-activity/src/sandbox.js --output samples/my-activity/sandbox.wasm
 ```
 
-This produces `plugin.wasm` in the same directory.
+This produces `sandbox.wasm` in the specified output path.
 
 Alternatively, build all samples with:
 
