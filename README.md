@@ -1,8 +1,28 @@
 # Learning Activity Server
 
-A Python server for developing and testing interactive learning activities with WebAssembly plugin support.
+This is a proof-of-concept for an upcoming standard of learning activities: similar to standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
 
-# Installation
+This project includes a Python server that serves a few sample learning activities, along with the documentation for their implementation (right here in this document).
+
+As a high-level overview: the learning activity standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe learning activity capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
+
+Offline portability is also one of the goals of this project, though it is yet unclear how this will be achieved. At this point there are two options:
+
+1. Sandboxed code is shipped to the offline device (typically a mobile phone) and runs there. If the client decompiles the wasm binaries, they have access to the grading logic. This is acceptable when the client is trusted and the sandboxed code does not need network access.
+2. Communication between the frontend and the backend is performed in an event-driven architecture  (see [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). When offline, events are delayed until the client comes back online. Conflicts might happen and must be resolved, for instance when users attempt to connect from multiple devices.
+
+At the moment, a limitation of the current approach is the unsafe client code: arbitrary client code can be executed with full access to the DOM, cookies and browser features. This is a strong limitation of HTML which can (at the moment) be bypassed only by using iframes -- which come with their own set of limitations, including in terms of user experience. We intend to give the possibility to platform administrators to sandbox client code in iframes, though this is not implemented yet.
+
+## Comparison with existing standards
+
+| Feature | SCORM | LTI | XBlock | Learning Activity |
+|---------|-------|-----|--------|-------------------|
+| **Portability** | ✅ Excellent – self-contained packages work across any compliant LMS | ⚠️ Limited – protocol connects external tools, but tools aren't packaged or transferable | ❌ None – tightly coupled to Open edX | ✅ Excellent – self-contained packages with explicit capability declarations |
+| **Graded assessments** | ❌ Available – but cheating is trivial | ✅ Yes – grade passback via Assignment and Grades Service (LTI 1.3) | ✅ Yes – full grading integration within Open edX | ✅ Yes – sandboxed backend handles grading securely |
+| **Sandboxed backend code execution** | ❌ No – client-side JavaScript only | ⚠️ Depends – possible in theory, but servers typically run code unsafely | ⚠️ Unsafe – arbitrary Python with full server access | ✅ Sandboxed – WebAssembly with capability-based permissions |
+| **Offline access** | ⚠️ Partially - modules can be downloaded but may require network access at runtime. | ❌ No – HTTP server required | ❌ No – Connection to an Open edX platform is assumed | ✅ Yes – thanks to event-driven client-to-server communication |
+
+## Installation
 
 Make sure to install the following requirements:
 
@@ -13,9 +33,9 @@ Then install the project with:
 
     pip install -e .
 
-# Usage
+## Usage
 
-## Viewing sample activities
+### Viewing sample activities
 
 Build all sample activities with sandboxes:
 
@@ -25,7 +45,7 @@ Launch a development server:
 
     make server
 
-## Creating a new activity
+### Creating a new activity
 
 Activities are stored as static files. The [`samples`](./samples) directory contains a few activities that you can use as reference for your own.
 
@@ -43,7 +63,7 @@ my-activity/
     sandbox.d.ts
 ```
 
-### `manifest.json` (required)
+#### `manifest.json` (required)
 
 ```json
 {
@@ -53,9 +73,9 @@ my-activity/
 ```
 
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
-- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, incuding: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module.
+- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, incuding: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 
-### `activity.html` (optional)
+#### `activity.html` (optional)
 
 If present, the content of this file will be added to the `<learning-activity>` DOM element inner HTML. This element has two sub-elements:
 
@@ -64,7 +84,7 @@ If present, the content of this file will be added to the `<learning-activity>` 
 
 At the moment, the learning activity is added as a [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM) element. This means that the rest of the page does not have access to the learning activity element -- but the shadow element does. In other words: we do not have true client-side sandboxing of learning activities. We expect to support iframe sandboxing in the future, but this is not the case yet; in addition, not all platforms might want to support iframe-embedded activities, because of the many issues typically associated with iframes. 
 
-### `activity.js` (optional)
+#### `activity.js` (optional)
 
 If present, this client-side scripting module will be loaded alongside the `<learning-activity>` element. You can use it to add interactivity to your activity. This module must export a `setup` function which will be called at the moment the element is added to the shadow DOM.
 
@@ -83,7 +103,7 @@ The `Activity` class is implemented in [`learningactivity.js`](./src/server/stat
 
 Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 
-### `sandbox.wasm` (optional)
+#### `sandbox.wasm` (optional)
 
 If present, this is a [WebAssembly](https://webassembly.org/) module that will be called as a sandbox from the platform backend. In particular, it is particularly useful for submission assessments: we don't want assessment code to run in the frontend, because it would then be trivially vulnerable to cheating. 
 
@@ -93,7 +113,7 @@ Note that sandboxes do not persist state. Thus, to get access to configuration s
 
 Sandboxes have access to a standard list of host functions. See "host functions" below.
 
-## Building sample activities
+### Building sample activities
 
 ```bash
 ./src/tools/js2wasm.py samples/my-activity/src/sandbox.js --output samples/my-activity/sandbox.wasm
@@ -105,17 +125,17 @@ Alternatively, build all samples with:
 
     make samples
 
-# Project structure
+## Project structure
 
-## API endpoints
+### API endpoints
 
 The server exposes several endpoints which are defined in [./src/server/app.py](./src/server/app.py). These endpoints do not need to be standardized. It is up to each platform to define its own endpoints for client <--> sandbox communication.
 
-## Host Functions
+### Host Functions
 
 Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py). In the future these host functions will be standardized and documented.
 
-# Development
+## Development
 
 Install requirements:
 
