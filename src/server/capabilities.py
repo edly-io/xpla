@@ -5,8 +5,17 @@ Checks plugin calls against the manifest to enforce security boundaries.
 """
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Required, TypedDict
 from urllib.parse import urlparse
+
+
+class Manifest(TypedDict, total=False):
+    """Activity manifest structure."""
+
+    name: Required[str]
+    version: str
+    title: str
+    capabilities: dict[str, Any]
 
 
 class CapabilityError(Exception):
@@ -35,7 +44,7 @@ class Capabilities:
     ai_allowed_models: set[str] = field(default_factory=set)
 
 
-def parse_capabilities(manifest: dict[str, Any]) -> Capabilities:
+def parse_capabilities(manifest: Manifest) -> Capabilities:
     """Parse capabilities from a manifest dict.
 
     Args:

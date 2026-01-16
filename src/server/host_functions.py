@@ -6,10 +6,9 @@ by WebAssembly code. They provide controlled access to server capabilities.
 """
 
 import json
-import urllib.error
-import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from extism import host_fn, Json
 
@@ -17,6 +16,7 @@ from server.capabilities import (
     Capabilities,
     CapabilityError,
     CapabilityChecker,
+    Manifest,
     parse_capabilities,
 )
 
@@ -75,14 +75,13 @@ _checker = CapabilityChecker(Capabilities())
 
 def create_host_functions(
     activity_dir: Path,
-    manifest: dict[str, object] | None = None,
-) -> list:
+    manifest: Manifest,
+) -> list[Callable[..., Any]]:
     """Create host functions configured for an activity.
 
     Args:
         activity_dir: Path to the activity directory for storage.
-        activity_id: ID of the activity (from manifest).
-        manifest: Optional manifest dict for capability enforcement.
+        manifest: Activity manifest for capability enforcement.
 
     Returns:
         List of host functions to register with the plugin.
@@ -93,10 +92,8 @@ def create_host_functions(
     storage_path = activity_dir / "kv_store.json"
     _kv_store = KVStore(storage_path)
 
-    # Set up capability checker if manifest provided
-    if manifest is not None:
-        capabilities = parse_capabilities(manifest)
-        _checker = CapabilityChecker(capabilities)
+    capabilities = parse_capabilities(manifest)
+    _checker = CapabilityChecker(capabilities)
 
     # TODO for now we pass the activity name as user data, but in the future we
     # should pass the activity, with all the corresponding API: KVStore, manifest, etc.

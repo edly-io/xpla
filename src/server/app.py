@@ -4,12 +4,12 @@ FastAPI application factory for the learning activity server.
 
 import json
 from pathlib import Path
-from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from server.capabilities import Manifest
 from server.host_functions import create_host_functions
 from server.runtime import PluginRuntime
 
@@ -53,11 +53,11 @@ class Activity:
             cls.RUNTIME = None
 
 
-def load_manifest(activity_dir: Path) -> dict[str, Any]:
+def load_manifest(activity_dir: Path) -> Manifest:
     """Load the activity manifest from the directory."""
     manifest_path = activity_dir / "manifest.json"
     with manifest_path.open() as f:
-        manifest: dict[str, Any] = json.load(f)
+        manifest: Manifest = json.load(f)
         return manifest
 
 

@@ -6,6 +6,7 @@ Unit tests for the learning activity server.
 import json
 import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 # Add project root to path for imports
@@ -18,7 +19,7 @@ from server import create_app
 
 
 @pytest.fixture
-def activity_dir() -> Path:
+def activity_dir() -> Generator[Path, None, None]:
     """Create a temporary activity directory with required files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         activity_path = Path(tmpdir)
@@ -84,9 +85,9 @@ class TestCapabilities:
 
     def test_capabilities_parsing(self) -> None:
         """Should parse capabilities from manifest."""
-        from server.capabilities import parse_capabilities
+        from server.capabilities import Manifest, parse_capabilities
 
-        manifest = {
+        manifest: Manifest = {
             "name": "test",
             "capabilities": {
                 "kv": {"namespace": "test", "max_bytes": 1024},
@@ -107,10 +108,11 @@ class TestCapabilities:
         from server.capabilities import (
             CapabilityChecker,
             CapabilityError,
+            Manifest,
             parse_capabilities,
         )
 
-        manifest = {
+        manifest: Manifest = {
             "name": "test",
             "capabilities": {"kv": {"namespace": "test"}},
         }
@@ -129,10 +131,11 @@ class TestCapabilities:
         from server.capabilities import (
             CapabilityChecker,
             CapabilityError,
+            Manifest,
             parse_capabilities,
         )
 
-        manifest = {
+        manifest: Manifest = {
             "name": "test",
             "capabilities": {"http": {"allowed_hosts": ["api.example.com"]}},
         }
@@ -151,10 +154,11 @@ class TestCapabilities:
         from server.capabilities import (
             CapabilityChecker,
             CapabilityError,
+            Manifest,
             parse_capabilities,
         )
 
-        manifest = {
+        manifest: Manifest = {
             "name": "test",
             "capabilities": {"lms": ["get_user"]},
         }
@@ -173,10 +177,11 @@ class TestCapabilities:
         from server.capabilities import (
             CapabilityChecker,
             CapabilityError,
+            Manifest,
             parse_capabilities,
         )
 
-        manifest = {"name": "test", "capabilities": {}}
+        manifest: Manifest = {"name": "test", "capabilities": {}}
         caps = parse_capabilities(manifest)
         checker = CapabilityChecker(caps)
 
