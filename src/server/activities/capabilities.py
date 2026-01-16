@@ -106,6 +106,11 @@ def parse_capabilities(manifest: Manifest) -> Capabilities:
 class CapabilityChecker:
     """Validates operations against declared capabilities."""
 
+    @classmethod
+    def load_from_manifest(cls, manifest: Manifest) -> "CapabilityChecker":
+        capabilities = parse_capabilities(manifest)
+        return CapabilityChecker(capabilities)
+
     def __init__(self, capabilities: Capabilities) -> None:
         """Initialize the checker.
 

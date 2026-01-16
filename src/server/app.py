@@ -2,17 +2,13 @@
 FastAPI application factory for the learning activity server.
 """
 
-import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from server.capabilities import Manifest
-from server.host_functions import create_host_functions
-from server.runtime import PluginRuntime
-
+from server.activities.context import ActivityContext, MissingSandboxError
 
 app = FastAPI(
     title="Learning Activity Server",
@@ -21,49 +17,9 @@ app = FastAPI(
 )
 
 
-class Activity:
-    """
-    Static class to handle WASM runtime
-    """
-
-    RUNTIME: PluginRuntime | None = None
-
-    @classmethod
-    def load(cls, activity_dir: Path) -> None:
-        """
-        Load a .js activity file.
-        """
-        manifest = load_manifest(activity_dir)
-
-        # Load plugin if present
-        plugin_path = activity_dir / "plugin.wasm"
-
-        if plugin_path.exists():
-            # Initialize host functions (KV store, LMS, etc.) with capability enforcement
-            host_functions = create_host_functions(activity_dir, manifest)
-            cls.RUNTIME = PluginRuntime(plugin_path, host_functions=host_functions)
-            cls.RUNTIME.load()
-
-    @classmethod
-    def unload(cls) -> None:
-        """
-        Call this whenever the activity runtime is no longer needed to free memory.
-        """
-        if cls.RUNTIME:
-            cls.RUNTIME = None
-
-
-def load_manifest(activity_dir: Path) -> Manifest:
-    """Load the activity manifest from the directory."""
-    manifest_path = activity_dir / "manifest.json"
-    with manifest_path.open() as f:
-        manifest: Manifest = json.load(f)
-        return manifest
-
-
 def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
     """Create and configure the FastAPI application."""
-    Activity.load(activity_dir)
+    ActivityContext.load(activity_dir)
 
     # Serve core library from lib_dir (learningactivity.js)
     app.mount("/lib", StaticFiles(directory=lib_dir), name="lib")
@@ -79,18 +35,23 @@ def create_app(activity_dir: Path, lib_dir: Path) -> FastAPI:
 @app.post("/api/plugin/{function_name}")
 async def call_plugin(function_name: str, request: Request) -> JSONResponse:
     """Execute a function in the activity plugin."""
-    if Activity.RUNTIME is None:
-        raise HTTPException(status_code=404, detail="Activity has no WASM runtime")
+    # TODO get rid of this check once we load activities dynamically
+    assert ActivityContext.INSTANCE is not None
 
     body = await request.body()
     try:
-        result = Activity.RUNTIME.call(function_name, body)
-        return JSONResponse(content={"result": result.decode("utf-8")})
+        result = ActivityContext.INSTANCE.call_sandbox_function(function_name, body)
+    except MissingSandboxError as e:
+        raise HTTPException(
+            status_code=404, detail="Activity has no WASM runtime"
+        ) from e
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+    return JSONResponse(content={"result": result.decode("utf-8")})
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     """Clean up on shutdown."""
-    Activity.unload()
+    # TODO get rid of this
+    ActivityContext.INSTANCE = None

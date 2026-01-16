@@ -85,7 +85,7 @@ class TestCapabilities:
 
     def test_capabilities_parsing(self) -> None:
         """Should parse capabilities from manifest."""
-        from server.capabilities import Manifest, parse_capabilities
+        from server.activities.capabilities import Manifest, parse_capabilities
 
         manifest: Manifest = {
             "name": "test",
@@ -105,7 +105,7 @@ class TestCapabilities:
 
     def test_kv_namespace_enforcement(self) -> None:
         """Should enforce KV namespace prefix."""
-        from server.capabilities import (
+        from server.activities.capabilities import (
             CapabilityChecker,
             CapabilityError,
             Manifest,
@@ -128,7 +128,7 @@ class TestCapabilities:
 
     def test_http_host_enforcement(self) -> None:
         """Should enforce HTTP allowed hosts."""
-        from server.capabilities import (
+        from server.activities.capabilities import (
             CapabilityChecker,
             CapabilityError,
             Manifest,
@@ -151,7 +151,7 @@ class TestCapabilities:
 
     def test_lms_function_enforcement(self) -> None:
         """Should enforce LMS allowed functions."""
-        from server.capabilities import (
+        from server.activities.capabilities import (
             CapabilityChecker,
             CapabilityError,
             Manifest,
@@ -174,7 +174,7 @@ class TestCapabilities:
 
     def test_missing_capability_rejected(self) -> None:
         """Should reject operations when capability not declared."""
-        from server.capabilities import (
+        from server.activities.capabilities import (
             CapabilityChecker,
             CapabilityError,
             Manifest,

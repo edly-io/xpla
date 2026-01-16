@@ -10,6 +10,7 @@ from typing import Any
 import extism
 
 
+# TODO do we really need this class?
 class PluginRuntime:
     """Manages an Extism plugin instance for a learning activity."""
 
