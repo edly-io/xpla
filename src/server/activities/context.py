@@ -20,22 +20,10 @@ from server.activities.sandbox import Sandbox
 
 
 class MissingSandboxError(Exception):
-    """
-    TODO rename/move/delete this class because it's mostly useless
-    """
+    """Raised when a sandbox function is called but no plugin.wasm exists."""
 
 
 class ActivityContext:
-    INSTANCE: "ActivityContext" | None = None
-
-    @classmethod
-    def load(cls, activity_dir: Path) -> "ActivityContext":
-        """
-        TODO this static method is unnecessary, remove it in the future.
-        """
-        cls.INSTANCE = ActivityContext(activity_dir)
-        return cls.INSTANCE
-
     def __init__(self, activity_dir: Path) -> None:
         self._activity_dir = activity_dir
 
@@ -54,8 +42,19 @@ class ActivityContext:
             self.sandbox = Sandbox(self.sandbox_plugin_path, self.host_functions())
 
     @property
+    def activity_dir(self) -> Path:
+        return self._activity_dir
+
+    @property
     def name(self) -> str:
         return self.manifest["name"]
+
+    @property
+    def html(self) -> str:
+        html_path = self.activity_dir / "activity.html"
+        if html_path.exists():
+            return open(html_path, encoding="utf8").read()
+        return ""
 
     @property
     def sandbox_plugin_path(self) -> Path:

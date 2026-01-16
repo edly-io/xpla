@@ -15,31 +15,19 @@ Then install the project with:
 
 # Usage
 
-## Running the server with an activity
+## Viewing sample activities
 
-### No-WASM demo
+Build all activities with sandboxes:
 
-```bash
-python -m server samples/quiz-demo
-# Open http://127.0.0.1:8000/ in your browser
-```
+    make sandboxes
 
-### WASM demo
+Launch a development server:
 
-Build the plugin:
-
-```bash
-./src/tools/js2wasm.py samples/math/plugin.js
-```
-
-Run the server:
-
-```bash
-python -m server samples/math
-# Open http://127.0.0.1:8000/ in your browser
-```
+    make server
 
 ## Creating an Activity
+
+<!-- TODO rewrite this part -->
 
 1. Create a directory under `samples/`:
    ```

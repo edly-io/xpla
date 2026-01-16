@@ -1,0 +1,13 @@
+{% extends "index.html" %}
+
+{% block title %}Activities{% endblock %}
+
+{% block body %}
+<ul>
+    {% for activity in activities%}
+    <li>
+        <a href="{{ url_for('activity', activity_id=activity ) }}">{{ activity }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

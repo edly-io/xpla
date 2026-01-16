@@ -26,20 +26,12 @@ function generateQuestion() {
 }
 
 // Call WASM plugin to validate answer (plugin also submits grade)
-async function checkAnswer(question, answer) {
-  const response = await fetch("/api/plugin/check_answer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, answer: String(answer) }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Plugin call failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  // Plugin returns { result: '{"correct":true,"score":100,"feedback":"..."}' }
-  return JSON.parse(data.result);
+async function checkAnswer(activity, question, answer) {
+  const response = await activity.callSandboxFunction("check_answer", {
+      question, answer: String(answer)
+    }
+  );
+  return response;
 }
 
 export function setup(activity) {
@@ -60,7 +52,7 @@ export function setup(activity) {
 
     try {
       // Call WASM plugin to validate answer (plugin also submits grade)
-      const result = await checkAnswer(current.expression, userAnswer);
+      const result = await checkAnswer(activity, current.expression, userAnswer);
 
       // Display feedback from plugin
       feedbackEl.style.display = "block";

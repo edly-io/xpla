@@ -43,6 +43,23 @@ export class LearningActivity extends HTMLElement {
       console.error("Failed to load activity script:", error);
     }
   }
+
+  async callSandboxFunction(functionName, body) {
+    // TODO actually, there shouldn't be any mention of JSON in this function, unless we
+    // decide that JSON is actually the data format we want
+    const response = await fetch("/api/" + this.attributes.name.value + "/plugin/" + functionName, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Plugin call failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return JSON.parse(data.result);
+  }
 }
 
 class ActivityTitle extends HTMLElement {

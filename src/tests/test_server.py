@@ -8,6 +8,7 @@ import sys
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -15,17 +16,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pytest
 from fastapi.testclient import TestClient
 
-from server import create_app
+import server.app as app_module
 
 
 @pytest.fixture
-def activity_dir() -> Generator[Path, None, None]:
-    """Create a temporary activity directory with required files."""
+def samples_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
+    """Create a temporary samples directory and patch SAMPLES_DIR."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        activity_path = Path(tmpdir)
+        samples_path = Path(tmpdir)
+
+        # Create test-activity subdirectory
+        activity_path = samples_path / "test-activity"
+        activity_path.mkdir()
 
         # Create manifest
-        manifest = {
+        manifest: dict[str, Any] = {
             "name": "test-activity",
             "version": "1.0.0",
             "title": "Test Activity",
@@ -36,20 +41,16 @@ def activity_dir() -> Generator[Path, None, None]:
         # Create index.html
         (activity_path / "index.html").write_text("<html><body>Test</body></html>")
 
-        yield activity_path
+        # Patch SAMPLES_DIR
+        monkeypatch.setattr(app_module, "SAMPLES_DIR", samples_path)
+
+        yield samples_path
 
 
 @pytest.fixture
-def lib_dir() -> Path:
-    """Return the library directory."""
-    return Path(__file__).parent.parent / "lib"
-
-
-@pytest.fixture
-def client(activity_dir: Path, lib_dir: Path) -> TestClient:
+def client(samples_dir: Path) -> TestClient:  # pylint: disable=unused-argument
     """Create a test client for the server."""
-    app = create_app(activity_dir, lib_dir)
-    return TestClient(app)
+    return TestClient(app_module.app)
 
 
 class TestStaticFiles:
@@ -57,18 +58,23 @@ class TestStaticFiles:
 
     def test_serve_index_html(self, client: TestClient) -> None:
         """Should serve index.html."""
-        response = client.get("/")
+        response = client.get("/a/test-activity/index.html")
         assert response.status_code == 200
         assert "Test" in response.text
 
     def test_serve_library(self, client: TestClient) -> None:
         """Should serve library files."""
-        response = client.get("/lib/learningactivity.js")
+        response = client.get("/static/js/learningactivity.js")
         assert response.status_code == 200
         assert (
             "learning-activity" in response.text.lower()
             or "LearningActivity" in response.text
         )
+
+    def test_activity_not_found(self, client: TestClient) -> None:
+        """Should return 404 for unknown activity."""
+        response = client.get("/a/nonexistent/index.html")
+        assert response.status_code == 404
 
 
 class TestPluginEndpoint:
@@ -76,7 +82,9 @@ class TestPluginEndpoint:
 
     def test_no_plugin_returns_404(self, client: TestClient) -> None:
         """Should return 404 when no plugin is loaded."""
-        response = client.post("/api/plugin/test_function", content="test")
+        response = client.post(
+            "/api/test-activity/plugin/test_function", content="test"
+        )
         assert response.status_code == 404
 
 

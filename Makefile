@@ -3,6 +3,12 @@
 
 ###### Development
 
+samples: ## Build all sandboxes for sample activities
+	./src/tools/js2wasm.py samples/math/plugin.js
+
+server: ## Run a development server
+	fastapi dev src/server/app.py
+
 format: ## Format code with black
 	black src/
 
