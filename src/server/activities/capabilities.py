@@ -13,8 +13,6 @@ class Manifest(TypedDict, total=False):
     """Activity manifest structure."""
 
     name: Required[str]
-    version: str
-    title: str
     capabilities: dict[str, Any]
 
 

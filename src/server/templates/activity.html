@@ -1,6 +1,6 @@
 {% extends "index.html" %}
 
-{% block title %}{{ activity_context.name }}{% endblock %}
+{% block title %}{{ activity_context.title or "Activity" }}{% endblock %}
 
 {% block body %}
 <script type="module" src="{{ url_for('static', path='js/learningactivity.js') }}"></script>

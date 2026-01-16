@@ -20,7 +20,7 @@ from server.activities.sandbox import Sandbox
 
 
 class MissingSandboxError(Exception):
-    """Raised when a sandbox function is called but no plugin.wasm exists."""
+    """Raised when a sandbox function is called but no wasm file exists."""
 
 
 class ActivityContext:
@@ -38,8 +38,8 @@ class ActivityContext:
 
         # Sandboxed code
         self.sandbox: Sandbox | None = None
-        if self.sandbox_plugin_path.exists():
-            self.sandbox = Sandbox(self.sandbox_plugin_path, self.host_functions())
+        if self.sandbox_path.exists():
+            self.sandbox = Sandbox(self.sandbox_path, self.host_functions())
 
     @property
     def activity_dir(self) -> Path:
@@ -57,8 +57,8 @@ class ActivityContext:
         return ""
 
     @property
-    def sandbox_plugin_path(self) -> Path:
-        return self._activity_dir / "plugin.wasm"
+    def sandbox_path(self) -> Path:
+        return self._activity_dir / "sandbox.wasm"
 
     def call_sandbox_function(self, function_name: str, body: bytes) -> bytes:
         if self.sandbox is None:

@@ -1,10 +1,15 @@
 .DEFAULT_GOAL := help
-.PHONY: help test
+.PHONY: help samples test
 
 ###### Development
 
-samples: ## Build all sandboxes for sample activities
-	./src/tools/js2wasm.py samples/math/plugin.js
+SANDBOX_SOURCES := $(wildcard samples/*/src/sandbox.js)
+SANDBOX_WASMS := $(patsubst %/src/sandbox.js,%/sandbox.wasm,$(SANDBOX_SOURCES))
+
+samples: $(SANDBOX_WASMS) ## Build all sandboxes for sample activities
+
+samples/%/sandbox.wasm: samples/%/src/sandbox.js
+	./src/tools/js2wasm.py $< --output $@
 
 server: ## Run a development server
 	fastapi dev src/server/app.py

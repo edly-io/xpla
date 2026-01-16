@@ -32,8 +32,6 @@ def samples_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
         # Create manifest
         manifest: dict[str, Any] = {
             "name": "test-activity",
-            "version": "1.0.0",
-            "title": "Test Activity",
             "capabilities": {},
         }
         (activity_path / "manifest.json").write_text(json.dumps(manifest))
