@@ -154,8 +154,7 @@ class ActivityContext:
         url: str,
         method: str,
         body: bytes,
-        headers: Annotated[tuple[tuple[str, str]], Json],
-        # Annotated[dict[str, object], Json]
+        headers: Annotated[tuple[tuple[str, str], ...], Json],
     ) -> str:
         """Make an HTTP request.
 
