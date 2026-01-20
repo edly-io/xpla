@@ -9,11 +9,30 @@ from typing import Any, Required, TypedDict
 from urllib.parse import urlparse
 
 
+class ValueDefinition(TypedDict, total=False):
+    """Definition of an activity value."""
+
+    type: Required[str]  # "integer", "float", "string", "boolean"
+    default: int | float | str | bool
+    min: int | float
+    max: int | float
+
+
+# Allowed value types and their Python equivalents
+VALUE_TYPES: dict[str, type | tuple[type, ...]] = {
+    "integer": int,
+    "float": (int, float),  # int is acceptable for float
+    "string": str,
+    "boolean": bool,
+}
+
+
 class Manifest(TypedDict, total=False):
     """Activity manifest structure."""
 
     name: Required[str]
     capabilities: dict[str, Any]
+    values: dict[str, str | ValueDefinition]
 
 
 class CapabilityError(Exception):
@@ -99,6 +118,122 @@ def parse_capabilities(manifest: Manifest) -> Capabilities:
             caps.ai_allowed_models = set(ai.get("models", []))
 
     return caps
+
+
+class ValueValidationError(Exception):
+    """Raised when a value validation fails."""
+
+
+def parse_value_definition(
+    name: str, definition: str | ValueDefinition
+) -> ValueDefinition:
+    """Normalize a value definition to its full form.
+
+    Args:
+        name: The value name (for error messages).
+        definition: Either a type string or a full ValueDefinition.
+
+    Returns:
+        A normalized ValueDefinition dict.
+
+    Raises:
+        ValueValidationError: If the type is invalid.
+    """
+    if isinstance(definition, str):
+        if definition not in VALUE_TYPES:
+            raise ValueValidationError(
+                f"Invalid type '{definition}' for value '{name}'. "
+                f"Allowed: {list(VALUE_TYPES.keys())}"
+            )
+        return ValueDefinition(type=definition)
+
+    type_name = definition.get("type", "")
+    if type_name not in VALUE_TYPES:
+        raise ValueValidationError(
+            f"Invalid type '{type_name}' for value '{name}'. "
+            f"Allowed: {list(VALUE_TYPES.keys())}"
+        )
+    return definition
+
+
+def validate_value(
+    name: str, value: int | float | str | bool, definition: ValueDefinition
+) -> None:
+    """Validate a value against its definition.
+
+    Args:
+        name: The value name (for error messages).
+        value: The value to validate.
+        definition: The value definition from the manifest.
+
+    Raises:
+        ValueValidationError: If the value doesn't match the definition.
+    """
+    type_name = definition["type"]
+    expected_type = VALUE_TYPES[type_name]
+
+    if not isinstance(value, expected_type):
+        raise ValueValidationError(
+            f"Value '{name}' must be {type_name}, got {type(value).__name__}"
+        )
+
+    # Check min/max constraints for numeric types
+    if type_name in ("integer", "float") and isinstance(value, (int, float)):
+        if "min" in definition and value < definition["min"]:
+            raise ValueValidationError(
+                f"Value '{name}' must be >= {definition['min']}, got {value}"
+            )
+        if "max" in definition and value > definition["max"]:
+            raise ValueValidationError(
+                f"Value '{name}' must be <= {definition['max']}, got {value}"
+            )
+
+
+class ValueChecker:
+    """Validates values against their manifest definitions."""
+
+    @classmethod
+    def load_from_manifest(cls, manifest: Manifest) -> "ValueChecker":
+        raw_values = manifest.get("values", {})
+        definitions: dict[str, ValueDefinition] = {}
+        for name, definition in raw_values.items():
+            definitions[name] = parse_value_definition(name, definition)
+        return cls(definitions)
+
+    def __init__(self, definitions: dict[str, ValueDefinition]) -> None:
+        self._definitions = definitions
+
+    @property
+    def value_names(self) -> list[str]:
+        """Return the list of declared value names."""
+        return list(self._definitions.keys())
+
+    def get_definition(self, name: str) -> ValueDefinition:
+        """Get the definition for a value.
+
+        Raises:
+            ValueValidationError: If the value is not declared.
+        """
+        if name not in self._definitions:
+            raise ValueValidationError(
+                f"Value '{name}' not declared in manifest. "
+                f"Declared: {self.value_names}"
+            )
+        return self._definitions[name]
+
+    def get_default(self, name: str) -> int | float | str | bool | None:
+        """Get the default value for a declared value, or None if no default."""
+        definition = self.get_definition(name)
+        return definition.get("default")
+
+    def validate(self, name: str, value: int | float | str | bool) -> None:
+        """Validate a value against its manifest definition.
+
+        Raises:
+            ValueValidationError: If the value is invalid.
+        """
+        definition = self.get_definition(name)
+        validate_value(name, value, definition)
 
 
 class CapabilityChecker:

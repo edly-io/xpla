@@ -2,5 +2,9 @@
   "name": "math",
   "capabilities": {
     "lms": ["get_user", "submit_grade"]
+  },
+  "values": {
+    "correct_answers": { "type": "integer", "default": 0, "min": 0 },
+    "wrong_answers": { "type": "integer", "default": 0, "min": 0 }
   }
 }

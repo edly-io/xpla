@@ -14,7 +14,12 @@ import urllib.request
 
 from extism import Json
 
-from server.activities.capabilities import CapabilityError, CapabilityChecker, Manifest
+from server.activities.capabilities import (
+    CapabilityError,
+    CapabilityChecker,
+    Manifest,
+    ValueChecker,
+)
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
@@ -30,11 +35,12 @@ class ActivityContext:
         # Key-value store
         self.kv_store = kv.get_default()
 
-        # Manifest capabilities checker
+        # Manifest capabilities and values
         # TODO check manifest validity
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
             self.manifest: Manifest = json.load(f)
         self.checker = CapabilityChecker.load_from_manifest(self.manifest)
+        self.value_checker = ValueChecker.load_from_manifest(self.manifest)
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
@@ -66,6 +72,44 @@ class ActivityContext:
 
         # TODO catch errors?
         return self.sandbox.call_function(function_name, body)
+
+    def _value_key(self, name: str, user_id: str) -> str:
+        """Generate the KV store key for a value."""
+        return f"learningactivity.{self.name}.{user_id}.{name}"
+
+    def get_value(self, name: str, user_id: str) -> int | float | str | bool | None:
+        """Get a declared value for a user.
+
+        Returns the stored value, or the default if not set, or None.
+
+        Raises:
+            ValueValidationError: If the value is not declared in manifest.
+        """
+        # Check that value is declared (raises if not)
+        default = self.value_checker.get_default(name)
+
+        key = self._value_key(name, user_id)
+        stored = self.kv_store.get(key)
+        if stored is None:
+            return default
+
+        # Deserialize from JSON
+        result: int | float | str | bool = json.loads(stored)
+        return result
+
+    def set_value(
+        self, name: str, user_id: str, value: int | float | str | bool
+    ) -> None:
+        """Set a declared value for a user.
+
+        Raises:
+            ValueValidationError: If the value is not declared or invalid.
+        """
+        # Validate against manifest definition
+        self.value_checker.validate(name, value)
+
+        key = self._value_key(name, user_id)
+        self.kv_store.set(key, json.dumps(value))
 
     def host_functions(self) -> list[Callable[..., Any]]:
         """

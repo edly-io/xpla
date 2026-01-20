@@ -7,13 +7,19 @@ import urllib.error
 import pytest
 
 from server.activities.context import ActivityContext, MissingSandboxError
+from server.activities.capabilities import ValueValidationError
 
 
 def create_manifest(
-    name: str = "test-activity", capabilities: dict[str, Any] | None = None
+    name: str = "test-activity",
+    capabilities: dict[str, Any] | None = None,
+    values: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Helper to create a manifest dict."""
-    return {"name": name, "capabilities": capabilities or {}}
+    manifest: dict[str, Any] = {"name": name, "capabilities": capabilities or {}}
+    if values is not None:
+        manifest["values"] = values
+    return manifest
 
 
 def setup_activity_dir(tmp_path: Path, manifest: dict[str, Any]) -> Path:
@@ -369,3 +375,146 @@ class TestHttpRequest:
         result = ctx.http_request("https://any-host.com/api", "GET", b"", ())
 
         assert result == "ok"
+
+
+class TestGetValue:
+    """Tests for get_value method."""
+
+    def test_returns_default_when_not_set(self, tmp_path: Path) -> None:
+        """Should return default value when value not yet stored."""
+        manifest = create_manifest(values={"score": {"type": "integer", "default": 0}})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        result = ctx.get_value("score", "user123")
+
+        assert result == 0
+
+    def test_returns_none_when_no_default(self, tmp_path: Path) -> None:
+        """Should return None when no default and value not stored."""
+        manifest = create_manifest(values={"score": "integer"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        result = ctx.get_value("score", "user123")
+
+        assert result is None
+
+    def test_returns_stored_value(self, tmp_path: Path) -> None:
+        """Should return stored value when set."""
+        manifest = create_manifest(values={"score": {"type": "integer", "default": 0}})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("score", "user123", 42)
+        result = ctx.get_value("score", "user123")
+
+        assert result == 42
+
+    def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
+        """Should raise for value not declared in manifest."""
+        manifest = create_manifest(values={"score": "integer"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(ValueValidationError, match="not declared"):
+            ctx.get_value("unknown", "user123")
+
+    def test_values_isolated_by_user(self, tmp_path: Path) -> None:
+        """Should store separate values for different users."""
+        manifest = create_manifest(values={"score": {"type": "integer", "default": 0}})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("score", "user1", 10)
+        ctx.set_value("score", "user2", 20)
+
+        assert ctx.get_value("score", "user1") == 10
+        assert ctx.get_value("score", "user2") == 20
+
+
+class TestSetValue:
+    """Tests for set_value method."""
+
+    def test_stores_integer(self, tmp_path: Path) -> None:
+        """Should store and retrieve integer value."""
+        manifest = create_manifest(values={"count": "integer"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("count", "user1", 42)
+
+        assert ctx.get_value("count", "user1") == 42
+
+    def test_stores_float(self, tmp_path: Path) -> None:
+        """Should store and retrieve float value."""
+        manifest = create_manifest(values={"ratio": "float"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("ratio", "user1", 3.14)
+
+        assert ctx.get_value("ratio", "user1") == 3.14
+
+    def test_stores_string(self, tmp_path: Path) -> None:
+        """Should store and retrieve string value."""
+        manifest = create_manifest(values={"name": "string"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("name", "user1", "Alice")
+
+        assert ctx.get_value("name", "user1") == "Alice"
+
+    def test_stores_boolean(self, tmp_path: Path) -> None:
+        """Should store and retrieve boolean value."""
+        manifest = create_manifest(values={"completed": "boolean"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("completed", "user1", True)
+
+        assert ctx.get_value("completed", "user1") is True
+
+    def test_raises_for_wrong_type(self, tmp_path: Path) -> None:
+        """Should raise when value type doesn't match declaration."""
+        manifest = create_manifest(values={"count": "integer"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(ValueValidationError, match="must be integer"):
+            ctx.set_value("count", "user1", "not an int")
+
+    def test_raises_for_constraint_violation(self, tmp_path: Path) -> None:
+        """Should raise when value violates constraints."""
+        manifest = create_manifest(
+            values={"score": {"type": "integer", "min": 0, "max": 100}}
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(ValueValidationError, match="must be >= 0"):
+            ctx.set_value("score", "user1", -5)
+
+        with pytest.raises(ValueValidationError, match="must be <= 100"):
+            ctx.set_value("score", "user1", 150)
+
+    def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
+        """Should raise for value not declared in manifest."""
+        manifest = create_manifest(values={"score": "integer"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(ValueValidationError, match="not declared"):
+            ctx.set_value("unknown", "user1", 42)
+
+    def test_overwrites_existing_value(self, tmp_path: Path) -> None:
+        """Should overwrite previously stored value."""
+        manifest = create_manifest(values={"count": "integer"})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.set_value("count", "user1", 10)
+        ctx.set_value("count", "user1", 20)
+
+        assert ctx.get_value("count", "user1") == 20
