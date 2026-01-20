@@ -4,6 +4,7 @@ from server.activities.capabilities import (
     CapabilityError,
     Manifest,
     ValueChecker,
+    ValueDefinition,
     ValueValidationError,
     parse_capabilities,
     parse_value_definition,
@@ -96,34 +97,39 @@ class TestCapabilities:
 class TestParseValueDefinition:
     """Tests for parse_value_definition function."""
 
-    def test_shorthand_string_type(self) -> None:
-        """Should convert string shorthand to full definition."""
-        result = parse_value_definition("score", "integer")
-        assert result["type"] == "integer"
-
-    def test_full_definition_preserved(self) -> None:
-        """Should preserve full definition with all fields."""
-        definition = {"type": "integer", "default": 0, "min": 0, "max": 100}
+    def test_valid_definition(self) -> None:
+        """Should accept valid definition with type and default."""
+        definition: ValueDefinition = {"type": "integer", "default": 0}
         result = parse_value_definition("score", definition)
         assert result["type"] == "integer"
         assert result["default"] == 0
-        assert result["min"] == 0
-        assert result["max"] == 100
 
-    def test_invalid_shorthand_type_raises(self) -> None:
-        """Should raise for invalid type in shorthand form."""
-        with pytest.raises(ValueValidationError, match="Invalid type 'invalid'"):
-            parse_value_definition("score", "invalid")
+    def test_missing_type_raises(self) -> None:
+        """Should raise when type field is missing."""
+        with pytest.raises(ValueValidationError, match="missing required 'type' field"):
+            parse_value_definition("score", {"default": 0})  # type: ignore[typeddict-item]
 
-    def test_invalid_full_type_raises(self) -> None:
-        """Should raise for invalid type in full definition."""
+    def test_invalid_type_raises(self) -> None:
+        """Should raise for invalid type."""
         with pytest.raises(ValueValidationError, match="Invalid type 'badtype'"):
             parse_value_definition("score", {"type": "badtype"})
+
+    def test_default_type_validated(self) -> None:
+        """Should reject default that doesn't match declared type."""
+        with pytest.raises(
+            ValueValidationError, match="Default for 'score' must be integer"
+        ):
+            parse_value_definition("score", {"type": "integer", "default": "wrong"})
+
+    def test_default_type_accepts_valid(self) -> None:
+        """Should accept default that matches declared type."""
+        result = parse_value_definition("flag", {"type": "boolean", "default": True})
+        assert result["default"] is True
 
     def test_all_valid_types(self) -> None:
         """Should accept all valid type names."""
         for type_name in ("integer", "float", "string", "boolean"):
-            result = parse_value_definition("test", type_name)
+            result = parse_value_definition("test", {"type": type_name})
             assert result["type"] == type_name
 
 
@@ -171,35 +177,6 @@ class TestValidateValue:
         with pytest.raises(ValueValidationError, match="must be boolean"):
             validate_value("enabled", 1, {"type": "boolean"})
 
-    def test_min_constraint_passes(self) -> None:
-        """Should accept value at or above min."""
-        validate_value("score", 0, {"type": "integer", "min": 0})
-        validate_value("score", 10, {"type": "integer", "min": 0})
-
-    def test_min_constraint_fails(self) -> None:
-        """Should reject value below min."""
-        with pytest.raises(ValueValidationError, match="must be >= 0"):
-            validate_value("score", -1, {"type": "integer", "min": 0})
-
-    def test_max_constraint_passes(self) -> None:
-        """Should accept value at or below max."""
-        validate_value("score", 100, {"type": "integer", "max": 100})
-        validate_value("score", 50, {"type": "integer", "max": 100})
-
-    def test_max_constraint_fails(self) -> None:
-        """Should reject value above max."""
-        with pytest.raises(ValueValidationError, match="must be <= 100"):
-            validate_value("score", 101, {"type": "integer", "max": 100})
-
-    def test_min_max_combined(self) -> None:
-        """Should enforce both min and max constraints."""
-        definition = {"type": "integer", "min": 0, "max": 100}
-        validate_value("score", 50, definition)
-        with pytest.raises(ValueValidationError):
-            validate_value("score", -1, definition)
-        with pytest.raises(ValueValidationError):
-            validate_value("score", 101, definition)
-
 
 class TestValueChecker:
     """Tests for ValueChecker class."""
@@ -208,14 +185,14 @@ class TestValueChecker:
         """Should handle manifest with no values."""
         manifest: Manifest = {"name": "test"}
         checker = ValueChecker.load_from_manifest(manifest)
-        assert checker.value_names == []
+        assert not checker.value_names
 
     def test_load_from_manifest_with_values(self) -> None:
         """Should parse all value definitions from manifest."""
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": "integer",
+                "score": {"type": "integer"},
                 "attempts": {"type": "integer", "default": 0},
             },
         }
@@ -226,16 +203,16 @@ class TestValueChecker:
         """Should return definition for declared value."""
         manifest: Manifest = {
             "name": "test",
-            "values": {"score": {"type": "integer", "min": 0}},
+            "values": {"score": {"type": "integer", "default": 10}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
         definition = checker.get_definition("score")
         assert definition["type"] == "integer"
-        assert definition["min"] == 0
+        assert definition["default"] == 10
 
     def test_get_definition_not_declared(self) -> None:
         """Should raise for undeclared value."""
-        manifest: Manifest = {"name": "test", "values": {"score": "integer"}}
+        manifest: Manifest = {"name": "test", "values": {"score": {"type": "integer"}}}
         checker = ValueChecker.load_from_manifest(manifest)
         with pytest.raises(ValueValidationError, match="not declared"):
             checker.get_definition("unknown")
@@ -250,33 +227,34 @@ class TestValueChecker:
         assert checker.get_default("score") == 100
 
     def test_get_default_without_default(self) -> None:
-        """Should return None when no default defined."""
-        manifest: Manifest = {"name": "test", "values": {"score": "integer"}}
+        """Should return type-specific default when no explicit default defined."""
+        manifest: Manifest = {
+            "name": "test",
+            "values": {
+                "count": {"type": "integer"},
+                "ratio": {"type": "float"},
+                "name": {"type": "string"},
+                "enabled": {"type": "boolean"},
+            },
+        }
         checker = ValueChecker.load_from_manifest(manifest)
-        assert checker.get_default("score") is None
+        assert checker.get_default("count") == 0
+        assert checker.get_default("ratio") == 0.0
+        assert checker.get_default("name") == ""
+        assert checker.get_default("enabled") is False
 
     def test_validate_passes(self) -> None:
         """Should pass validation for valid value."""
         manifest: Manifest = {
             "name": "test",
-            "values": {"score": {"type": "integer", "min": 0, "max": 100}},
+            "values": {"score": {"type": "integer", "default": 0}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
         checker.validate("score", 50)  # Should not raise
 
     def test_validate_fails_type(self) -> None:
         """Should fail validation for wrong type."""
-        manifest: Manifest = {"name": "test", "values": {"score": "integer"}}
+        manifest: Manifest = {"name": "test", "values": {"score": {"type": "integer"}}}
         checker = ValueChecker.load_from_manifest(manifest)
         with pytest.raises(ValueValidationError, match="must be integer"):
             checker.validate("score", "not an int")
-
-    def test_validate_fails_constraint(self) -> None:
-        """Should fail validation for constraint violation."""
-        manifest: Manifest = {
-            "name": "test",
-            "values": {"score": {"type": "integer", "min": 0}},
-        }
-        checker = ValueChecker.load_from_manifest(manifest)
-        with pytest.raises(ValueValidationError, match="must be >= 0"):
-            checker.validate("score", -5)

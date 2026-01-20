@@ -19,6 +19,7 @@ from server.activities.capabilities import (
     CapabilityChecker,
     Manifest,
     ValueChecker,
+    ValueType,
 )
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
@@ -77,10 +78,10 @@ class ActivityContext:
         """Generate the KV store key for a value."""
         return f"learningactivity.{self.name}.{user_id}.{name}"
 
-    def get_value(self, name: str, user_id: str) -> int | float | str | bool | None:
+    def get_value(self, name: str, user_id: str) -> ValueType:
         """Get a declared value for a user.
 
-        Returns the stored value, or the default if not set, or None.
+        Returns the stored value, or the default if not set.
 
         Raises:
             ValueValidationError: If the value is not declared in manifest.
@@ -94,12 +95,10 @@ class ActivityContext:
             return default
 
         # Deserialize from JSON
-        result: int | float | str | bool = json.loads(stored)
+        result: ValueType = json.loads(stored)
         return result
 
-    def set_value(
-        self, name: str, user_id: str, value: int | float | str | bool
-    ) -> None:
+    def set_value(self, name: str, user_id: str, value: ValueType) -> None:
         """Set a declared value for a user.
 
         Raises:

@@ -9,13 +9,15 @@ from typing import Any, Required, TypedDict
 from urllib.parse import urlparse
 
 
+# Type alias for values that can be stored
+ValueType = int | float | str | bool
+
+
 class ValueDefinition(TypedDict, total=False):
     """Definition of an activity value."""
 
     type: Required[str]  # "integer", "float", "string", "boolean"
-    default: int | float | str | bool
-    min: int | float
-    max: int | float
+    default: ValueType
 
 
 # Allowed value types and their Python equivalents
@@ -26,13 +28,21 @@ VALUE_TYPES: dict[str, type | tuple[type, ...]] = {
     "boolean": bool,
 }
 
+# Default values for each type (used when no explicit default is provided)
+TYPE_DEFAULTS: dict[str, ValueType] = {
+    "integer": 0,
+    "float": 0.0,
+    "string": "",
+    "boolean": False,
+}
+
 
 class Manifest(TypedDict, total=False):
     """Activity manifest structure."""
 
     name: Required[str]
     capabilities: dict[str, Any]
-    values: dict[str, str | ValueDefinition]
+    values: dict[str, ValueDefinition]
 
 
 class CapabilityError(Exception):
@@ -124,41 +134,43 @@ class ValueValidationError(Exception):
     """Raised when a value validation fails."""
 
 
-def parse_value_definition(
-    name: str, definition: str | ValueDefinition
-) -> ValueDefinition:
-    """Normalize a value definition to its full form.
+def parse_value_definition(name: str, definition: ValueDefinition) -> ValueDefinition:
+    """Validate a value definition.
 
     Args:
         name: The value name (for error messages).
-        definition: Either a type string or a full ValueDefinition.
+        definition: The value definition dict.
 
     Returns:
-        A normalized ValueDefinition dict.
+        The validated ValueDefinition.
 
     Raises:
-        ValueValidationError: If the type is invalid.
+        ValueValidationError: If type is missing/invalid or default doesn't match type.
     """
-    if isinstance(definition, str):
-        if definition not in VALUE_TYPES:
-            raise ValueValidationError(
-                f"Invalid type '{definition}' for value '{name}'. "
-                f"Allowed: {list(VALUE_TYPES.keys())}"
-            )
-        return ValueDefinition(type=definition)
+    if "type" not in definition:
+        raise ValueValidationError(f"Value '{name}' is missing required 'type' field")
 
-    type_name = definition.get("type", "")
+    type_name = definition["type"]
     if type_name not in VALUE_TYPES:
         raise ValueValidationError(
             f"Invalid type '{type_name}' for value '{name}'. "
             f"Allowed: {list(VALUE_TYPES.keys())}"
         )
+
+    # Validate default value type if provided
+    if "default" in definition:
+        default = definition["default"]
+        expected_type = VALUE_TYPES[type_name]
+        if not isinstance(default, expected_type):
+            raise ValueValidationError(
+                f"Default for '{name}' must be {type_name}, "
+                f"got {type(default).__name__}"
+            )
+
     return definition
 
 
-def validate_value(
-    name: str, value: int | float | str | bool, definition: ValueDefinition
-) -> None:
+def validate_value(name: str, value: ValueType, definition: ValueDefinition) -> None:
     """Validate a value against its definition.
 
     Args:
@@ -176,17 +188,6 @@ def validate_value(
         raise ValueValidationError(
             f"Value '{name}' must be {type_name}, got {type(value).__name__}"
         )
-
-    # Check min/max constraints for numeric types
-    if type_name in ("integer", "float") and isinstance(value, (int, float)):
-        if "min" in definition and value < definition["min"]:
-            raise ValueValidationError(
-                f"Value '{name}' must be >= {definition['min']}, got {value}"
-            )
-        if "max" in definition and value > definition["max"]:
-            raise ValueValidationError(
-                f"Value '{name}' must be <= {definition['max']}, got {value}"
-            )
 
 
 class ValueChecker:
@@ -221,12 +222,14 @@ class ValueChecker:
             )
         return self._definitions[name]
 
-    def get_default(self, name: str) -> int | float | str | bool | None:
-        """Get the default value for a declared value, or None if no default."""
+    def get_default(self, name: str) -> ValueType:
+        """Get the default value for a declared value."""
         definition = self.get_definition(name)
-        return definition.get("default")
+        if "default" in definition:
+            return definition["default"]
+        return TYPE_DEFAULTS[definition["type"]]
 
-    def validate(self, name: str, value: int | float | str | bool) -> None:
+    def validate(self, name: str, value: ValueType) -> None:
         """Validate a value against its manifest definition.
 
         Raises:

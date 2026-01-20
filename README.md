@@ -68,12 +68,31 @@ my-activity/
 ```json
 {
   "name": "my-activity",
-  "capabilities": {}
+  "capabilities": {},
+  "values": {}
 }
 ```
 
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
+- `values` (optional, defaults to `{}`): Declares per-user values that the activity tracks. Values are validated at runtime.
+
+##### Values
+
+Each value must have a `type` field. An optional `default` can be provided (must match the declared type). Example:
+
+```json
+{
+  "values": {
+    "correct_answers": { "type": "integer", "default": 0 },
+    "completion_rate": { "type": "float" },
+    "last_answer": { "type": "string" },
+    "passed": { "type": "boolean", "default": false }
+  }
+}
+```
+
+Supported types: `integer`, `float`, `string`, `boolean`. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`.
 
 #### `activity.html` (optional)
 
