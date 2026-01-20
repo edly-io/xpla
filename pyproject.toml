@@ -19,3 +19,15 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable=[
+    "duplicate-code",
+    "fixme",
+    "invalid-name",
+    "line-too-long",
+    "missing-docstring",
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+
+]

@@ -5,7 +5,7 @@ from extism import host_fn
 from server.activities.runtime import PluginRuntime
 
 
-class Sandbox:
+class SandboxExecutor:
     """
     Sandboxed Exism code execution.
     """
@@ -22,5 +22,6 @@ class Sandbox:
 
     # TODO standardize the input_data format? We need something that is compact,
     # inspectable and works everywhere (including in the frontend)
+    # TODO exception management: not implemented error?
     def call_function(self, name: str, input_data: bytes) -> bytes:
         return self.wasm_runtime.call(name, input_data)

@@ -20,7 +20,7 @@ format: ## Format code with black
 test: test-lint test-unit test-types test-format ## Run all tests
 
 test-lint: ## Run pylint tests
-	pylint --disable=all --enable=E --enable=unused-import,unused-argument,f-string-without-interpolation src/
+	pylint src/
 
 test-unit: ## Run unit tests
 	pytest src/tests

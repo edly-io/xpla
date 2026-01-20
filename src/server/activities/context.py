@@ -16,7 +16,7 @@ from extism import Json
 
 from server.activities.capabilities import CapabilityError, CapabilityChecker, Manifest
 from server.activities.kv import KVStore
-from server.activities.sandbox import Sandbox
+from server.activities.sandbox import SandboxExecutor
 
 
 class MissingSandboxError(Exception):
@@ -37,9 +37,9 @@ class ActivityContext:
         self.checker = CapabilityChecker.load_from_manifest(self.manifest)
 
         # Sandboxed code
-        self.sandbox: Sandbox | None = None
+        self.sandbox: SandboxExecutor | None = None
         if self.sandbox_path.exists():
-            self.sandbox = Sandbox(self.sandbox_path, self.host_functions())
+            self.sandbox = SandboxExecutor(self.sandbox_path, self.host_functions())
 
     @property
     def activity_dir(self) -> Path:
@@ -73,13 +73,13 @@ class ActivityContext:
         """
         # TODO we should associate functions only if they are part of the manifest?
         return [
-            self.kv_get,
-            self.kv_set,
-            self.kv_delete,
-            self.kv_keys,
+            self.lms_submit_grade,
+            # self.kv_get,
+            # self.kv_set,
+            # self.kv_delete,
+            # self.kv_keys,
             self.http_request,
             self.lms_get_user,
-            self.lms_submit_grade,
         ]
 
     def lms_submit_grade(self, grade: Annotated[dict[str, object], Json]) -> str:
@@ -97,57 +97,57 @@ class ActivityContext:
         # TODO actually submit grade
         return json.dumps({"status": "submitted", "score": grade["score"]})
 
-    def kv_get(self, key: str) -> str:
-        """Get a value from the key-value store.
+    # def kv_get(self, key: str) -> str:
+    #     """Get a value from the key-value store.
 
-        Returns empty string if key not found.
-        """
-        try:
-            self.checker.check_kv_access()
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
+    #     Returns empty string if key not found.
+    #     """
+    #     try:
+    #         self.checker.check_kv_access()
+    #     except CapabilityError as e:
+    #         return json.dumps({"error": str(e)})
 
-        return self.kv_store.get(key) or ""
+    #     return self.kv_store.get(key) or ""
 
-    def kv_set(self, input_data: Annotated[dict[str, str], Json]) -> str:
-        """Set a key-value pair in the store.
+    # def kv_set(self, input_data: Annotated[dict[str, str], Json]) -> str:
+    #     """Set a key-value pair in the store.
 
-        Expects JSON: {"key": "...", "value": "..."}
-        Returns "ok" on success.
-        """
-        try:
-            self.checker.check_kv_write(input_data["key"], input_data["value"])
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
+    #     Expects JSON: {"key": "...", "value": "..."}
+    #     Returns "ok" on success.
+    #     """
+    #     try:
+    #         self.checker.check_kv_write(input_data["key"], input_data["value"])
+    #     except CapabilityError as e:
+    #         return json.dumps({"error": str(e)})
 
-        self.kv_store.set(input_data["key"], input_data["value"])
-        return "ok"
+    #     self.kv_store.set(input_data["key"], input_data["value"])
+    #     return "ok"
 
-    def kv_delete(self, key: str) -> str:
-        """Delete a key from the store.
+    # def kv_delete(self, key: str) -> str:
+    #     """Delete a key from the store.
 
-        Returns "deleted" if key existed, "not_found" otherwise.
-        """
-        try:
-            self.checker.check_kv_access()
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
+    #     Returns "deleted" if key existed, "not_found" otherwise.
+    #     """
+    #     try:
+    #         self.checker.check_kv_access()
+    #     except CapabilityError as e:
+    #         return json.dumps({"error": str(e)})
 
-        if self.kv_store.delete(key):
-            return "deleted"
-        return "not_found"
+    #     if self.kv_store.delete(key):
+    #         return "deleted"
+    #     return "not_found"
 
-    def kv_keys(self, _input: str) -> str:
-        """List all keys in the store.
+    # def kv_keys(self, _input: str) -> str:
+    #     """List all keys in the store.
 
-        Returns JSON array of keys.
-        """
-        try:
-            self.checker.check_kv_access()
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
+    #     Returns JSON array of keys.
+    #     """
+    #     try:
+    #         self.checker.check_kv_access()
+    #     except CapabilityError as e:
+    #         return json.dumps({"error": str(e)})
 
-        return json.dumps(self.kv_store.keys())
+    #     return json.dumps(self.kv_store.keys())
 
     def http_request(
         self,
