@@ -529,3 +529,51 @@ class TestSetValue:
         ctx.set_value("count", user, 20)
 
         assert ctx.get_value("count", user) == 20
+
+
+class TestGetAllValues:
+    """Tests for get_all_values method."""
+
+    def test_returns_empty_dict_when_no_values_declared(self, tmp_path: Path) -> None:
+        """Should return empty dict when manifest has no values."""
+        manifest = create_manifest(values={})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        user = unique_user(tmp_path)
+
+        result = ctx.get_all_values(user)
+
+        assert result == {}
+
+    def test_returns_defaults_when_not_set(self, tmp_path: Path) -> None:
+        """Should return default values when none have been set."""
+        manifest = create_manifest(
+            values={
+                "score": {"type": "integer", "default": 100},
+                "name": {"type": "string"},
+            }
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        user = unique_user(tmp_path)
+
+        result = ctx.get_all_values(user)
+
+        assert result == {"score": 100, "name": ""}
+
+    def test_returns_stored_values(self, tmp_path: Path) -> None:
+        """Should return stored values mixed with defaults."""
+        manifest = create_manifest(
+            values={
+                "correct": {"type": "integer", "default": 0},
+                "wrong": {"type": "integer", "default": 0},
+            }
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        user = unique_user(tmp_path)
+        ctx.set_value("correct", user, 5)
+
+        result = ctx.get_all_values(user)
+
+        assert result == {"correct": 5, "wrong": 0}

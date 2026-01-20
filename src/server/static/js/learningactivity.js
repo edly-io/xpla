@@ -2,9 +2,15 @@ export class LearningActivity extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: "closed" });
+    this.values = {};
   }
 
   connectedCallback() {
+    const valuesAttr = this.getAttribute("data-values");
+    if (valuesAttr) {
+      this.values = JSON.parse(valuesAttr);
+    }
+
     this.render();
     const src = this.getAttribute("src");
     if (src) {

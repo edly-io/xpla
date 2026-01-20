@@ -118,7 +118,12 @@ export function setup(activity) {
 }
 ```
 
-The `Activity` class is implemented in [`learningactivity.js`](./src/server/static/js/learningactivity.js). Note in particular the presence of a `callSandboxFunction` method which allows calling backend sandboxed functions from the frontend. This is particularly useful for submitting student responses to an assessment.
+The `activity` object exposes the following properties and methods:
+
+- `values`: An object containing the current user's values as declared in `manifest.json`. For example, if the manifest declares `correct_answers` and `wrong_answers`, you can access them as `activity.values.correct_answers` and `activity.values.wrong_answers`.
+- `callSandboxFunction(name, body)`: Calls a function in the backend sandbox. This is particularly useful for submitting student responses to an assessment.
+
+The `LearningActivity` class is implemented in [`learningactivity.js`](./src/server/static/js/learningactivity.js).
 
 Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 

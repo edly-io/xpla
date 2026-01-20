@@ -110,6 +110,16 @@ class ActivityContext:
         key = self._value_key(name, user_id)
         self.kv_store.set(key, json.dumps(value))
 
+    def get_all_values(self, user_id: str) -> dict[str, ValueType]:
+        """Get all declared values for a user.
+
+        Returns a dict mapping value names to their current values (or defaults).
+        """
+        return {
+            name: self.get_value(name, user_id)
+            for name in self.value_checker.value_names
+        }
+
     def host_functions(self) -> list[Callable[..., Any]]:
         """
         Host functions that will be made available to the sandbox.
