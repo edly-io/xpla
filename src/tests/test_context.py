@@ -36,8 +36,6 @@ class TestActivityContextInit:
         ctx = ActivityContext(activity_dir)
 
         assert ctx.kv_store is not None
-        # pylint: disable=protected-access
-        assert ctx.kv_store._path == activity_dir / "kv_store.json"
 
     def test_init_loads_manifest(self, tmp_path: Path) -> None:
         """Should load manifest from activity directory."""

@@ -12,7 +12,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-import server.app as app_module
+from server.app import app
+from server import constants
 
 
 @pytest.fixture(name="samples_dir")
@@ -38,7 +39,7 @@ def fixtures_samples_dir(
         (activity_path / "index.html").write_text("<html><body>Test</body></html>")
 
         # Patch SAMPLES_DIR
-        monkeypatch.setattr(app_module, "SAMPLES_DIR", samples_path)
+        monkeypatch.setattr(constants, "SAMPLES_DIR", samples_path)
 
         yield samples_path
 
@@ -46,7 +47,7 @@ def fixtures_samples_dir(
 @pytest.fixture(name="client")
 def fixtures_client(samples_dir: Path) -> TestClient:  # pylint: disable=unused-argument
     """Create a test client for the server."""
-    return TestClient(app_module.app)
+    return TestClient(app)
 
 
 class TestStaticFiles:

@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from server.constants import DIST_DIR
+
 
 class KVStore:
     """Persistent key-value store backed by a JSON file."""
@@ -47,3 +49,10 @@ class KVStore:
     def keys(self) -> list[str]:
         """List all keys."""
         return list(self._data.keys())
+
+
+def get_default() -> KVStore:
+    """
+    Return the default key-value store from <root>/dist/kv.json.
+    """
+    return KVStore(DIST_DIR / "kv.json")

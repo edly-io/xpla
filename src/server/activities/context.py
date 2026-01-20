@@ -15,7 +15,7 @@ import urllib.request
 from extism import Json
 
 from server.activities.capabilities import CapabilityError, CapabilityChecker, Manifest
-from server.activities.kv import KVStore
+from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
 
@@ -28,10 +28,10 @@ class ActivityContext:
         self._activity_dir = activity_dir
 
         # Key-value store
-        kv_store_path = self._activity_dir / "kv_store.json"
-        self.kv_store = KVStore(kv_store_path)
+        self.kv_store = kv.get_default()
 
         # Manifest capabilities checker
+        # TODO check manifest validity
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
             self.manifest: Manifest = json.load(f)
         self.checker = CapabilityChecker.load_from_manifest(self.manifest)
@@ -97,17 +97,18 @@ class ActivityContext:
         # TODO actually submit grade
         return json.dumps({"status": "submitted", "score": grade["score"]})
 
-    # def kv_get(self, key: str) -> str:
-    #     """Get a value from the key-value store.
+    def kv_get(self, key: str) -> str:
+        """Get a value from the key-value store.
 
-    #     Returns empty string if key not found.
-    #     """
-    #     try:
-    #         self.checker.check_kv_access()
-    #     except CapabilityError as e:
-    #         return json.dumps({"error": str(e)})
+        Returns empty string if key not found.
+        """
+        try:
+            self.checker.check_kv_access()
+        except CapabilityError as e:
+            return json.dumps({"error": str(e)})
 
-    #     return self.kv_store.get(key) or ""
+        key = f"learningactivity.{self.name}.{key}"
+        return self.kv_store.get(key) or ""
 
     # def kv_set(self, input_data: Annotated[dict[str, str], Json]) -> str:
     #     """Set a key-value pair in the store.

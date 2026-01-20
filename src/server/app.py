@@ -2,19 +2,13 @@
 FastAPI application for the learning activity server.
 """
 
-from pathlib import Path
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
-
-CURRENT_DIR = Path(__file__).parent
-STATIC_DIR = CURRENT_DIR / "static"
-SAMPLES_DIR = CURRENT_DIR.parent.parent / "samples"
-TEMPLATES_DIR = CURRENT_DIR / "templates"
+from server import constants
 
 
 class ActivityNotFound(Exception):
@@ -26,7 +20,7 @@ def load_activity(activity_id: str) -> ActivityContext:
     if activity_id not in list_activities():
         raise ActivityNotFound(f"Activity '{activity_id}' not found")
 
-    activity_dir = SAMPLES_DIR / activity_id
+    activity_dir = constants.SAMPLES_DIR / activity_id
     manifest_path = activity_dir / "manifest.json"
     if not manifest_path.exists():
         raise ActivityNotFound(f"Activity '{activity_id}' has no manifest.json")
@@ -35,7 +29,7 @@ def load_activity(activity_id: str) -> ActivityContext:
 
 
 def list_activities() -> list[str]:
-    return sorted(d.name for d in SAMPLES_DIR.iterdir() if d.is_dir())
+    return sorted(d.name for d in constants.SAMPLES_DIR.iterdir() if d.is_dir())
 
 
 app = FastAPI(
@@ -44,8 +38,8 @@ app = FastAPI(
     version="0.3.0",
 )
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+app.mount("/static", StaticFiles(directory=constants.STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=constants.TEMPLATES_DIR)
 
 
 @app.get("/")

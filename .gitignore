@@ -1,5 +1,5 @@
 # Runtime data
-kv_store.json
+dist/
 samples/**/*.wasm
 
 # Python
