@@ -4,18 +4,41 @@
 // - Receives events via onEvent
 // - Sends events back via post_event host function
 // - Updates values via values.change.* events
+// - Persists counters via value_get/value_set host functions
 
-const { lms_submit_grade, post_event } = Host.getFunctions();
-
-// State tracking (in real impl, this would come from KV store)
-let correctCount = 0;
-let wrongCount = 0;
+const { lms_submit_grade, lms_get_user, post_event, value_get, value_set } =
+  Host.getFunctions();
 
 // Helper to post an event
 function postEvent(name, value) {
   const nameMem = Memory.fromString(name);
   const valueMem = Memory.fromString(value);
   post_event(nameMem.offset, valueMem.offset);
+}
+
+// Helper to get current user ID
+function getUserId() {
+  const mem = Memory.fromString("");
+  const resultOffset = lms_get_user(mem.offset);
+  const result = JSON.parse(Memory.find(resultOffset).readString());
+  return String(result.id);
+}
+
+// Helper to get an activity value (returns JSON-decoded value)
+function getValue(userId, name) {
+  const userIdMem = Memory.fromString(userId);
+  const nameMem = Memory.fromString(name);
+  const resultOffset = value_get(userIdMem.offset, nameMem.offset);
+  const result = Memory.find(resultOffset).readString();
+  return JSON.parse(result);
+}
+
+// Helper to set an activity value (takes any JSON-serializable value)
+function setValue(userId, name, value) {
+  const userIdMem = Memory.fromString(userId);
+  const nameMem = Memory.fromString(name);
+  const valueMem = Memory.fromString(JSON.stringify(value));
+  value_set(userIdMem.offset, nameMem.offset, valueMem.offset);
 }
 
 // Handle incoming events from frontend
@@ -26,16 +49,20 @@ function onEvent() {
   const eventValue = input.value;
 
   if (eventName === "answer.submit") {
+    const userId = getUserId();
+
     // Parse the submission: { question: "2+2", answer: "4" }
     const submission = JSON.parse(eventValue);
     const result = checkAnswer(submission.question, submission.answer);
 
     // Update counters and emit value change events
     if (result.correct) {
-      correctCount++;
+      const correctCount = getValue(userId, "correct_answers") + 1;
+      setValue(userId, "correct_answers", correctCount);
       postEvent("values.change.correct_answers", JSON.stringify(correctCount));
     } else {
-      wrongCount++;
+      const wrongCount = getValue(userId, "wrong_answers") + 1;
+      setValue(userId, "wrong_answers", wrongCount);
       postEvent("values.change.wrong_answers", JSON.stringify(wrongCount));
     }
 

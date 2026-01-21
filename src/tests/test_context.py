@@ -182,12 +182,14 @@ class TestHostFunctions:
 
         functions = ctx.host_functions()
 
-        assert len(functions) == 4
+        assert len(functions) == 6
         function_names = [f.__name__ for f in functions]
         assert "lms_submit_grade" in function_names
         assert "http_request" in function_names
         assert "lms_get_user" in function_names
         assert "post_event" in function_names
+        assert "value_get" in function_names
+        assert "value_set" in function_names
 
 
 class TestLmsSubmitGrade:

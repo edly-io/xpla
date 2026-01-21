@@ -137,6 +137,27 @@ Note that sandboxes do not persist state. Thus, to get access to configuration s
 
 Sandboxes have access to a standard list of host functions. See "host functions" below.
 
+##### Exported functions
+
+The sandbox script must export an `onEvent` function to receive events from the frontend:
+
+```javascript
+// Input: JSON { "name": "...", "value": "..." }
+function onEvent() {
+  const input = JSON.parse(Host.inputString());
+  const eventName = input.name;
+  const eventValue = input.value;
+
+  // Process event...
+
+  Host.outputString(JSON.stringify({ processed: true }));
+}
+
+module.exports = { onEvent };
+```
+
+The `onEvent` function is called whenever the frontend sends an event via `activity.sendEvent(name, value)`. The sandbox can send events back to the frontend using the `post_event` host function.
+
 ### Building sample activities
 
 ```bash

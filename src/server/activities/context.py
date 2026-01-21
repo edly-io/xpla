@@ -137,6 +137,31 @@ class ActivityContext:
         self._pending_events.append({"name": name, "value": value})
         return ""
 
+    # TODO value_get and value_set should really be get_value and set_value, but
+    # then these would conflict with the other methods. Either give a different
+    # name via host_fn or move methods to a different class.
+    def value_get(self, user_id: str, name: str) -> str:
+        """Get a declared activity value for a user.
+
+        Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
+        Returns the default value if not set.
+        """
+        value = self.get_value(name, user_id)
+        return json.dumps(value)
+
+    def value_set(self, user_id: str, name: str, value: str) -> bool:
+        """Set a declared activity value for a user.
+
+        Takes JSON-encoded value. Validates against manifest.
+        Returns True if set successfully, False on validation error.
+        """
+        try:
+            decoded = json.loads(value)
+            self.set_value(name, user_id, decoded)
+            return True
+        except (json.JSONDecodeError, ValueError):
+            return False
+
     def host_functions(self) -> list[Callable[..., Any]]:
         """
         Host functions that will be made available to the sandbox.
@@ -144,6 +169,8 @@ class ActivityContext:
         # TODO we should associate functions only if they are part of the manifest?
         return [
             self.lms_submit_grade,
+            self.value_get,
+            self.value_set,
             # self.kv_get,
             # self.kv_set,
             # self.kv_delete,
@@ -181,19 +208,19 @@ class ActivityContext:
         key = f"learningactivity.{self.name}.{key}"
         return self.kv_store.get(key) or ""
 
-    # def kv_set(self, input_data: Annotated[dict[str, str], Json]) -> str:
-    #     """Set a key-value pair in the store.
+    def kv_set(self, key: str, value: str) -> bool:
+        """Set a key-value pair in the store.
 
-    #     Expects JSON: {"key": "...", "value": "..."}
-    #     Returns "ok" on success.
-    #     """
-    #     try:
-    #         self.checker.check_kv_write(input_data["key"], input_data["value"])
-    #     except CapabilityError as e:
-    #         return json.dumps({"error": str(e)})
+        Returns True if the value was set, False if capability check failed.
+        """
+        try:
+            self.checker.check_kv_write(key, value)
+        except CapabilityError:
+            return False
 
-    #     self.kv_store.set(input_data["key"], input_data["value"])
-    #     return "ok"
+        key = f"learningactivity.{self.name}.{key}"
+        self.kv_store.set(key, value)
+        return True
 
     # def kv_delete(self, key: str) -> str:
     #     """Delete a key from the store.
@@ -272,10 +299,5 @@ class ActivityContext:
         except CapabilityError as e:
             return json.dumps({"error": str(e)})
 
-        # TODO return actual user?
-        return json.dumps(
-            {
-                "id": 1,
-                "name": "John Doe",
-            }
-        )
+        # TODO return actual user. (and replace instances of 'anonymous' elsewhere.)
+        return json.dumps({"id": "anonymous"})
