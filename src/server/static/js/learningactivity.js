@@ -66,6 +66,38 @@ export class LearningActivity extends HTMLElement {
     const data = await response.json();
     return JSON.parse(data.result);
   }
+
+  async sendEvent(name, value = "") {
+    const response = await fetch("/api/activity/" + this.attributes.name.value + "/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, value }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Event send failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this._processEvents(data.events);
+    return data.events;
+  }
+
+  _processEvents(events) {
+    for (const event of events) {
+      // Handle values.change.<name> events
+      if (event.name.startsWith("values.change.")) {
+        const valueName = event.name.slice("values.change.".length);
+        const newValue = JSON.parse(event.value);
+        this.values[valueName] = newValue;
+        this.onValueChange(valueName, newValue);
+      }
+    }
+  }
+
+  onValueChange(name, value) {
+    // Default no-op. Override in activity.js to handle value changes.
+  }
 }
 
 class ActivityTitle extends HTMLElement {

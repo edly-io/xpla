@@ -2,6 +2,11 @@
 <activity-content>
   <p>Answer the math question below. Your answer will be validated by the WASM backend and your grade will be submitted to the LMS.</p>
 
+  <div id="score">
+    Correct: <span id="correct-count">0</span> |
+    Wrong: <span id="wrong-count">0</span>
+  </div>
+
   <form id="quiz-form">
     <div class="question" id="question">Loading...</div>
     <label for="answer">Your answer: </label>

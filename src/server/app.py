@@ -2,6 +2,9 @@
 FastAPI application for the learning activity server.
 """
 
+import json
+import logging
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -60,14 +63,14 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
 
     # TODO get user_id from session/auth
     user_id = "anonymous"
-    initial_values = activity_context.get_all_values(user_id)
+    activity_values = activity_context.get_all_values(user_id)
 
     return templates.TemplateResponse(
         request=request,
         name="activity.html",
         context={
             "activity_context": activity_context,
-            "initial_values": initial_values,
+            "values_json": json.dumps(activity_values),
         },
     )
 
@@ -113,3 +116,33 @@ async def call_plugin(
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
     return JSONResponse(content={"result": result.decode("utf-8")})
+
+
+logger = logging.getLogger(__name__)
+
+
+@app.post("/api/activity/{activity_id}/events")
+async def send_event(activity_id: str, request: Request) -> JSONResponse:
+    """Send an event to the activity sandbox and receive response events."""
+    try:
+        context = load_activity(activity_id)
+    except ActivityNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    # Parse event from request body
+    body = await request.json()
+    event_name = body.get("name", "")
+    event_value = body.get("value", "")
+
+    # Call sandbox's onEvent if available
+    if context.sandbox is not None:
+        event_input = json.dumps({"name": event_name, "value": event_value})
+        try:
+            context.call_sandbox_function("onEvent", event_input.encode("utf-8"))
+        except RuntimeError as e:
+            # onEvent not defined in sandbox - log warning and continue
+            logger.warning("Activity '%s' has no onEvent handler: %s", activity_id, e)
+
+    # Return events posted by sandbox
+    events = context.clear_pending_events()
+    return JSONResponse(content={"events": events})

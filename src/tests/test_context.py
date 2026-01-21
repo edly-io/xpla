@@ -182,11 +182,12 @@ class TestHostFunctions:
 
         functions = ctx.host_functions()
 
-        assert len(functions) == 3
+        assert len(functions) == 4
         function_names = [f.__name__ for f in functions]
         assert "lms_submit_grade" in function_names
         assert "http_request" in function_names
         assert "lms_get_user" in function_names
+        assert "post_event" in function_names
 
 
 class TestLmsSubmitGrade:
@@ -577,3 +578,71 @@ class TestGetAllValues:
         result = ctx.get_all_values(user)
 
         assert result == {"correct": 5, "wrong": 0}
+
+
+class TestPostEvent:
+    """Tests for post_event host function."""
+
+    def test_appends_event_to_pending(self, tmp_path: Path) -> None:
+        """Should append event to pending events list."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.post_event("test.event", "some value")
+
+        assert ctx._pending_events == [{"name": "test.event", "value": "some value"}]
+
+    def test_appends_multiple_events(self, tmp_path: Path) -> None:
+        """Should accumulate multiple events."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.post_event("event1", "value1")
+        ctx.post_event("event2", "value2")
+
+        assert ctx._pending_events == [
+            {"name": "event1", "value": "value1"},
+            {"name": "event2", "value": "value2"},
+        ]
+
+    def test_returns_empty_string(self, tmp_path: Path) -> None:
+        """Should return empty string as success indicator."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        result = ctx.post_event("test", "value")
+
+        assert result == ""
+
+
+class TestClearPendingEvents:
+    """Tests for clear_pending_events method."""
+
+    def test_returns_and_clears_events(self, tmp_path: Path) -> None:
+        """Should return pending events and clear the list."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        ctx.post_event("event1", "value1")
+        ctx.post_event("event2", "value2")
+
+        result = ctx.clear_pending_events()
+
+        assert result == [
+            {"name": "event1", "value": "value1"},
+            {"name": "event2", "value": "value2"},
+        ]
+        assert ctx._pending_events == []
+
+    def test_returns_empty_when_no_events(self, tmp_path: Path) -> None:
+        """Should return empty list when no events pending."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        result = ctx.clear_pending_events()
+
+        assert result == []

@@ -1,5 +1,5 @@
 // Activity script for math
-// Demonstrates backend validation via WASM plugin with LMS grade submission
+// Demonstrates event-driven architecture with WASM plugin
 
 // Generate a random math question
 function generateQuestion() {
@@ -25,21 +25,26 @@ function generateQuestion() {
   return { expression: `${a} ${op} ${b}`, a, op, b };
 }
 
-// Call WASM plugin to validate answer (plugin also submits grade)
-async function checkAnswer(activity, question, answer) {
-  const response = await activity.callSandboxFunction("check_answer", {
-      question, answer: String(answer)
-    }
-  );
-  return response;
-}
-
 export function setup(activity) {
   const form = activity.querySelector("#quiz-form");
   const questionEl = activity.querySelector("#question");
   const answerInput = activity.querySelector("#answer");
   const feedbackEl = activity.querySelector("#feedback");
-  const gradesEl = activity.querySelector("#grades");
+  const correctCountEl = activity.querySelector("#correct-count");
+  const wrongCountEl = activity.querySelector("#wrong-count");
+
+  // Initialize display with current values
+  correctCountEl.textContent = activity.values.correct_answers || 0;
+  wrongCountEl.textContent = activity.values.wrong_answers || 0;
+
+  // Handle value changes from backend
+  activity.onValueChange = (name, value) => {
+    if (name === "correct_answers") {
+      correctCountEl.textContent = value;
+    } else if (name === "wrong_answers") {
+      wrongCountEl.textContent = value;
+    }
+  };
 
   // Initialize with a random question
   let current = generateQuestion();
@@ -51,13 +56,20 @@ export function setup(activity) {
     const userAnswer = answerInput.value.trim();
 
     try {
-      // Call WASM plugin to validate answer (plugin also submits grade)
-      const result = await checkAnswer(activity, current.expression, userAnswer);
+      // Send event to backend
+      const events = await activity.sendEvent(
+        "answer.submit",
+        JSON.stringify({ question: current.expression, answer: userAnswer })
+      );
 
-      // Display feedback from plugin
-      feedbackEl.style.display = "block";
-      feedbackEl.textContent = result.feedback;
-      feedbackEl.className = result.correct ? "correct" : "incorrect";
+      // Find the result event
+      const resultEvent = events.find((ev) => ev.name === "answer.result");
+      if (resultEvent) {
+        const result = JSON.parse(resultEvent.value);
+        feedbackEl.style.display = "block";
+        feedbackEl.textContent = result.feedback;
+        feedbackEl.className = result.correct ? "correct" : "incorrect";
+      }
     } catch (err) {
       feedbackEl.style.display = "block";
       feedbackEl.textContent = `Error: ${err.message}`;

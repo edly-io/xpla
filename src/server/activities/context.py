@@ -36,6 +36,9 @@ class ActivityContext:
         # Key-value store
         self.kv_store = kv.get_default()
 
+        # Events posted by sandbox during execution
+        self._pending_events: list[dict[str, str]] = []
+
         # Manifest capabilities and values
         # TODO check manifest validity
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
@@ -120,6 +123,20 @@ class ActivityContext:
             for name in self.value_checker.value_names
         }
 
+    def clear_pending_events(self) -> list[dict[str, str]]:
+        """Return and clear all pending events."""
+        events = self._pending_events
+        self._pending_events = []
+        return events
+
+    def post_event(self, name: str, value: str) -> str:
+        """Post an event to be sent back to the client.
+
+        Called by sandbox code to send events (e.g., value changes) to the frontend.
+        """
+        self._pending_events.append({"name": name, "value": value})
+        return ""
+
     def host_functions(self) -> list[Callable[..., Any]]:
         """
         Host functions that will be made available to the sandbox.
@@ -133,6 +150,7 @@ class ActivityContext:
             # self.kv_keys,
             self.http_request,
             self.lms_get_user,
+            self.post_event,
         ]
 
     def lms_submit_grade(self, grade: Annotated[dict[str, object], Json]) -> str:

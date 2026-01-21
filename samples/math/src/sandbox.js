@@ -1,19 +1,53 @@
 // Math quiz plugin - validates answers and submits grades via WASM backend
 //
-// This plugin demonstrates calling host functions from WASM:
-// - lms_submit_grade: Submit grade to the LMS
+// This plugin demonstrates the event-driven architecture:
+// - Receives events via onEvent
+// - Sends events back via post_event host function
+// - Updates values via values.change.* events
 
-const { lms_submit_grade } = Host.getFunctions();
+const { lms_submit_grade, post_event } = Host.getFunctions();
 
-// Check a math answer and submit grade
-// Input: JSON { "question": "2+2", "answer": "4" }
-// Output: JSON { "correct": true, "score": 100, "feedback": "..." }
-function check_answer() {
+// State tracking (in real impl, this would come from KV store)
+let correctCount = 0;
+let wrongCount = 0;
+
+// Helper to post an event
+function postEvent(name, value) {
+  const nameMem = Memory.fromString(name);
+  const valueMem = Memory.fromString(value);
+  post_event(nameMem.offset, valueMem.offset);
+}
+
+// Handle incoming events from frontend
+// Input: JSON { "name": "...", "value": "..." }
+function onEvent() {
   const input = JSON.parse(Host.inputString());
-  const question = input.question;
-  const answer = input.answer;
+  const eventName = input.name;
+  const eventValue = input.value;
 
-  // Simple evaluation (for demo - real impl would be more robust)
+  if (eventName === "answer.submit") {
+    // Parse the submission: { question: "2+2", answer: "4" }
+    const submission = JSON.parse(eventValue);
+    const result = checkAnswer(submission.question, submission.answer);
+
+    // Update counters and emit value change events
+    if (result.correct) {
+      correctCount++;
+      postEvent("values.change.correct_answers", JSON.stringify(correctCount));
+    } else {
+      wrongCount++;
+      postEvent("values.change.wrong_answers", JSON.stringify(wrongCount));
+    }
+
+    // Send feedback event
+    postEvent("answer.result", JSON.stringify(result));
+  }
+
+  Host.outputString(JSON.stringify({ processed: true }));
+}
+
+// Check a math answer
+function checkAnswer(question, answer) {
   let expected;
   let correct = false;
   let feedback = "";
@@ -64,14 +98,7 @@ function check_answer() {
   const mem = Memory.fromString(gradeInput);
   lms_submit_grade(mem.offset);
 
-  // Return result to frontend
-  const result = {
-    correct: correct,
-    score: score,
-    feedback: feedback,
-  };
-
-  Host.outputString(JSON.stringify(result));
+  return { correct, score, feedback };
 }
 
-module.exports = { check_answer };
+module.exports = { onEvent };
