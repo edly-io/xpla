@@ -2,6 +2,16 @@ export class Gulps extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: "closed" });
+    var sheet = new CSSStyleSheet();
+    // TODO how to pass CSS from the host to the shadow element? Should this be part of the standard?
+    sheet.replaceSync(`
+      :host {
+          display: block;
+          padding: 1em;
+          border: 1px solid #ccc;
+        }
+    `);
+    this.shadow.adoptedStyleSheets = [sheet];
     this.values = {};
   }
 
@@ -19,25 +29,9 @@ export class Gulps extends HTMLElement {
   }
 
   render() {
-    this.shadow.innerHTML = `
-      <style>
-        :host {
-          display: block;
-        }
-        .content {
-          padding: 1em;
-          border: 1px solid #ccc;
-        }
-      </style>
-      <!-- TODO custom header depth -->
-      <h1>
-        <slot name="title">Default Title</slot>
-      </h1>
-      <div class="content">
-        <slot name="content"></slot>
-      </div>
-    `;
+    this.shadow.innerHTML = "Empty activity";
   }
+
 
   async loadScript(url) {
     try {
@@ -100,22 +94,5 @@ export class Gulps extends HTMLElement {
   }
 }
 
-class ActivityTitle extends HTMLElement {
-  constructor() {
-    super();
-    this.slot = "title";
-  }
-}
-
-class ActivityContent extends HTMLElement {
-  constructor() {
-    super();
-    this.slot = "content";
-  }
-}
-
 // Attach elements to classes
 customElements.define("gulps-activity", Gulps);
-// TODO revisit child class names
-customElements.define("activity-title", ActivityTitle);
-customElements.define("activity-content", ActivityContent);

@@ -26,12 +26,32 @@ function generateQuestion() {
 }
 
 export function setup(activity) {
-  const form = activity.querySelector("#quiz-form");
-  const questionEl = activity.querySelector("#question");
-  const answerInput = activity.querySelector("#answer");
-  const feedbackEl = activity.querySelector("#feedback");
-  const correctCountEl = activity.querySelector("#correct-count");
-  const wrongCountEl = activity.querySelector("#wrong-count");
+  var element = activity.shadow;
+
+  element.innerHTML = `
+    <p>Answer the math question below. Your answer will be validated by the WASM backend and your grade will be submitted to the LMS.</p>
+
+    <div id="score">
+      Correct: <span id="correct-count">0</span> |
+      Wrong: <span id="wrong-count">0</span>
+    </div>
+
+    <form id="quiz-form">
+      <div class="question" id="question">Loading...</div>
+      <label for="answer">Your answer: </label>
+      <input type="number" id="answer" name="answer" required>
+      <button type="submit">Submit</button>
+    </form>
+
+    <div id="feedback" style="display: none;"></div>
+  `;
+
+  const form = element.querySelector("#quiz-form");
+  const questionEl = element.querySelector("#question");
+  const answerInput = element.querySelector("#answer");
+  const feedbackEl = element.querySelector("#feedback");
+  const correctCountEl = element.querySelector("#correct-count");
+  const wrongCountEl = element.querySelector("#wrong-count");
 
   // Initialize display with current values
   correctCountEl.textContent = activity.values.correct_answers || 0;

@@ -56,7 +56,6 @@ The typical file hierarchy of an activity is the following:
 ```
 my-activity/
   manifest.json
-  activity.html
   activity.js
   src/
     sandbox.js
@@ -94,23 +93,24 @@ Each value must have a `type` field. An optional `default` can be provided (must
 
 Supported types: `integer`, `float`, `string`, `boolean`. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`.
 
-#### `activity.html` (optional)
-
-If present, the content of this file will be added to the `<gulps-activity>` DOM element inner HTML. This element has two sub-elements:
-
-- `<activity-title>`: which will be displayed as the title of the activity.
-- `<activity-content>`: the actual content of the activity.
-
-At the moment, the GULPS activity is added as a [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM) element. This means that the rest of the page does not have access to the GULPS element -- but the shadow element does. In other words: we do not have true client-side sandboxing of GULPS activities. We expect to support iframe sandboxing in the future, but this is not the case yet; in addition, not all platforms may want to support iframe-embedded activities, because of the many issues typically associated with iframes.
-
 #### `activity.js` (optional)
 
-If present, this client-side scripting module will be loaded alongside the `<gulps-activity>` element. You can use it to add interactivity to your activity. This module must export a `setup` function which will be called at the moment the element is added to the shadow DOM.
+If present, this client-side scripting module will be loaded alongside the `<gulps-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<gulps-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
 
 ```javascript
 export function setup(activity) {
   // activity is the <gulps-activity> DOM element
-  const form = activity.querySelector("form");
+  // Inject HTML into the activity
+  activity.shadow.innerHTML = `
+    <h2>Welcome to my activity!</h2>
+    <form>
+      <input type="text" name="answer">
+      <button type="submit">Submit</button>
+    </form>
+  `;
+
+  // Add event listeners
+  const form = activity.shadow.querySelector("form");
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     ...
