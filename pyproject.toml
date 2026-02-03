@@ -29,5 +29,9 @@ disable=[
     "missing-docstring",
     "too-few-public-methods",
     "too-many-instance-attributes",
-
 ]
+
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+strict = true

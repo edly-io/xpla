@@ -26,7 +26,7 @@ test-unit: ## Run unit tests
 	pytest src/tests
 
 test-types: ## Run mypy tests
-	mypy --ignore-missing-imports --implicit-reexport --strict src/
+	mypy src/
 
 test-format: # Run formatting tests
 	black --check src/
