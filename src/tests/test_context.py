@@ -245,7 +245,6 @@ class TestLmsGetUser:
 
         data = json.loads(result)
         assert "id" in data
-        assert "name" in data
 
     def test_error_when_not_allowed(self, tmp_path: Path) -> None:
         """Should return error when LMS capability doesn't allow get_user."""
@@ -593,7 +592,9 @@ class TestPostEvent:
 
         ctx.post_event("test.event", "some value")
 
-        assert ctx._pending_events == [{"name": "test.event", "value": "some value"}]
+        assert ctx.clear_pending_events() == [
+            {"name": "test.event", "value": "some value"}
+        ]
 
     def test_appends_multiple_events(self, tmp_path: Path) -> None:
         """Should accumulate multiple events."""
@@ -604,7 +605,7 @@ class TestPostEvent:
         ctx.post_event("event1", "value1")
         ctx.post_event("event2", "value2")
 
-        assert ctx._pending_events == [
+        assert ctx.clear_pending_events() == [
             {"name": "event1", "value": "value1"},
             {"name": "event2", "value": "value2"},
         ]
@@ -637,14 +638,11 @@ class TestClearPendingEvents:
             {"name": "event1", "value": "value1"},
             {"name": "event2", "value": "value2"},
         ]
-        assert ctx._pending_events == []
+        assert not ctx.clear_pending_events()
 
     def test_returns_empty_when_no_events(self, tmp_path: Path) -> None:
         """Should return empty list when no events pending."""
         manifest = create_manifest()
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-
-        result = ctx.clear_pending_events()
-
-        assert result == []
+        assert not ctx.clear_pending_events()

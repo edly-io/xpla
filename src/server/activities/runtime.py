@@ -1,5 +1,5 @@
 """
-Extism runtime wrapper for learning activity plugins.
+Extism runtime wrapper for GULPS plugins.
 
 This module provides the interface between FastAPI and Extism plugins.
 """
@@ -12,7 +12,7 @@ import extism
 
 # TODO do we really need this class?
 class PluginRuntime:
-    """Manages an Extism plugin instance for a learning activity."""
+    """Manages an Extism plugin instance for GULPS."""
 
     def __init__(
         self,

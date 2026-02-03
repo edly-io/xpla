@@ -1,5 +1,5 @@
 [project]
-name = "learning-activity"
+name = "gulps-demo"
 version = "0.1.0"
 dependencies = [
     "fastapi[standard]",

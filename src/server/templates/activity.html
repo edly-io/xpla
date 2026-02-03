@@ -3,8 +3,8 @@
 {% block title %}{{ activity_context.title or "Activity" }}{% endblock %}
 
 {% block body %}
-<script type="module" src="{{ url_for('static', path='js/learningactivity.js') }}"></script>
-<learning-activity
+<script type="module" src="{{ url_for('static', path='js/gulps.js') }}"></script>
+<gulps-activity
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path='activity.js') }}"
     data-values="{{ values_json | escape }}"
@@ -12,6 +12,6 @@
     {# NOTE: we consider that author-generated html content is safe -- which it isn't, not at all #}
     {# TODO make it possible to embed in iframe #}
     {{ activity_context.html | safe }}
-</learning-activity>
+</gulps>
 
 {% endblock %}

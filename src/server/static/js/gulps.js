@@ -1,4 +1,4 @@
-export class LearningActivity extends HTMLElement {
+export class Gulps extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: "closed" });
@@ -115,7 +115,7 @@ class ActivityContent extends HTMLElement {
 }
 
 // Attach elements to classes
-customElements.define("learning-activity", LearningActivity);
+customElements.define("gulps-activity", Gulps);
 // TODO revisit child class names
 customElements.define("activity-title", ActivityTitle);
 customElements.define("activity-content", ActivityContent);

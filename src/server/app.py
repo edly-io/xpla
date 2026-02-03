@@ -1,5 +1,5 @@
 """
-FastAPI application for the learning activity server.
+FastAPI application for the GULPS server.
 """
 
 import json
@@ -36,8 +36,8 @@ def list_activities() -> list[str]:
 
 
 app = FastAPI(
-    title="Learning Activity Server",
-    description="LMS simulation for learning activity development",
+    title="GULPS Server",
+    description="LMS simulation for GULPS development",
     version="0.3.0",
 )
 

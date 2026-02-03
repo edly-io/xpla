@@ -1,10 +1,10 @@
-# Learning Activity Server
+# GULPS Server
 
-This is a proof-of-concept for an upcoming standard of learning activities: similar to standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
+This is a proof-of-concept for an upcoming standard (GULPS): similar to standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
 
-This project includes a Python server that serves a few sample learning activities, along with the documentation for their implementation (right here in this document).
+This project includes a Python server that serves a few sample GULPS activities, along with the documentation for their implementation (right here in this document).
 
-As a high-level overview: the learning activity standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe learning activity capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
+As a high-level overview: the GULPS standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe GULPS capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
 
 Offline portability is also one of the goals of this project, though it is yet unclear how this will be achieved. At this point there are two options:
 
@@ -15,8 +15,8 @@ At the moment, a limitation of the current approach is the unsafe client code: a
 
 ## Comparison with existing standards
 
-| Feature | SCORM | LTI | XBlock | Learning Activity |
-|---------|-------|-----|--------|-------------------|
+| Feature | SCORM | LTI | XBlock | GULPS |
+|---------|-------|-----|--------|-------|
 | **Portability** | ✅ Excellent – self-contained packages work across any compliant LMS | ⚠️ Limited – protocol connects external tools, but tools aren't packaged or transferable | ❌ None – tightly coupled to Open edX | ✅ Excellent – self-contained packages with explicit capability declarations |
 | **Graded assessments** | ❌ Available – but cheating is trivial | ✅ Yes – grade passback via Assignment and Grades Service (LTI 1.3) | ✅ Yes – full grading integration within Open edX | ✅ Yes – sandboxed backend handles grading securely |
 | **Sandboxed backend code execution** | ❌ No – client-side JavaScript only | ⚠️ Depends – possible in theory, but servers typically run code unsafely | ⚠️ Unsafe – arbitrary Python with full server access | ✅ Sandboxed – WebAssembly with capability-based permissions |
@@ -96,20 +96,20 @@ Supported types: `integer`, `float`, `string`, `boolean`. If no `default` is pro
 
 #### `activity.html` (optional)
 
-If present, the content of this file will be added to the `<learning-activity>` DOM element inner HTML. This element has two sub-elements:
+If present, the content of this file will be added to the `<gulps-activity>` DOM element inner HTML. This element has two sub-elements:
 
 - `<activity-title>`: which will be displayed as the title of the activity.
 - `<activity-content>`: the actual content of the activity.
 
-At the moment, the learning activity is added as a [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM) element. This means that the rest of the page does not have access to the learning activity element -- but the shadow element does. In other words: we do not have true client-side sandboxing of learning activities. We expect to support iframe sandboxing in the future, but this is not the case yet; in addition, not all platforms may want to support iframe-embedded activities, because of the many issues typically associated with iframes.
+At the moment, the GULPS activity is added as a [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM) element. This means that the rest of the page does not have access to the GULPS element -- but the shadow element does. In other words: we do not have true client-side sandboxing of GULPS activities. We expect to support iframe sandboxing in the future, but this is not the case yet; in addition, not all platforms may want to support iframe-embedded activities, because of the many issues typically associated with iframes.
 
 #### `activity.js` (optional)
 
-If present, this client-side scripting module will be loaded alongside the `<learning-activity>` element. You can use it to add interactivity to your activity. This module must export a `setup` function which will be called at the moment the element is added to the shadow DOM.
+If present, this client-side scripting module will be loaded alongside the `<gulps-activity>` element. You can use it to add interactivity to your activity. This module must export a `setup` function which will be called at the moment the element is added to the shadow DOM.
 
 ```javascript
 export function setup(activity) {
-  // activity is the <learning-activity> DOM element
+  // activity is the <gulps-activity> DOM element
   const form = activity.querySelector("form");
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -123,7 +123,7 @@ The `activity` object exposes the following properties and methods:
 - `values`: An object containing the current user's values as declared in `manifest.json`. For example, if the manifest declares `correct_answers` and `wrong_answers`, you can access them as `activity.values.correct_answers` and `activity.values.wrong_answers`.
 - `callSandboxFunction(name, body)`: Calls a function in the backend sandbox. This is particularly useful for submitting student responses to an assessment.
 
-The `LearningActivity` class is implemented in [`learningactivity.js`](./src/server/static/js/learningactivity.js).
+The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js).
 
 Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 

@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-Unit tests for the learning activity server.
+Unit tests for the GULPS server.
 """
 
 import json
@@ -61,12 +61,9 @@ class TestStaticFiles:
 
     def test_serve_library(self, client: TestClient) -> None:
         """Should serve library files."""
-        response = client.get("/static/js/learningactivity.js")
+        response = client.get("/static/js/gulps.js")
         assert response.status_code == 200
-        assert (
-            "learning-activity" in response.text.lower()
-            or "LearningActivity" in response.text
-        )
+        assert "gulps" in response.text.lower() or "Gulps" in response.text
 
     def test_activity_not_found(self, client: TestClient) -> None:
         """Should return 404 for unknown activity."""

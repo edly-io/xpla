@@ -79,7 +79,7 @@ class ActivityContext:
 
     def _value_key(self, name: str, user_id: str) -> str:
         """Generate the KV store key for a value."""
-        return f"learningactivity.{self.name}.{user_id}.{name}"
+        return f"gulps.{self.name}.{user_id}.{name}"
 
     def get_value(self, name: str, user_id: str) -> ValueType:
         """Get a declared value for a user.
@@ -141,7 +141,7 @@ class ActivityContext:
     # then these would conflict with the other methods. Either give a different
     # name via host_fn or move methods to a different class.
     def value_get(self, user_id: str, name: str) -> str:
-        """Get a declared activity value for a user.
+        """Get a declared GULPS value for a user.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
@@ -150,7 +150,7 @@ class ActivityContext:
         return json.dumps(value)
 
     def value_set(self, user_id: str, name: str, value: str) -> bool:
-        """Set a declared activity value for a user.
+        """Set a declared GULPS value for a user.
 
         Takes JSON-encoded value. Validates against manifest.
         Returns True if set successfully, False on validation error.
@@ -205,7 +205,7 @@ class ActivityContext:
         except CapabilityError as e:
             return json.dumps({"error": str(e)})
 
-        key = f"learningactivity.{self.name}.{key}"
+        key = f"gulps.{self.name}.{key}"
         return self.kv_store.get(key) or ""
 
     def kv_set(self, key: str, value: str) -> bool:
@@ -218,7 +218,7 @@ class ActivityContext:
         except CapabilityError:
             return False
 
-        key = f"learningactivity.{self.name}.{key}"
+        key = f"gulps.{self.name}.{key}"
         self.kv_store.set(key, value)
         return True
 
