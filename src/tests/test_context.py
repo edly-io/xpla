@@ -80,7 +80,7 @@ class TestActivityContextInit:
         """Should create SandboxExecutor when wasm file exists."""
         manifest = create_manifest()
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "sandbox.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
         ctx = ActivityContext(activity_dir)
 
@@ -130,13 +130,13 @@ class TestActivityContextProperties:
         assert ctx.html == ""
 
     def test_sandbox_path_property(self, tmp_path: Path) -> None:
-        """Should return path to sandbox.wasm."""
+        """Should return path to server.wasm."""
         manifest = create_manifest()
         activity_dir = setup_activity_dir(tmp_path, manifest)
 
         ctx = ActivityContext(activity_dir)
 
-        assert ctx.sandbox_path == activity_dir / "sandbox.wasm"
+        assert ctx.sandbox_path == activity_dir / "server.wasm"
 
 
 class TestCallSandboxFunction:
@@ -158,7 +158,7 @@ class TestCallSandboxFunction:
         """Should delegate to sandbox.call_function."""
         manifest = create_manifest()
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "sandbox.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
         mock_sandbox.call_function.return_value = b"result"

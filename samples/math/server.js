@@ -10,7 +10,7 @@ import {
   postEvent,
   getUserValue,
   setUserValue,
-} from "../../../src/sandbox-lib";
+} from "../../src/sandbox-lib";
 
 const { lms_submit_grade } = Host.getFunctions();
 

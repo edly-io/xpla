@@ -93,7 +93,7 @@ export class Gulps extends HTMLElement {
   }
 
   onValueChange(name, value) {
-    // Default no-op. Override in activity.js to handle value changes.
+    // Default no-op. Override in client.js to handle value changes.
   }
 }
 

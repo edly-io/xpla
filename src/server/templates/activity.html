@@ -7,7 +7,7 @@
 <h2>{{ activity_context.name }}</h2>
 <gulps-activity
     name="{{ activity_context.name }}"
-    src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path='activity.js') }}"
+    src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path='client.js') }}"
     data-values="{{ values_json | escape }}"
 ></gulps-activity>
 

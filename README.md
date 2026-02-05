@@ -56,10 +56,8 @@ The typical file hierarchy of an activity is the following:
 ```
 my-activity/
   manifest.json
-  activity.js
-  src/
-    sandbox.js
-    sandbox.d.ts
+  client.js
+  server.js
 ```
 
 #### `manifest.json` (required)
@@ -101,9 +99,9 @@ Each value must have a `type`, `scope`, and `access` field. An optional `default
 - `"unit"`: Visible to course authors only. Use for sensitive data like correct answers.
 - `"course"`, `"platform"`: Reserved for future use.
 
-#### `activity.js` (optional)
+#### `client.js`
 
-If present, this client-side scripting module will be loaded alongside the `<gulps-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<gulps-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
+This client-side scripting module will be loaded alongside the `<gulps-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<gulps-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
 
 ```javascript
 export function setup(activity) {
@@ -135,7 +133,7 @@ The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js
 
 Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 
-#### `sandbox.wasm` (optional)
+#### `server.wasm` (optional)
 
 If present, this is a [WebAssembly](https://webassembly.org/) module that will be called as a sandbox from the platform backend. In particular, it is useful for grading assessments: we don't want assessment code to run in the frontend, because it would be trivially vulnerable to cheating.
 
@@ -157,7 +155,7 @@ import {
   setValue,
   getUserValue,
   setUserValue
-} from "../../../src/sandbox-lib";
+} from "../../src/sandbox-lib";
 
 // Post an event to the frontend
 postEvent("answer.result", JSON.stringify({ correct: true }));
@@ -202,10 +200,10 @@ The `onEvent` function is called whenever the frontend sends an event via `activ
 ### Building sample activities
 
 ```bash
-./src/tools/js2wasm.py samples/my-activity/src/sandbox.js --output samples/my-activity/sandbox.wasm
+./src/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
 ```
 
-This produces `sandbox.wasm` in the specified output path.
+This produces `server.wasm` in the specified output path.
 
 Alternatively, build all samples with:
 

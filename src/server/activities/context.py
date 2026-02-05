@@ -68,7 +68,7 @@ class ActivityContext:
 
     @property
     def sandbox_path(self) -> Path:
-        return self._activity_dir / "sandbox.wasm"
+        return self._activity_dir / "server.wasm"
 
     def call_sandbox_function(self, function_name: str, body: bytes) -> bytes:
         if self.sandbox is None:

@@ -4,7 +4,7 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { postEvent, getValue, setValue } from "../../../src/sandbox-lib";
+import { postEvent, getValue, setValue } from "../../src/sandbox-lib";
 
 // Handle incoming events from frontend
 function onEvent() {
