@@ -1,10 +1,13 @@
 #!/bin/env python
 """
 Build utility for compiling JavaScript plugins to WebAssembly.
+
+Uses esbuild to bundle imports, then extism-js to compile to WASM.
 """
 
 import argparse
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -44,14 +47,33 @@ def js_to_wasm(input_js: Path, output_wasm: Path) -> None:
         input_js: Path to the input JavaScript file.
         output_wasm: Path to the output WebAssembly file.
     """
-    # Check for optional TypeScript definitions
-    dts_path = input_js.with_suffix(".d.ts")
-    cmd = ["extism-js", str(input_js), "-o", str(output_wasm)]
-    if dts_path.exists():
-        cmd.extend(["-i", str(dts_path)])
 
-    print(f"Compiling {input_js} -> {output_wasm}")
-    subprocess.check_call(cmd)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bundled_js = Path(tmpdir) / "bundled.js"
+
+        print(f"Bundling {input_js}")
+        subprocess.check_call(
+            [
+                "esbuild",
+                str(input_js),
+                "--bundle",
+                "--format=cjs",
+                "--platform=neutral",
+                f"--outfile={bundled_js}",
+            ]
+        )
+
+        print(f"Compiling -> {output_wasm}")
+        dts_path = Path(__file__).parent.parent / "sandbox-lib" / "sandbox.d.ts"
+        cmd = [
+            "extism-js",
+            str(bundled_js),
+            "-o",
+            str(output_wasm),
+            "-i",
+            str(dts_path),
+        ]
+        subprocess.check_call(cmd)
 
 
 if __name__ == "__main__":

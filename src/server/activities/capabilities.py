@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from typing import Any, Required, TypedDict
 from urllib.parse import urlparse
 
-
 # Type alias for values that can be stored
 ValueType = int | float | str | bool
 

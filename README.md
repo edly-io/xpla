@@ -28,9 +28,9 @@ Make sure to install the following requirements:
 
 - Python 3.11+
 - [extism-js](https://github.com/extism/js-pdk): for building JS plugins to WebAssembly (remember to also install [binaryen](https://github.com/WebAssembly/binaryen))
-
 Then install the project with:
 
+    npm install
     pip install -e .
 
 ## Usage
@@ -136,6 +136,21 @@ It is language-agnostic, as the original script can be written in any of the lan
 Note that sandboxes do not persist state. Thus, to get access to configuration settings, user-specific values, etc. the sandbox should have the key-value store read/write capabilities (see `manifest.json` above).
 
 Sandboxes have access to a standard list of host functions. See "host functions" below.
+
+##### Sandbox library
+
+A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/index.js) with helper functions for common host function interactions:
+
+```javascript
+import { postEvent, getValue, setValue } from "../../../src/sandbox-lib";
+
+// Post an event to the frontend
+postEvent("answer.result", JSON.stringify({ correct: true }));
+
+// Get/set activity values
+const count = getValue(userId, "correct_answers");
+setValue(userId, "correct_answers", count + 1);
+```
 
 ##### Exported functions
 

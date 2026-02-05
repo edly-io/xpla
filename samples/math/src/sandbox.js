@@ -6,15 +6,9 @@
 // - Updates values via values.change.* events
 // - Persists counters via value_get/value_set host functions
 
-const { lms_submit_grade, lms_get_user, post_event, value_get, value_set } =
-  Host.getFunctions();
+import { postEvent, getValue, setValue } from "../../../src/sandbox-lib";
 
-// Helper to post an event
-function postEvent(name, value) {
-  const nameMem = Memory.fromString(name);
-  const valueMem = Memory.fromString(value);
-  post_event(nameMem.offset, valueMem.offset);
-}
+const { lms_submit_grade, lms_get_user } = Host.getFunctions();
 
 // Helper to get current user ID
 function getUserId() {
@@ -22,23 +16,6 @@ function getUserId() {
   const resultOffset = lms_get_user(mem.offset);
   const result = JSON.parse(Memory.find(resultOffset).readString());
   return String(result.id);
-}
-
-// Helper to get an activity value (returns JSON-decoded value)
-function getValue(userId, name) {
-  const userIdMem = Memory.fromString(userId);
-  const nameMem = Memory.fromString(name);
-  const resultOffset = value_get(userIdMem.offset, nameMem.offset);
-  const result = Memory.find(resultOffset).readString();
-  return JSON.parse(result);
-}
-
-// Helper to set an activity value (takes any JSON-serializable value)
-function setValue(userId, name, value) {
-  const userIdMem = Memory.fromString(userId);
-  const nameMem = Memory.fromString(name);
-  const valueMem = Memory.fromString(JSON.stringify(value));
-  value_set(userIdMem.offset, nameMem.offset, valueMem.offset);
 }
 
 // Handle incoming events from frontend
