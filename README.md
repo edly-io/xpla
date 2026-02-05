@@ -78,6 +78,12 @@ my-activity/
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 - `values` (optional, defaults to `{}`): Declares per-user values that the activity tracks. Values are validated at runtime.
 
+The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.schema.json`](./src/sandbox-lib/manifest.schema.json). To validate a manifest:
+
+```bash
+./src/tools/validate_manifest.py samples/my-activity/manifest.json
+```
+
 ##### Values
 
 Each value must have a `type`, `scope`, and `access` field. An optional `default` can be provided (must match the declared type). Example:

@@ -17,7 +17,7 @@ server: ## Run a development server
 format: ## Format code with black
 	black src/
 
-test: test-lint test-unit test-types test-format ## Run all tests
+test: test-lint test-unit test-types test-format test-manifests ## Run all tests
 
 test-lint: ## Run pylint tests
 	pylint src/
@@ -28,8 +28,11 @@ test-unit: ## Run unit tests
 test-types: ## Run mypy tests
 	mypy src/
 
-test-format: # Run formatting tests
+test-format: ## Run formatting tests
 	black --check src/
+
+test-manifests: ## Validate all manifest.json files
+	@for f in samples/*/manifest.json; do echo "$$f" && ./src/tools/validate_manifest.py "$$f" || exit 1; done
 
 ###### Additional commands
 

@@ -2,10 +2,11 @@
 name = "gulps-demo"
 version = "0.1.0"
 dependencies = [
+    "extism",
     "fastapi[standard]",
     "jinja2",
+    "jsonschema",
     "uvicorn[standard]",
-    "extism",
 ]
 
 [project.optional-dependencies]

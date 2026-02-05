@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gulps.example.com/manifest.schema.json",
+  "title": "GULPS Activity Manifest",
+  "description": "Manifest for a GULPS learning activity, declaring capabilities and values.",
+  "type": "object",
+  "required": ["name", "client"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique identifier for the activity."
+    },
+    "client": {
+      "type": "string",
+      "description": "Path to the client-side JavaScript file, relative to activity directory."
+    },
+    "server": {
+      "type": "string",
+      "description": "Path to the server-side WASM file, relative to activity directory."
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Declared capabilities that the sandbox can use.",
+      "additionalProperties": false,
+      "properties": {
+        "kv": {
+          "description": "Key-value storage capability.",
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "namespace": {
+                  "type": "string",
+                  "description": "Namespace prefix for KV keys. Defaults to activity name."
+                },
+                "max_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Maximum storage in bytes. Defaults to 1048576 (1MB)."
+                }
+              }
+            }
+          ]
+        },
+        "http": {
+          "description": "HTTP request capability.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowed_hosts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Allowed hostnames. Empty array allows all hosts."
+            }
+          }
+        },
+        "lms": {
+          "description": "List of allowed LMS functions.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["get_user", "submit_grade"]
+          }
+        },
+        "ai": {
+          "description": "AI model access capability.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "models": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Allowed model names. Empty array allows all models."
+            }
+          }
+        }
+      }
+    },
+    "values": {
+      "type": "object",
+      "description": "Declared activity values with type, scope, and access control.",
+      "additionalProperties": {
+        "$ref": "#/$defs/valueDefinition"
+      }
+    }
+  },
+  "$defs": {
+    "valueDefinition": {
+      "type": "object",
+      "required": ["type", "scope", "access"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["integer", "float", "string", "boolean"],
+          "description": "Data type of the value."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["unit", "user,unit"],
+          "description": "Scope of the value. 'unit' is shared across users, 'user,unit' is per-user."
+        },
+        "access": {
+          "type": "string",
+          "enum": ["user", "unit", "course", "platform"],
+          "description": "Minimum access level required to read this value."
+        },
+        "default": {
+          "description": "Default value (must match declared type)."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "integer" } } },
+          "then": { "properties": { "default": { "type": "integer" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "float" } } },
+          "then": { "properties": { "default": { "type": "number" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "string" } } },
+          "then": { "properties": { "default": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "boolean" } } },
+          "then": { "properties": { "default": { "type": "boolean" } } }
+        }
+      ]
+    }
+  }
+}
