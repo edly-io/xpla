@@ -20,6 +20,7 @@ export function getUser() {
   return JSON.parse(result);
 }
 
+// Get a shared (unit-scoped) value.
 export function getValue(name) {
   const userIdMem = Memory.fromString("");
   const nameMem = Memory.fromString(name);
@@ -28,6 +29,7 @@ export function getValue(name) {
   return JSON.parse(result);
 }
 
+// Set a shared (unit-scoped) value.
 export function setValue(name, value) {
   const userIdMem = Memory.fromString("");
   const nameMem = Memory.fromString(name);
@@ -36,15 +38,20 @@ export function setValue(name, value) {
 }
 
 // Get a user-scoped value for the current user.
-// Convenience function that calls getUser() then getValue().
 export function getUserValue(name) {
   const userId = String(getUser().id);
-  return getValue(userId, name);
+  const userIdMem = Memory.fromString(userId);
+  const nameMem = Memory.fromString(name);
+  const resultOffset = get_value(userIdMem.offset, nameMem.offset);
+  const result = Memory.find(resultOffset).readString();
+  return JSON.parse(result);
 }
 
 // Set a user-scoped value for the current user.
-// Convenience function that calls getUser() then setValue().
 export function setUserValue(name, value) {
   const userId = String(getUser().id);
-  setValue(userId, name, value);
+  const userIdMem = Memory.fromString(userId);
+  const nameMem = Memory.fromString(name);
+  const valueMem = Memory.fromString(JSON.stringify(value));
+  set_value(userIdMem.offset, nameMem.offset, valueMem.offset);
 }

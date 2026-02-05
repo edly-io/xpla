@@ -61,9 +61,10 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    # TODO get user_id from session/auth
+    # TODO get user_id and user_access_level from session/auth
     user_id = "anonymous"
-    activity_values = activity_context.get_all_values(user_id)
+    user_access_level = "user"  # Students have "user" access
+    activity_values = activity_context.get_filtered_values(user_id, user_access_level)
 
     return templates.TemplateResponse(
         request=request,

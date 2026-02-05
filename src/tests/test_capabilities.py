@@ -98,38 +98,58 @@ class TestParseValueDefinition:
     """Tests for parse_value_definition function."""
 
     def test_valid_definition(self) -> None:
-        """Should accept valid definition with type, scope and default."""
+        """Should accept valid definition with type, scope, access and default."""
         definition: ValueDefinition = {
             "type": "integer",
             "scope": "user,unit",
+            "access": "user",
             "default": 0,
         }
         result = parse_value_definition("score", definition)
         assert result["type"] == "integer"
         assert result["scope"] == "user,unit"
+        assert result["access"] == "user"
         assert result["default"] == 0
 
     def test_missing_type_raises(self) -> None:
         """Should raise when type field is missing."""
         with pytest.raises(ValueValidationError, match="missing required 'type' field"):
-            parse_value_definition("score", {"scope": "unit", "default": 0})  # type: ignore[typeddict-item]
+            parse_value_definition("score", {"scope": "unit", "access": "user", "default": 0})  # type: ignore[typeddict-item]
 
     def test_missing_scope_raises(self) -> None:
         """Should raise when scope field is missing."""
         with pytest.raises(
             ValueValidationError, match="missing required 'scope' field"
         ):
-            parse_value_definition("score", {"type": "integer"})  # type: ignore[typeddict-item]
+            parse_value_definition("score", {"type": "integer", "access": "user"})  # type: ignore[typeddict-item]
+
+    def test_missing_access_raises(self) -> None:
+        """Should raise when access field is missing."""
+        with pytest.raises(
+            ValueValidationError, match="missing required 'access' field"
+        ):
+            parse_value_definition("score", {"type": "integer", "scope": "unit"})  # type: ignore[typeddict-item]
 
     def test_invalid_type_raises(self) -> None:
         """Should raise for invalid type."""
         with pytest.raises(ValueValidationError, match="Invalid type 'badtype'"):
-            parse_value_definition("score", {"type": "badtype", "scope": "unit"})
+            parse_value_definition(
+                "score", {"type": "badtype", "scope": "unit", "access": "user"}
+            )
 
     def test_invalid_scope_raises(self) -> None:
         """Should raise for invalid scope."""
         with pytest.raises(ValueValidationError, match="Invalid scope 'global'"):
-            parse_value_definition("score", {"type": "integer", "scope": "global"})
+            parse_value_definition(
+                "score", {"type": "integer", "scope": "global", "access": "user"}
+            )
+
+    def test_invalid_access_raises(self) -> None:
+        """Should raise for invalid access level."""
+        with pytest.raises(ValueValidationError, match="Invalid access 'admin'"):
+            parse_value_definition(
+                "score", {"type": "integer", "scope": "unit", "access": "admin"}
+            )
 
     def test_default_type_validated(self) -> None:
         """Should reject default that doesn't match declared type."""
@@ -137,13 +157,25 @@ class TestParseValueDefinition:
             ValueValidationError, match="Default for 'score' must be integer"
         ):
             parse_value_definition(
-                "score", {"type": "integer", "scope": "unit", "default": "wrong"}
+                "score",
+                {
+                    "type": "integer",
+                    "scope": "unit",
+                    "access": "user",
+                    "default": "wrong",
+                },
             )
 
     def test_default_type_accepts_valid(self) -> None:
         """Should accept default that matches declared type."""
         result = parse_value_definition(
-            "flag", {"type": "boolean", "scope": "user,unit", "default": True}
+            "flag",
+            {
+                "type": "boolean",
+                "scope": "user,unit",
+                "access": "user",
+                "default": True,
+            },
         )
         assert result["default"] is True
 
@@ -151,15 +183,25 @@ class TestParseValueDefinition:
         """Should accept all valid type names."""
         for type_name in ("integer", "float", "string", "boolean"):
             result = parse_value_definition(
-                "test", {"type": type_name, "scope": "unit"}
+                "test", {"type": type_name, "scope": "unit", "access": "user"}
             )
             assert result["type"] == type_name
 
     def test_all_valid_scopes(self) -> None:
         """Should accept all valid scope values."""
         for scope in ("unit", "user,unit"):
-            result = parse_value_definition("test", {"type": "integer", "scope": scope})
+            result = parse_value_definition(
+                "test", {"type": "integer", "scope": scope, "access": "user"}
+            )
             assert result["scope"] == scope
+
+    def test_all_valid_access_levels(self) -> None:
+        """Should accept all valid access levels."""
+        for access in ("user", "unit", "course", "platform"):
+            result = parse_value_definition(
+                "test", {"type": "integer", "scope": "unit", "access": access}
+            )
+            assert result["access"] == access
 
 
 class TestValidateValue:
@@ -167,44 +209,64 @@ class TestValidateValue:
 
     def test_integer_accepts_int(self) -> None:
         """Should accept int for integer type."""
-        validate_value("count", 42, {"type": "integer", "scope": "unit"})
+        validate_value(
+            "count", 42, {"type": "integer", "scope": "unit", "access": "user"}
+        )
 
     def test_integer_rejects_float(self) -> None:
         """Should reject float for integer type."""
         with pytest.raises(ValueValidationError, match="must be integer"):
-            validate_value("count", 3.14, {"type": "integer", "scope": "unit"})
+            validate_value(
+                "count", 3.14, {"type": "integer", "scope": "unit", "access": "user"}
+            )
 
     def test_integer_rejects_string(self) -> None:
         """Should reject string for integer type."""
         with pytest.raises(ValueValidationError, match="must be integer"):
-            validate_value("count", "42", {"type": "integer", "scope": "unit"})
+            validate_value(
+                "count", "42", {"type": "integer", "scope": "unit", "access": "user"}
+            )
 
     def test_float_accepts_float(self) -> None:
         """Should accept float for float type."""
-        validate_value("ratio", 3.14, {"type": "float", "scope": "unit"})
+        validate_value(
+            "ratio", 3.14, {"type": "float", "scope": "unit", "access": "user"}
+        )
 
     def test_float_accepts_int(self) -> None:
         """Should accept int for float type (int is valid float)."""
-        validate_value("ratio", 42, {"type": "float", "scope": "unit"})
+        validate_value(
+            "ratio", 42, {"type": "float", "scope": "unit", "access": "user"}
+        )
 
     def test_string_accepts_string(self) -> None:
         """Should accept string for string type."""
-        validate_value("name", "hello", {"type": "string", "scope": "unit"})
+        validate_value(
+            "name", "hello", {"type": "string", "scope": "unit", "access": "user"}
+        )
 
     def test_string_rejects_int(self) -> None:
         """Should reject int for string type."""
         with pytest.raises(ValueValidationError, match="must be string"):
-            validate_value("name", 42, {"type": "string", "scope": "unit"})
+            validate_value(
+                "name", 42, {"type": "string", "scope": "unit", "access": "user"}
+            )
 
     def test_boolean_accepts_bool(self) -> None:
         """Should accept bool for boolean type."""
-        validate_value("enabled", True, {"type": "boolean", "scope": "unit"})
-        validate_value("enabled", False, {"type": "boolean", "scope": "unit"})
+        validate_value(
+            "enabled", True, {"type": "boolean", "scope": "unit", "access": "user"}
+        )
+        validate_value(
+            "enabled", False, {"type": "boolean", "scope": "unit", "access": "user"}
+        )
 
     def test_boolean_rejects_int(self) -> None:
         """Should reject int for boolean type (even 0/1)."""
         with pytest.raises(ValueValidationError, match="must be boolean"):
-            validate_value("enabled", 1, {"type": "boolean", "scope": "unit"})
+            validate_value(
+                "enabled", 1, {"type": "boolean", "scope": "unit", "access": "user"}
+            )
 
 
 class TestValueChecker:
@@ -221,8 +283,13 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": {"type": "integer", "scope": "user,unit"},
-                "attempts": {"type": "integer", "scope": "user,unit", "default": 0},
+                "score": {"type": "integer", "scope": "user,unit", "access": "user"},
+                "attempts": {
+                    "type": "integer",
+                    "scope": "user,unit",
+                    "access": "user",
+                    "default": 0,
+                },
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -233,20 +300,26 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": {"type": "integer", "scope": "user,unit", "default": 10}
+                "score": {
+                    "type": "integer",
+                    "scope": "user,unit",
+                    "access": "user",
+                    "default": 10,
+                }
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
         definition = checker.get_definition("score")
         assert definition["type"] == "integer"
         assert definition["scope"] == "user,unit"
+        assert definition["access"] == "user"
         assert definition["default"] == 10
 
     def test_get_definition_not_declared(self) -> None:
         """Should raise for undeclared value."""
         manifest: Manifest = {
             "name": "test",
-            "values": {"score": {"type": "integer", "scope": "unit"}},
+            "values": {"score": {"type": "integer", "scope": "unit", "access": "user"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
         with pytest.raises(ValueValidationError, match="not declared"):
@@ -256,7 +329,14 @@ class TestValueChecker:
         """Should return default value when defined."""
         manifest: Manifest = {
             "name": "test",
-            "values": {"score": {"type": "integer", "scope": "unit", "default": 100}},
+            "values": {
+                "score": {
+                    "type": "integer",
+                    "scope": "unit",
+                    "access": "user",
+                    "default": 100,
+                }
+            },
         }
         checker = ValueChecker.load_from_manifest(manifest)
         assert checker.get_default("score") == 100
@@ -266,10 +346,10 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "count": {"type": "integer", "scope": "unit"},
-                "ratio": {"type": "float", "scope": "unit"},
-                "name": {"type": "string", "scope": "unit"},
-                "enabled": {"type": "boolean", "scope": "unit"},
+                "count": {"type": "integer", "scope": "unit", "access": "user"},
+                "ratio": {"type": "float", "scope": "unit", "access": "user"},
+                "name": {"type": "string", "scope": "unit", "access": "user"},
+                "enabled": {"type": "boolean", "scope": "unit", "access": "user"},
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -283,7 +363,12 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": {"type": "integer", "scope": "user,unit", "default": 0}
+                "score": {
+                    "type": "integer",
+                    "scope": "user,unit",
+                    "access": "user",
+                    "default": 0,
+                }
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -293,7 +378,7 @@ class TestValueChecker:
         """Should fail validation for wrong type."""
         manifest: Manifest = {
             "name": "test",
-            "values": {"score": {"type": "integer", "scope": "unit"}},
+            "values": {"score": {"type": "integer", "scope": "unit", "access": "user"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
         with pytest.raises(ValueValidationError, match="must be integer"):
@@ -304,8 +389,8 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": {"type": "integer", "scope": "user,unit"},
-                "question": {"type": "string", "scope": "unit"},
+                "score": {"type": "integer", "scope": "user,unit", "access": "user"},
+                "question": {"type": "string", "scope": "unit", "access": "user"},
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -317,9 +402,9 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": {"type": "integer", "scope": "user,unit"},
-                "attempts": {"type": "integer", "scope": "user,unit"},
-                "question": {"type": "string", "scope": "unit"},
+                "score": {"type": "integer", "scope": "user,unit", "access": "user"},
+                "attempts": {"type": "integer", "scope": "user,unit", "access": "user"},
+                "question": {"type": "string", "scope": "unit", "access": "user"},
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -330,10 +415,87 @@ class TestValueChecker:
         manifest: Manifest = {
             "name": "test",
             "values": {
-                "score": {"type": "integer", "scope": "user,unit"},
-                "question": {"type": "string", "scope": "unit"},
-                "answers": {"type": "string", "scope": "unit"},
+                "score": {"type": "integer", "scope": "user,unit", "access": "user"},
+                "question": {"type": "string", "scope": "unit", "access": "user"},
+                "answers": {"type": "string", "scope": "unit", "access": "user"},
             },
         }
         checker = ValueChecker.load_from_manifest(manifest)
         assert sorted(checker.shared_value_names()) == ["answers", "question"]
+
+    def test_get_access_level(self) -> None:
+        """Should return the access level for a value."""
+        manifest: Manifest = {
+            "name": "test",
+            "values": {
+                "public": {"type": "string", "scope": "unit", "access": "user"},
+                "secret": {"type": "string", "scope": "unit", "access": "unit"},
+            },
+        }
+        checker = ValueChecker.load_from_manifest(manifest)
+        assert checker.get_access_level("public") == "user"
+        assert checker.get_access_level("secret") == "unit"
+
+    def test_can_access_same_level(self) -> None:
+        """User can access values at their own level."""
+        manifest: Manifest = {
+            "name": "test",
+            "values": {"val": {"type": "string", "scope": "unit", "access": "unit"}},
+        }
+        checker = ValueChecker.load_from_manifest(manifest)
+        assert checker.can_access("val", "unit") is True
+
+    def test_can_access_higher_level(self) -> None:
+        """User with higher access can see lower-level values."""
+        manifest: Manifest = {
+            "name": "test",
+            "values": {"val": {"type": "string", "scope": "unit", "access": "user"}},
+        }
+        checker = ValueChecker.load_from_manifest(manifest)
+        assert checker.can_access("val", "unit") is True
+        assert checker.can_access("val", "course") is True
+        assert checker.can_access("val", "platform") is True
+
+    def test_cannot_access_lower_level(self) -> None:
+        """User with lower access cannot see higher-level values."""
+        manifest: Manifest = {
+            "name": "test",
+            "values": {"val": {"type": "string", "scope": "unit", "access": "unit"}},
+        }
+        checker = ValueChecker.load_from_manifest(manifest)
+        assert checker.can_access("val", "user") is False
+
+    def test_access_hierarchy(self) -> None:
+        """Test the full access hierarchy."""
+        manifest: Manifest = {
+            "name": "test",
+            "values": {
+                "user_val": {"type": "string", "scope": "unit", "access": "user"},
+                "unit_val": {"type": "string", "scope": "unit", "access": "unit"},
+                "course_val": {"type": "string", "scope": "unit", "access": "course"},
+                "platform_val": {
+                    "type": "string",
+                    "scope": "unit",
+                    "access": "platform",
+                },
+            },
+        }
+        checker = ValueChecker.load_from_manifest(manifest)
+
+        # User can only access user-level
+        assert checker.can_access("user_val", "user") is True
+        assert checker.can_access("unit_val", "user") is False
+        assert checker.can_access("course_val", "user") is False
+        assert checker.can_access("platform_val", "user") is False
+
+        # Unit can access user and unit level
+        assert checker.can_access("user_val", "unit") is True
+        assert checker.can_access("unit_val", "unit") is True
+        assert checker.can_access("course_val", "unit") is False
+        assert checker.can_access("platform_val", "unit") is False
+
+        # Platform can access all levels
+        assert checker.can_access("user_val", "platform") is True
+        assert checker.can_access("unit_val", "platform") is True
+        assert checker.can_access("course_val", "platform") is True
+        assert checker.can_access("platform_val", "platform") is True

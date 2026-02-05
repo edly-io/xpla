@@ -10,11 +10,13 @@
     "correct_answers": {
       "type": "integer",
       "scope": "user,unit",
+      "access": "user",
       "default": 0
     },
     "wrong_answers": {
       "type": "integer",
       "scope": "user,unit",
+      "access": "user",
       "default": 0
     }
   }

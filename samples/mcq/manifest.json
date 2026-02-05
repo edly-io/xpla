@@ -5,16 +5,19 @@
     "question": {
       "type": "string",
       "scope": "unit",
+      "access": "user",
       "default": ""
     },
     "answers": {
       "type": "string",
       "scope": "unit",
+      "access": "user",
       "default": "[]"
     },
     "correct_answers": {
       "type": "string",
       "scope": "unit",
+      "access": "unit",
       "default": "[]"
     }
   }

@@ -78,13 +78,14 @@ my-activity/
 
 ##### Values
 
-Each value must have a `type` and a `scope` field. An optional `default` can be provided (must match the declared type). Example:
+Each value must have a `type`, `scope`, and `access` field. An optional `default` can be provided (must match the declared type). Example:
 
 ```json
 {
   "values": {
-    "correct_answers": { "type": "integer", "scope": "user,unit", "default": 0 },
-    "question": { "type": "string", "scope": "unit", "default": "" }
+    "score": { "type": "integer", "scope": "user,unit", "access": "user", "default": 0 },
+    "question": { "type": "string", "scope": "unit", "access": "user", "default": "" },
+    "correct_answers": { "type": "string", "scope": "unit", "access": "unit", "default": "[]" }
   }
 }
 ```
@@ -94,6 +95,11 @@ Each value must have a `type` and a `scope` field. An optional `default` can be 
 **Scopes:**
 - `"user,unit"`: Per-user value, specific to this activity instance. Example: a student's score.
 - `"unit"`: Shared value for all users of this activity instance. Example: the question text configured by an instructor.
+
+**Access levels:** Control who can see each value in the frontend. Access is hierarchical (higher levels can see lower-level values).
+- `"user"`: Visible to students.
+- `"unit"`: Visible to course authors only. Use for sensitive data like correct answers.
+- `"course"`, `"platform"`: Reserved for future use.
 
 #### `activity.js` (optional)
 

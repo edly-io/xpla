@@ -101,7 +101,7 @@ class ActivityContext:
         result: ValueType = json.loads(stored)
         return result
 
-    def set_value(self, user_id: str, name: str, value: ValueType) -> None:
+    def store_value(self, user_id: str, name: str, value: ValueType) -> None:
         """Set a declared value for a user.
 
         Raises:
@@ -113,14 +113,25 @@ class ActivityContext:
         key = self._value_key(name, user_id)
         self.kv_store.set(key, json.dumps(value))
 
-    def get_all_values(self, user_id: str) -> dict[str, ValueType]:
-        """Get all declared values for a user, including shared values.
+    def get_filtered_values(
+        self, user_id: str, user_access_level: str
+    ) -> dict[str, ValueType]:
+        """Get all declared values that the user is allowed to see.
 
-        Returns a dict mapping value names to their current values (or defaults).
-        User-scoped values use the provided user_id; shared values use empty string.
+        Filters values based on user's access level. Values with higher access
+        requirements than the user's level are excluded.
+
+        Args:
+            user_id: The user ID for loading user-scoped values.
+            user_access_level: The user's access level ("user", "unit", etc.)
+
+        Returns:
+            A dict of value names to their current values, filtered by access.
         """
         result: dict[str, ValueType] = {}
         for name in self.value_checker.value_names:
+            if not self.value_checker.can_access(name, user_access_level):
+                continue
             if self.value_checker.is_user_scoped(name):
                 result[name] = self.load_value(user_id, name)
             else:
@@ -151,14 +162,14 @@ class ActivityContext:
         return json.dumps(value)
 
     def set_value(self, user_id: str, name: str, value: str) -> bool:
-        """Set a declared GULPS value for a user.
+        """Set a declared GULPS value for a user (host function).
 
         Takes JSON-encoded value. Validates against manifest.
         Returns True if set successfully, False on validation error.
         """
         try:
             decoded = json.loads(value)
-            self.set_value(user_id, name, decoded)
+            self.store_value(user_id, name, decoded)
             return True
         except (json.JSONDecodeError, ValueError):
             return False

@@ -17,11 +17,23 @@ class ValueDefinition(TypedDict, total=False):
 
     type: Required[str]  # "integer", "float", "string", "boolean"
     scope: Required[str]  # "unit" or "user,unit"
+    access: Required[str]  # "user", "unit", "course", "platform"
     default: ValueType
 
 
 # Valid scopes for values
 VALID_SCOPES = {"unit", "user,unit"}
+
+# Valid access levels for values
+VALID_ACCESS_LEVELS = {"user", "unit", "course", "platform"}
+
+# Access level hierarchy (higher number = more privileged)
+ACCESS_HIERARCHY: dict[str, int] = {
+    "user": 0,
+    "unit": 1,
+    "course": 2,
+    "platform": 3,
+}
 
 
 # Allowed value types and their Python equivalents
@@ -173,6 +185,17 @@ def parse_value_definition(name: str, definition: ValueDefinition) -> ValueDefin
             f"Allowed: {sorted(VALID_SCOPES)}"
         )
 
+    # Validate access level
+    if "access" not in definition:
+        raise ValueValidationError(f"Value '{name}' is missing required 'access' field")
+
+    access = definition["access"]
+    if access not in VALID_ACCESS_LEVELS:
+        raise ValueValidationError(
+            f"Invalid access '{access}' for value '{name}'. "
+            f"Allowed: {sorted(VALID_ACCESS_LEVELS)}"
+        )
+
     # Validate default value type if provided
     if "default" in definition:
         default = definition["default"]
@@ -266,6 +289,22 @@ class ValueChecker:
     def shared_value_names(self) -> list[str]:
         """Return names of non-user-scoped (shared) values."""
         return [name for name in self.value_names if not self.is_user_scoped(name)]
+
+    def get_access_level(self, name: str) -> str:
+        """Get the access level for a value."""
+        definition = self.get_definition(name)
+        return definition["access"]
+
+    def can_access(self, name: str, user_access_level: str) -> bool:
+        """Check if a user with given access level can see this value.
+
+        Access levels are hierarchical: a user with higher access can see
+        values with lower or equal access requirements.
+        """
+        value_access = self.get_access_level(name)
+        user_rank = ACCESS_HIERARCHY.get(user_access_level, 0)
+        value_rank = ACCESS_HIERARCHY.get(value_access, 0)
+        return user_rank >= value_rank
 
 
 class CapabilityChecker:
