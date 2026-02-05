@@ -4,19 +4,15 @@
 // - Receives events via onEvent
 // - Sends events back via post_event host function
 // - Updates values via values.change.* events
-// - Persists counters via value_get/value_set host functions
+// - Persists counters via get_value/set_value host functions
 
-import { postEvent, getValue, setValue } from "../../../src/sandbox-lib";
+import {
+  postEvent,
+  getUserValue,
+  setUserValue,
+} from "../../../src/sandbox-lib";
 
-const { lms_submit_grade, lms_get_user } = Host.getFunctions();
-
-// Helper to get current user ID
-function getUserId() {
-  const mem = Memory.fromString("");
-  const resultOffset = lms_get_user(mem.offset);
-  const result = JSON.parse(Memory.find(resultOffset).readString());
-  return String(result.id);
-}
+const { lms_submit_grade } = Host.getFunctions();
 
 // Handle incoming events from frontend
 // Input: JSON { "name": "...", "value": "..." }
@@ -26,20 +22,18 @@ function onEvent() {
   const eventValue = input.value;
 
   if (eventName === "answer.submit") {
-    const userId = getUserId();
-
     // Parse the submission: { question: "2+2", answer: "4" }
     const submission = JSON.parse(eventValue);
     const result = checkAnswer(submission.question, submission.answer);
 
     // Update counters and emit value change events
     if (result.correct) {
-      const correctCount = getValue(userId, "correct_answers") + 1;
-      setValue(userId, "correct_answers", correctCount);
+      const correctCount = getUserValue("correct_answers") + 1;
+      setUserValue("correct_answers", correctCount);
       postEvent("values.change.correct_answers", JSON.stringify(correctCount));
     } else {
-      const wrongCount = getValue(userId, "wrong_answers") + 1;
-      setValue(userId, "wrong_answers", wrongCount);
+      const wrongCount = getUserValue("wrong_answers") + 1;
+      setUserValue("wrong_answers", wrongCount);
       postEvent("values.change.wrong_answers", JSON.stringify(wrongCount));
     }
 

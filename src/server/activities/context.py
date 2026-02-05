@@ -81,7 +81,7 @@ class ActivityContext:
         """Generate the KV store key for a value."""
         return f"gulps.{self.name}.{user_id}.{name}"
 
-    def get_value(self, name: str, user_id: str) -> ValueType:
+    def load_value(self, user_id: str, name: str) -> ValueType:
         """Get a declared value for a user.
 
         Returns the stored value, or the default if not set.
@@ -101,7 +101,7 @@ class ActivityContext:
         result: ValueType = json.loads(stored)
         return result
 
-    def set_value(self, name: str, user_id: str, value: ValueType) -> None:
+    def set_value(self, user_id: str, name: str, value: ValueType) -> None:
         """Set a declared value for a user.
 
         Raises:
@@ -114,14 +114,18 @@ class ActivityContext:
         self.kv_store.set(key, json.dumps(value))
 
     def get_all_values(self, user_id: str) -> dict[str, ValueType]:
-        """Get all declared values for a user.
+        """Get all declared values for a user, including shared values.
 
         Returns a dict mapping value names to their current values (or defaults).
+        User-scoped values use the provided user_id; shared values use empty string.
         """
-        return {
-            name: self.get_value(name, user_id)
-            for name in self.value_checker.value_names
-        }
+        result: dict[str, ValueType] = {}
+        for name in self.value_checker.value_names:
+            if self.value_checker.is_user_scoped(name):
+                result[name] = self.load_value(user_id, name)
+            else:
+                result[name] = self.load_value("", name)
+        return result
 
     def clear_pending_events(self) -> list[dict[str, str]]:
         """Return and clear all pending events."""
@@ -137,19 +141,16 @@ class ActivityContext:
         self._pending_events.append({"name": name, "value": value})
         return ""
 
-    # TODO value_get and value_set should really be get_value and set_value, but
-    # then these would conflict with the other methods. Either give a different
-    # name via host_fn or move methods to a different class.
-    def value_get(self, user_id: str, name: str) -> str:
+    def get_value(self, user_id: str, name: str) -> str:
         """Get a declared GULPS value for a user.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        value = self.get_value(name, user_id)
+        value = self.load_value(user_id, name)
         return json.dumps(value)
 
-    def value_set(self, user_id: str, name: str, value: str) -> bool:
+    def set_value(self, user_id: str, name: str, value: str) -> bool:
         """Set a declared GULPS value for a user.
 
         Takes JSON-encoded value. Validates against manifest.
@@ -157,7 +158,7 @@ class ActivityContext:
         """
         try:
             decoded = json.loads(value)
-            self.set_value(name, user_id, decoded)
+            self.set_value(user_id, name, decoded)
             return True
         except (json.JSONDecodeError, ValueError):
             return False
@@ -169,14 +170,14 @@ class ActivityContext:
         # TODO we should associate functions only if they are part of the manifest?
         return [
             self.lms_submit_grade,
-            self.value_get,
-            self.value_set,
+            self.get_value,
+            self.set_value,
             # self.kv_get,
             # self.kv_set,
             # self.kv_delete,
             # self.kv_keys,
             self.http_request,
-            self.lms_get_user,
+            self.get_user_id,
             self.post_event,
         ]
 
@@ -289,7 +290,7 @@ class ActivityContext:
         except urllib.error.URLError as e:
             return json.dumps({"error": str(e.reason)})
 
-    def lms_get_user(self, _input: str) -> str:
+    def get_user_id(self, _input: str) -> str:
         """Get current LMS user info as JSON.
 
         Returns JSON: {"id": "...", "name": "..."}

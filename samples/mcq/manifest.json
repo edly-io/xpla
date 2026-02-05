@@ -2,8 +2,20 @@
   "name": "mcq",
   "capabilities": {},
   "values": {
-    "question": { "type": "string", "default": "" },
-    "answers": { "type": "string", "default": "[]" },
-    "correct_answers": { "type": "string", "default": "[]" }
+    "question": {
+      "type": "string",
+      "scope": "unit",
+      "default": ""
+    },
+    "answers": {
+      "type": "string",
+      "scope": "unit",
+      "default": "[]"
+    },
+    "correct_answers": {
+      "type": "string",
+      "scope": "unit",
+      "default": "[]"
+    }
   }
 }

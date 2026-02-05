@@ -78,20 +78,22 @@ my-activity/
 
 ##### Values
 
-Each value must have a `type` field. An optional `default` can be provided (must match the declared type). Example:
+Each value must have a `type` and a `scope` field. An optional `default` can be provided (must match the declared type). Example:
 
 ```json
 {
   "values": {
-    "correct_answers": { "type": "integer", "default": 0 },
-    "completion_rate": { "type": "float" },
-    "last_answer": { "type": "string" },
-    "passed": { "type": "boolean", "default": false }
+    "correct_answers": { "type": "integer", "scope": "user,unit", "default": 0 },
+    "question": { "type": "string", "scope": "unit", "default": "" }
   }
 }
 ```
 
-Supported types: `integer`, `float`, `string`, `boolean`. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`.
+**Types:** `integer`, `float`, `string`, `boolean`. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`.
+
+**Scopes:**
+- `"user,unit"`: Per-user value, specific to this activity instance. Example: a student's score.
+- `"unit"`: Shared value for all users of this activity instance. Example: the question text configured by an instructor.
 
 #### `activity.js` (optional)
 
@@ -142,14 +144,32 @@ Sandboxes have access to a standard list of host functions. See "host functions"
 A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/index.js) with helper functions for common host function interactions:
 
 ```javascript
-import { postEvent, getValue, setValue } from "../../../src/sandbox-lib";
+import {
+  postEvent,
+  getUser,
+  getValue,
+  setValue,
+  getUserValue,
+  setUserValue
+} from "../../../src/sandbox-lib";
 
 // Post an event to the frontend
 postEvent("answer.result", JSON.stringify({ correct: true }));
 
-// Get/set activity values
-const count = getValue(userId, "correct_answers");
-setValue(userId, "correct_answers", count + 1);
+// Get current user (requires lms capability with get_user)
+const user = getUser();  // { id: "..." }
+
+// Get/set user-scoped values (scope: "user,unit") - convenience functions
+const score = getUserValue("correct_answers");
+setUserValue("correct_answers", score + 1);
+
+// Get/set shared values (scope: "unit") - use empty string for userId
+const question = getValue("question");
+setValue("question", "What is 2+2?");
+
+// Get/set with explicit userId (works for any scope)
+const count = getUserValue("correct_answers");
+setUserValue("correct_answers", count + 1);
 ```
 
 ##### Exported functions

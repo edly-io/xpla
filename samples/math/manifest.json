@@ -1,10 +1,21 @@
 {
   "name": "math",
   "capabilities": {
-    "lms": ["get_user", "submit_grade"]
+    "lms": [
+      "get_user",
+      "submit_grade"
+    ]
   },
   "values": {
-    "correct_answers": { "type": "integer", "default": 0 },
-    "wrong_answers": { "type": "integer", "default": 0 }
+    "correct_answers": {
+      "type": "integer",
+      "scope": "user,unit",
+      "default": 0
+    },
+    "wrong_answers": {
+      "type": "integer",
+      "scope": "user,unit",
+      "default": 0
+    }
   }
 }

@@ -25,9 +25,9 @@ function onEvent() {
 function handleConfigSave(eventValue) {
   const config = JSON.parse(eventValue);
 
-  setValue("", "question", config.question);
-  setValue("", "answers", JSON.stringify(config.answers));
-  setValue("", "correct_answers", JSON.stringify(config.correct_answers));
+  setValue("question", config.question);
+  setValue("answers", JSON.stringify(config.answers));
+  setValue("correct_answers", JSON.stringify(config.correct_answers));
 
   // Notify frontend of value changes
   postEvent("values.change.question", JSON.stringify(config.question));
@@ -44,7 +44,7 @@ function handleAnswerSubmit(eventValue) {
   const selected = submission.selected;
 
   // Get correct answers from stored config
-  const correctAnswersJson = getValue("", "correct_answers");
+  const correctAnswersJson = getValue("correct_answers");
   const correctAnswers = JSON.parse(correctAnswersJson);
 
   // Compare selected answers with correct answers

@@ -16,7 +16,12 @@ class ValueDefinition(TypedDict, total=False):
     """Definition of an activity value."""
 
     type: Required[str]  # "integer", "float", "string", "boolean"
+    scope: Required[str]  # "unit" or "user,unit"
     default: ValueType
+
+
+# Valid scopes for values
+VALID_SCOPES = {"unit", "user,unit"}
 
 
 # Allowed value types and their Python equivalents
@@ -144,7 +149,8 @@ def parse_value_definition(name: str, definition: ValueDefinition) -> ValueDefin
         The validated ValueDefinition.
 
     Raises:
-        ValueValidationError: If type is missing/invalid or default doesn't match type.
+        ValueValidationError: If type/scope is missing/invalid or default doesn't
+            match type.
     """
     if "type" not in definition:
         raise ValueValidationError(f"Value '{name}' is missing required 'type' field")
@@ -154,6 +160,17 @@ def parse_value_definition(name: str, definition: ValueDefinition) -> ValueDefin
         raise ValueValidationError(
             f"Invalid type '{type_name}' for value '{name}'. "
             f"Allowed: {list(VALUE_TYPES.keys())}"
+        )
+
+    # Validate scope
+    if "scope" not in definition:
+        raise ValueValidationError(f"Value '{name}' is missing required 'scope' field")
+
+    scope = definition["scope"]
+    if scope not in VALID_SCOPES:
+        raise ValueValidationError(
+            f"Invalid scope '{scope}' for value '{name}'. "
+            f"Allowed: {sorted(VALID_SCOPES)}"
         )
 
     # Validate default value type if provided
@@ -236,6 +253,19 @@ class ValueChecker:
         """
         definition = self.get_definition(name)
         validate_value(name, value, definition)
+
+    def is_user_scoped(self, name: str) -> bool:
+        """Check if a value is user-scoped."""
+        definition = self.get_definition(name)
+        return definition["scope"] == "user,unit"
+
+    def user_value_names(self) -> list[str]:
+        """Return names of user-scoped values."""
+        return [name for name in self.value_names if self.is_user_scoped(name)]
+
+    def shared_value_names(self) -> list[str]:
+        """Return names of non-user-scoped (shared) values."""
+        return [name for name in self.value_names if not self.is_user_scoped(name)]
 
 
 class CapabilityChecker:
