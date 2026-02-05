@@ -20,6 +20,7 @@ class TestCapabilities:
 
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "capabilities": {
                 "kv": {"namespace": "test", "max_bytes": 1024},
                 "http": {"allowed_hosts": ["api.example.com"]},
@@ -38,6 +39,7 @@ class TestCapabilities:
         """Should enforce KV namespace prefix."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "capabilities": {"kv": {"namespace": "test"}},
         }
         checker = CapabilityChecker.load_from_manifest(manifest)
@@ -53,6 +55,7 @@ class TestCapabilities:
         """Should enforce HTTP allowed hosts."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "capabilities": {"http": {"allowed_hosts": ["api.example.com"]}},
         }
         checker = CapabilityChecker.load_from_manifest(manifest)
@@ -68,6 +71,7 @@ class TestCapabilities:
         """Should enforce LMS allowed functions."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "capabilities": {"lms": ["get_user"]},
         }
         checker = CapabilityChecker.load_from_manifest(manifest)
@@ -81,7 +85,7 @@ class TestCapabilities:
 
     def test_missing_capability_rejected(self) -> None:
         """Should reject operations when capability not declared."""
-        manifest: Manifest = {"name": "test", "capabilities": {}}
+        manifest: Manifest = {"name": "test", "client": "client.js", "capabilities": {}}
         checker = CapabilityChecker.load_from_manifest(manifest)
 
         with pytest.raises(CapabilityError, match="kv capability not declared"):
@@ -274,7 +278,7 @@ class TestValueChecker:
 
     def test_load_from_manifest_empty(self) -> None:
         """Should handle manifest with no values."""
-        manifest: Manifest = {"name": "test"}
+        manifest: Manifest = {"name": "test", "client": "client.js"}
         checker = ValueChecker.load_from_manifest(manifest)
         assert not checker.value_names
 
@@ -282,6 +286,7 @@ class TestValueChecker:
         """Should parse all value definitions from manifest."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {"type": "integer", "scope": "user,unit", "access": "user"},
                 "attempts": {
@@ -299,6 +304,7 @@ class TestValueChecker:
         """Should return definition for declared value."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {
                     "type": "integer",
@@ -319,6 +325,7 @@ class TestValueChecker:
         """Should raise for undeclared value."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {"score": {"type": "integer", "scope": "unit", "access": "user"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -329,6 +336,7 @@ class TestValueChecker:
         """Should return default value when defined."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {
                     "type": "integer",
@@ -345,6 +353,7 @@ class TestValueChecker:
         """Should return type-specific default when no explicit default defined."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "count": {"type": "integer", "scope": "unit", "access": "user"},
                 "ratio": {"type": "float", "scope": "unit", "access": "user"},
@@ -362,6 +371,7 @@ class TestValueChecker:
         """Should pass validation for valid value."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {
                     "type": "integer",
@@ -378,6 +388,7 @@ class TestValueChecker:
         """Should fail validation for wrong type."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {"score": {"type": "integer", "scope": "unit", "access": "user"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -388,6 +399,7 @@ class TestValueChecker:
         """Should correctly identify user-scoped values."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {"type": "integer", "scope": "user,unit", "access": "user"},
                 "question": {"type": "string", "scope": "unit", "access": "user"},
@@ -401,6 +413,7 @@ class TestValueChecker:
         """Should return only user-scoped value names."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {"type": "integer", "scope": "user,unit", "access": "user"},
                 "attempts": {"type": "integer", "scope": "user,unit", "access": "user"},
@@ -414,6 +427,7 @@ class TestValueChecker:
         """Should return only shared (non-user-scoped) value names."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "score": {"type": "integer", "scope": "user,unit", "access": "user"},
                 "question": {"type": "string", "scope": "unit", "access": "user"},
@@ -427,6 +441,7 @@ class TestValueChecker:
         """Should return the access level for a value."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "public": {"type": "string", "scope": "unit", "access": "user"},
                 "secret": {"type": "string", "scope": "unit", "access": "unit"},
@@ -440,6 +455,7 @@ class TestValueChecker:
         """User can access values at their own level."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {"val": {"type": "string", "scope": "unit", "access": "unit"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -449,6 +465,7 @@ class TestValueChecker:
         """User with higher access can see lower-level values."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {"val": {"type": "string", "scope": "unit", "access": "user"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -460,6 +477,7 @@ class TestValueChecker:
         """User with lower access cannot see higher-level values."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {"val": {"type": "string", "scope": "unit", "access": "unit"}},
         }
         checker = ValueChecker.load_from_manifest(manifest)
@@ -469,6 +487,7 @@ class TestValueChecker:
         """Test the full access hierarchy."""
         manifest: Manifest = {
             "name": "test",
+            "client": "client.js",
             "values": {
                 "user_val": {"type": "string", "scope": "unit", "access": "user"},
                 "unit_val": {"type": "string", "scope": "unit", "access": "unit"},

@@ -48,8 +48,11 @@ class ActivityContext:
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
-        if self.sandbox_path.exists():
-            self.sandbox = SandboxExecutor(self.sandbox_path, self.host_functions())
+	# TODO we need to make sure that the server field does not point to a parent directory
+        server_path = self.manifest.get("server")
+        if server_path is not None:
+            wasm_path = self._activity_dir / server_path
+            self.sandbox = SandboxExecutor(wasm_path, self.host_functions())
 
     @property
     def activity_dir(self) -> Path:
@@ -67,8 +70,9 @@ class ActivityContext:
         return ""
 
     @property
-    def sandbox_path(self) -> Path:
-        return self._activity_dir / "server.wasm"
+    def client_path(self) -> str:
+        """Path to client script, relative to activity directory."""
+        return str(self.manifest["client"])
 
     def call_sandbox_function(self, function_name: str, body: bytes) -> bytes:
         if self.sandbox is None:

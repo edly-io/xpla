@@ -14,9 +14,17 @@ def create_manifest(
     name: str = "test-activity",
     capabilities: dict[str, Any] | None = None,
     values: dict[str, Any] | None = None,
+    client: str = "client.js",
+    server: str | None = None,
 ) -> dict[str, Any]:
     """Helper to create a manifest dict."""
-    manifest: dict[str, Any] = {"name": name, "capabilities": capabilities or {}}
+    manifest: dict[str, Any] = {
+        "name": name,
+        "client": client,
+        "capabilities": capabilities or {},
+    }
+    if server is not None:
+        manifest["server"] = server
     if values is not None:
         manifest["values"] = values
     return manifest
@@ -77,8 +85,8 @@ class TestActivityContextInit:
     def test_init_with_sandbox(
         self, mock_sandbox_executor: MagicMock, tmp_path: Path
     ) -> None:
-        """Should create SandboxExecutor when wasm file exists."""
-        manifest = create_manifest()
+        """Should create SandboxExecutor when server is declared in manifest."""
+        manifest = create_manifest(server="server.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
@@ -129,14 +137,14 @@ class TestActivityContextProperties:
 
         assert ctx.html == ""
 
-    def test_sandbox_path_property(self, tmp_path: Path) -> None:
-        """Should return path to server.wasm."""
-        manifest = create_manifest()
+    def test_client_path_property(self, tmp_path: Path) -> None:
+        """Should return client path from manifest."""
+        manifest = create_manifest(client="src/my-client.js")
         activity_dir = setup_activity_dir(tmp_path, manifest)
 
         ctx = ActivityContext(activity_dir)
 
-        assert ctx.sandbox_path == activity_dir / "server.wasm"
+        assert ctx.client_path == "src/my-client.js"
 
 
 class TestCallSandboxFunction:
@@ -156,7 +164,7 @@ class TestCallSandboxFunction:
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
         """Should delegate to sandbox.call_function."""
-        manifest = create_manifest()
+        manifest = create_manifest(server="server.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 

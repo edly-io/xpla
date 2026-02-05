@@ -65,12 +65,16 @@ my-activity/
 ```json
 {
   "name": "my-activity",
+  "client": "client.js",
+  "server": "server.wasm",
   "capabilities": {},
   "values": {}
 }
 ```
 
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
+- `client` (required): Path to the client-side JavaScript module, relative to `manifest.json`.
+- `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 - `values` (optional, defaults to `{}`): Declares per-user values that the activity tracks. Values are validated at runtime.
 
@@ -99,7 +103,7 @@ Each value must have a `type`, `scope`, and `access` field. An optional `default
 - `"unit"`: Visible to course authors only. Use for sensitive data like correct answers.
 - `"course"`, `"platform"`: Reserved for future use.
 
-#### `client.js`
+#### Client module (declared via `client` field)
 
 This client-side scripting module will be loaded alongside the `<gulps-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<gulps-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
 
@@ -133,9 +137,9 @@ The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js
 
 Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 
-#### `server.wasm` (optional)
+#### Server sandbox (declared via `server` field)
 
-If present, this is a [WebAssembly](https://webassembly.org/) module that will be called as a sandbox from the platform backend. In particular, it is useful for grading assessments: we don't want assessment code to run in the frontend, because it would be trivially vulnerable to cheating.
+When declared in the manifest, this [WebAssembly](https://webassembly.org/) module will be called as a sandbox from the platform backend. In particular, it is useful for grading assessments: we don't want assessment code to run in the frontend, because it would be trivially vulnerable to cheating.
 
 It is language-agnostic, as the original script can be written in any of the languages supported by WebAssembly. We use [Extism](https://extism.org/) both to build and call these modules. Since Extism supports a wide variety of host languages, sandboxes are portable and can be run from any platform ([Open edX](https://openedx.org/), [Moodle](https://moodle.org), [Canvas](https://canvas.instructure.com/)...).
 

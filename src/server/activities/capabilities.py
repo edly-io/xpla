@@ -57,6 +57,8 @@ class Manifest(TypedDict, total=False):
     """Activity manifest structure."""
 
     name: Required[str]
+    client: Required[str]
+    server: str
     capabilities: dict[str, Any]
     values: dict[str, ValueDefinition]
 

@@ -1,3 +1,4 @@
 {
-  "name": "quiz"
+  "name": "quiz",
+  "client": "client.js"
 }

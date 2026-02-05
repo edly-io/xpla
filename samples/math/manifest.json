@@ -1,5 +1,7 @@
 {
   "name": "math",
+  "client": "client.js",
+  "server": "server.wasm",
   "capabilities": {
     "lms": [
       "get_user",
