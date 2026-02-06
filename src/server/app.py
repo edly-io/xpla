@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
+from server.activities.capabilities import Access
 from server import constants
 
 
@@ -63,7 +64,7 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
 
     # TODO get user_id and user_access_level from session/auth
     user_id = "anonymous"
-    user_access_level = "user"  # Students have "user" access
+    user_access_level = Access.user  # Students have "user" access
     activity_values = activity_context.get_filtered_values(user_id, user_access_level)
 
     return templates.TemplateResponse(

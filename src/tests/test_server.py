@@ -31,6 +31,7 @@ def fixtures_samples_dir(
         # Create manifest
         manifest: dict[str, Any] = {
             "name": "test-activity",
+            "client": "client.js",
             "capabilities": {},
         }
         (activity_path / "manifest.json").write_text(json.dumps(manifest))

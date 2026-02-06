@@ -2,12 +2,7 @@
   "name": "math",
   "client": "client.js",
   "server": "server.wasm",
-  "capabilities": {
-    "lms": [
-      "get_user",
-      "submit_grade"
-    ]
-  },
+  "capabilities": {},
   "values": {
     "correct_answers": {
       "type": "integer",

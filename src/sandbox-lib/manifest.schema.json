@@ -24,27 +24,6 @@
       "description": "Declared capabilities that the sandbox can use.",
       "additionalProperties": false,
       "properties": {
-        "kv": {
-          "description": "Key-value storage capability.",
-          "oneOf": [
-            { "type": "boolean" },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "namespace": {
-                  "type": "string",
-                  "description": "Namespace prefix for KV keys. Defaults to activity name."
-                },
-                "max_bytes": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "description": "Maximum storage in bytes. Defaults to 1048576 (1MB)."
-                }
-              }
-            }
-          ]
-        },
         "http": {
           "description": "HTTP request capability.",
           "type": "object",
@@ -55,14 +34,6 @@
               "items": { "type": "string" },
               "description": "Allowed hostnames. Empty array allows all hosts."
             }
-          }
-        },
-        "lms": {
-          "description": "List of allowed LMS functions.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["get_user", "submit_grade"]
           }
         },
         "ai": {

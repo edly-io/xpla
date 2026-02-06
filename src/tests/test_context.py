@@ -7,7 +7,7 @@ import urllib.error
 import pytest
 
 from server.activities.context import ActivityContext, MissingSandboxError
-from server.activities.capabilities import ValueValidationError
+from server.activities.capabilities import Access, ValueValidationError
 
 
 def create_manifest(
@@ -58,19 +58,20 @@ class TestActivityContextInit:
 
         ctx = ActivityContext(activity_dir)
 
-        assert ctx.manifest["name"] == "my-activity"
-        assert "http" in ctx.manifest["capabilities"]
+        assert ctx.manifest.name == "my-activity"
+        assert ctx.manifest.capabilities is not None
+        assert ctx.manifest.capabilities.http is not None
 
     def test_init_creates_capability_checker(self, tmp_path: Path) -> None:
         """Should create a CapabilityChecker from manifest."""
-        manifest = create_manifest(capabilities={"lms": ["get_user"]})
+        manifest = create_manifest(capabilities={"http": {}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
 
         ctx = ActivityContext(activity_dir)
 
         assert ctx.checker is not None
-        # Should not raise for allowed function
-        ctx.checker.check_lms_function("get_user")
+        # Should not raise for http capability
+        ctx.checker.check_http_request("https://example.com")
 
     def test_init_without_sandbox(self, tmp_path: Path) -> None:
         """Should set sandbox to None when no wasm file exists."""
@@ -190,93 +191,12 @@ class TestHostFunctions:
 
         functions = ctx.host_functions()
 
-        assert len(functions) == 6
+        assert len(functions) == 4
         function_names = [f.__name__ for f in functions]
-        assert "lms_submit_grade" in function_names
         assert "http_request" in function_names
-        assert "get_user_id" in function_names
         assert "post_event" in function_names
         assert "get_value" in function_names
         assert "set_value" in function_names
-
-
-class TestLmsSubmitGrade:
-    """Tests for lms_submit_grade host function."""
-
-    def test_success_when_allowed(self, tmp_path: Path) -> None:
-        """Should return success when LMS capability allows submit_grade."""
-        manifest = create_manifest(capabilities={"lms": ["submit_grade"]})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        result = ctx.lms_submit_grade({"score": 85, "max_score": 100})
-
-        data = json.loads(result)
-        assert data["status"] == "submitted"
-        assert data["score"] == 85
-
-    def test_error_when_not_allowed(self, tmp_path: Path) -> None:
-        """Should return error when LMS capability doesn't allow submit_grade."""
-        manifest = create_manifest(capabilities={"lms": ["get_user"]})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        result = ctx.lms_submit_grade({"score": 85})
-
-        data = json.loads(result)
-        assert "error" in data
-        assert "not allowed" in data["error"]
-
-    def test_error_when_no_lms_capability(self, tmp_path: Path) -> None:
-        """Should return error when no LMS capability declared."""
-        manifest = create_manifest(capabilities={})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        result = ctx.lms_submit_grade({"score": 85})
-
-        data = json.loads(result)
-        assert "error" in data
-        assert "not declared" in data["error"]
-
-
-class TestLmsGetUser:
-    """Tests for get_user_id host function."""
-
-    def test_success_when_allowed(self, tmp_path: Path) -> None:
-        """Should return user info when LMS capability allows get_user."""
-        manifest = create_manifest(capabilities={"lms": ["get_user"]})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        result = ctx.get_user_id("")
-
-        data = json.loads(result)
-        assert "id" in data
-
-    def test_error_when_not_allowed(self, tmp_path: Path) -> None:
-        """Should return error when LMS capability doesn't allow get_user."""
-        manifest = create_manifest(capabilities={"lms": ["submit_grade"]})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        result = ctx.get_user_id("")
-
-        data = json.loads(result)
-        assert "error" in data
-        assert "not allowed" in data["error"]
-
-    def test_error_when_no_lms_capability(self, tmp_path: Path) -> None:
-        """Should return error when no LMS capability declared."""
-        manifest = create_manifest(capabilities={})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        result = ctx.get_user_id("")
-
-        data = json.loads(result)
-        assert "error" in data
-        assert "not declared" in data["error"]
 
 
 class TestHttpRequest:
@@ -631,7 +551,7 @@ class TestGetFilteredValues:
         ctx = ActivityContext(activity_dir)
 
         # User with "user" access should only see public value
-        result = ctx.get_filtered_values(unique_user(tmp_path), "user")
+        result = ctx.get_filtered_values(unique_user(tmp_path), Access.user)
         assert "public" in result
         assert "secret" not in result
 
@@ -647,7 +567,7 @@ class TestGetFilteredValues:
         ctx = ActivityContext(activity_dir)
 
         # User with "unit" access should see both values
-        result = ctx.get_filtered_values(unique_user(tmp_path), "unit")
+        result = ctx.get_filtered_values(unique_user(tmp_path), Access.unit)
         assert "public" in result
         assert "secret" in result
 
@@ -677,11 +597,11 @@ class TestGetFilteredValues:
         ctx.store_value(user, "secret_score", 100)
 
         # User access should only see score
-        result = ctx.get_filtered_values(user, "user")
+        result = ctx.get_filtered_values(user, Access.user)
         assert result == {"score": 42}
 
         # Unit access should see both
-        result = ctx.get_filtered_values(user, "unit")
+        result = ctx.get_filtered_values(user, Access.unit)
         assert result == {"score": 42, "secret_score": 100}
 
     def test_mcq_scenario(self, tmp_path: Path) -> None:
@@ -717,13 +637,13 @@ class TestGetFilteredValues:
         ctx.store_value("", "correct_answers", "[1]")
 
         # Student (user access) should NOT see correct_answers
-        student_values = ctx.get_filtered_values("student1", "user")
+        student_values = ctx.get_filtered_values("student1", Access.user)
         assert "question" in student_values
         assert "answers" in student_values
         assert "correct_answers" not in student_values
 
         # Author (unit access) should see correct_answers
-        author_values = ctx.get_filtered_values("author1", "unit")
+        author_values = ctx.get_filtered_values("author1", Access.unit)
         assert "question" in author_values
         assert "answers" in author_values
         assert "correct_answers" in author_values

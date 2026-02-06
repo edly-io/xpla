@@ -34,6 +34,13 @@ test-format: ## Run formatting tests
 test-manifests: ## Validate all manifest.json files
 	@for f in samples/*/manifest.json; do echo "$$f" && ./src/tools/validate_manifest.py "$$f" || exit 1; done
 
+# This command must be run every time the schema is updated
+.PHONY: manifest-types
+manifest-types: src/server/activities/manifest_types.py ## Generate manifest types based on schema
+src/server/activities/manifest_types.py: src/sandbox-lib/manifest.schema.json 
+	datamodel-codegen --input=src/sandbox-lib/manifest.schema.json --input-file-type=jsonschema --formatters=black --formatters=isort --output-model-type=pydantic_v2.BaseModel --output=src/server/activities/manifest_types.py
+
+
 ###### Additional commands
 
 ESCAPE = 

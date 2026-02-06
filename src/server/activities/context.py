@@ -15,12 +15,13 @@ import urllib.request
 from extism import Json
 
 from server.activities.capabilities import (
+    Access,
     CapabilityError,
     CapabilityChecker,
-    Manifest,
     ValueChecker,
     ValueType,
 )
+from server.activities.manifest_types import GulpsActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
@@ -33,23 +34,22 @@ class ActivityContext:
     def __init__(self, activity_dir: Path) -> None:
         self._activity_dir = activity_dir
 
-        # Key-value store
+        # Key-value store (used internally for value storage)
         self.kv_store = kv.get_default()
 
         # Events posted by sandbox during execution
         self._pending_events: list[dict[str, str]] = []
 
-        # Manifest capabilities and values
-        # TODO check manifest validity
+        # Manifest capabilities and values (validated by Pydantic)
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
-            self.manifest: Manifest = json.load(f)
-        self.checker = CapabilityChecker.load_from_manifest(self.manifest)
-        self.value_checker = ValueChecker.load_from_manifest(self.manifest)
+            self.manifest = GulpsActivityManifest.model_validate_json(f.read())
+        self.checker = CapabilityChecker(self.manifest.capabilities)
+        self.value_checker = ValueChecker(self.manifest.values)
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
-	# TODO we need to make sure that the server field does not point to a parent directory
-        server_path = self.manifest.get("server")
+        # TODO we need to make sure that the server field does not point to a parent directory
+        server_path = self.manifest.server
         if server_path is not None:
             wasm_path = self._activity_dir / server_path
             self.sandbox = SandboxExecutor(wasm_path, self.host_functions())
@@ -60,7 +60,7 @@ class ActivityContext:
 
     @property
     def name(self) -> str:
-        return self.manifest["name"]
+        return self.manifest.name
 
     @property
     def html(self) -> str:
@@ -72,7 +72,7 @@ class ActivityContext:
     @property
     def client_path(self) -> str:
         """Path to client script, relative to activity directory."""
-        return str(self.manifest["client"])
+        return self.manifest.client
 
     def call_sandbox_function(self, function_name: str, body: bytes) -> bytes:
         if self.sandbox is None:
@@ -118,7 +118,7 @@ class ActivityContext:
         self.kv_store.set(key, json.dumps(value))
 
     def get_filtered_values(
-        self, user_id: str, user_access_level: str
+        self, user_id: str, user_access_level: Access
     ) -> dict[str, ValueType]:
         """Get all declared values that the user is allowed to see.
 
@@ -127,7 +127,7 @@ class ActivityContext:
 
         Args:
             user_id: The user ID for loading user-scoped values.
-            user_access_level: The user's access level ("user", "unit", etc.)
+            user_access_level: The user's access level.
 
         Returns:
             A dict of value names to their current values, filtered by access.
@@ -182,87 +182,12 @@ class ActivityContext:
         """
         Host functions that will be made available to the sandbox.
         """
-        # TODO we should associate functions only if they are part of the manifest?
         return [
-            self.lms_submit_grade,
             self.get_value,
             self.set_value,
-            # self.kv_get,
-            # self.kv_set,
-            # self.kv_delete,
-            # self.kv_keys,
             self.http_request,
-            self.get_user_id,
             self.post_event,
         ]
-
-    def lms_submit_grade(self, grade: Annotated[dict[str, object], Json]) -> str:
-        """Submit a grade for the current user.
-
-        Expects JSON: {"score": 85, "max_score": 100, "comment": "..."}
-        Returns JSON: {"status": "submitted"}
-        """
-        print(f"Grade submitted for activity '{self.name}'")
-        try:
-            self.checker.check_lms_function("submit_grade")
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
-
-        # TODO actually submit grade
-        return json.dumps({"status": "submitted", "score": grade["score"]})
-
-    def kv_get(self, key: str) -> str:
-        """Get a value from the key-value store.
-
-        Returns empty string if key not found.
-        """
-        try:
-            self.checker.check_kv_access()
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
-
-        key = f"gulps.{self.name}.{key}"
-        return self.kv_store.get(key) or ""
-
-    def kv_set(self, key: str, value: str) -> bool:
-        """Set a key-value pair in the store.
-
-        Returns True if the value was set, False if capability check failed.
-        """
-        try:
-            self.checker.check_kv_write(key, value)
-        except CapabilityError:
-            return False
-
-        key = f"gulps.{self.name}.{key}"
-        self.kv_store.set(key, value)
-        return True
-
-    # def kv_delete(self, key: str) -> str:
-    #     """Delete a key from the store.
-
-    #     Returns "deleted" if key existed, "not_found" otherwise.
-    #     """
-    #     try:
-    #         self.checker.check_kv_access()
-    #     except CapabilityError as e:
-    #         return json.dumps({"error": str(e)})
-
-    #     if self.kv_store.delete(key):
-    #         return "deleted"
-    #     return "not_found"
-
-    # def kv_keys(self, _input: str) -> str:
-    #     """List all keys in the store.
-
-    #     Returns JSON array of keys.
-    #     """
-    #     try:
-    #         self.checker.check_kv_access()
-    #     except CapabilityError as e:
-    #         return json.dumps({"error": str(e)})
-
-    #     return json.dumps(self.kv_store.keys())
 
     def http_request(
         self,
@@ -304,16 +229,3 @@ class ActivityContext:
             return json.dumps({"error": f"HTTP {e.code}: {e.reason}"})
         except urllib.error.URLError as e:
             return json.dumps({"error": str(e.reason)})
-
-    def get_user_id(self, _input: str) -> str:
-        """Get current LMS user info as JSON.
-
-        Returns JSON: {"id": "...", "name": "..."}
-        """
-        try:
-            self.checker.check_lms_function("get_user")
-        except CapabilityError as e:
-            return json.dumps({"error": str(e)})
-
-        # TODO return actual user. (and replace instances of 'anonymous' elsewhere.)
-        return json.dumps({"id": "anonymous"})
