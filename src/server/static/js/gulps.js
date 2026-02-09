@@ -48,8 +48,8 @@ export class Gulps extends HTMLElement {
   }
 
   async callSandboxFunction(functionName, body) {
-    // TODO actually, there shouldn't be any mention of JSON in this function, unless we
-    // decide that JSON is actually the data format we want
+    // body will be JSON-formatted and sent to the backend.
+    // TODO do we want to keep this function around? Is this the right API?
     const response = await fetch("/api/" + this.attributes.name.value + "/plugin/" + functionName, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,10 +65,10 @@ export class Gulps extends HTMLElement {
   }
 
   async sendEvent(name, value = "") {
-    const response = await fetch("/api/activity/" + this.attributes.name.value + "/events", {
+    const response = await fetch("/api/activity/" + this.attributes.name.value + "/events/" + name, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, value }),
+      body: JSON.stringify(value),
     });
 
     if (!response.ok) {

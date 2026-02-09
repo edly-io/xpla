@@ -17,35 +17,29 @@ function onEvent() {
   } else if (eventName === "answer.submit") {
     handleAnswerSubmit(eventValue);
   }
-
-  Host.outputString(JSON.stringify({ processed: true }));
 }
 
 // Save configuration (question, answers, correct_answers)
-function handleConfigSave(eventValue) {
-  const config = JSON.parse(eventValue);
-
+function handleConfigSave(config) {
   setValue("question", config.question);
   setValue("answers", JSON.stringify(config.answers));
   setValue("correct_answers", JSON.stringify(config.correct_answers));
 
   // Notify frontend of value changes
-  postEvent("values.change.question", JSON.stringify(config.question));
-  postEvent("values.change.answers", JSON.stringify(JSON.stringify(config.answers)));
+  postEvent("values.change.question", config.question);
+  postEvent("values.change.answers", JSON.stringify(config.answers));
   postEvent(
     "values.change.correct_answers",
-    JSON.stringify(JSON.stringify(config.correct_answers))
+    JSON.stringify(config.correct_answers)
   );
 }
 
 // Check submitted answers against correct answers
-function handleAnswerSubmit(eventValue) {
-  const submission = JSON.parse(eventValue);
+function handleAnswerSubmit(submission) {
   const selected = submission.selected;
 
   // Get correct answers from stored config
-  const correctAnswersJson = getValue("correct_answers");
-  const correctAnswers = JSON.parse(correctAnswersJson);
+  const correctAnswers = JSON.parse(getValue("correct_answers"));
 
   // Compare selected answers with correct answers
   const selectedSet = new Set(selected);
@@ -64,7 +58,7 @@ function handleAnswerSubmit(eventValue) {
     feedback = "Incorrect. Try again!";
   }
 
-  postEvent("answer.result", JSON.stringify({ correct: isCorrect, feedback }));
+  postEvent("answer.result", { correct: isCorrect, feedback });
 }
 
 module.exports = { onEvent };

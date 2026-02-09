@@ -79,7 +79,7 @@ export function setup(activity) {
       // Send event to backend
       const events = await activity.sendEvent(
         "answer.submit",
-        JSON.stringify({ question: current.expression, answer: userAnswer })
+        { question: current.expression, answer: userAnswer }
       );
 
       // Find the result event

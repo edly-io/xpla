@@ -5,8 +5,9 @@ These functions are injected into the plugin runtime and can be called
 by WebAssembly code. They provide controlled access to server capabilities.
 """
 
-import json
 from collections.abc import Callable
+import json
+import logging
 from pathlib import Path
 from typing import Annotated, Any
 import urllib.error
@@ -24,6 +25,8 @@ from server.activities.capabilities import (
 from server.activities.manifest_types import GulpsActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
+
+logger = logging.getLogger(__file__)
 
 
 class MissingSandboxError(Exception):
@@ -148,6 +151,26 @@ class ActivityContext:
         self._pending_events = []
         return events
 
+    def host_functions(self) -> list[Callable[..., Any]]:
+        """
+        Host functions that will be made available to the sandbox.
+        """
+        return [
+            self.get_user_id,
+            self.post_event,
+            self.get_value,
+            self.set_value,
+            self.http_request,
+            self.submit_grade,
+        ]
+
+    def get_user_id(self) -> str:
+        """
+        Return the current user ID, inferred from the request.
+        """
+        # TODO actually fetch the user ID from the context.
+        return "anonymous"
+
     def post_event(self, name: str, value: str) -> str:
         """Post an event to be sent back to the client.
 
@@ -162,6 +185,9 @@ class ActivityContext:
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
+        # TODO IMPORTANT get_value should not receive a user_id. Instead, it should infer
+        # the user_id from the request, and automatically infer the full key
+        # name from the activity manifest.
         value = self.load_value(user_id, name)
         return json.dumps(value)
 
@@ -169,25 +195,16 @@ class ActivityContext:
         """Set a declared GULPS value for a user (host function).
 
         Takes JSON-encoded value. Validates against manifest.
-        Returns True if set successfully, False on validation error.
         """
         try:
             decoded = json.loads(value)
-            self.store_value(user_id, name, decoded)
-            return True
-        except (json.JSONDecodeError, ValueError):
-            return False
-
-    def host_functions(self) -> list[Callable[..., Any]]:
-        """
-        Host functions that will be made available to the sandbox.
-        """
-        return [
-            self.get_value,
-            self.set_value,
-            self.http_request,
-            self.post_event,
-        ]
+        except json.decoder.JSONDecodeError:
+            logger.error(
+                f"Failed to decode user_id=%s name=%s value=%s", user_id, name, value
+            )
+            raise
+        self.store_value(user_id, name, decoded)
+        return True
 
     def http_request(
         self,
@@ -229,3 +246,8 @@ class ActivityContext:
             return json.dumps({"error": f"HTTP {e.code}: {e.reason}"})
         except urllib.error.URLError as e:
             return json.dumps({"error": str(e.reason)})
+
+    def submit_grade(self, score: float) -> bool:
+        # TODO actually submit grade
+        logger.info("submitted score: %f", score)
+        return True

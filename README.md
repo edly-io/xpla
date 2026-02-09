@@ -155,7 +155,7 @@ Sandboxes have access to a standard list of host functions. See "host functions"
 
 ##### Sandbox library
 
-A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/index.js) with helper functions for common host function interactions:
+A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/index.js) with helper functions for common host function interactions. This library is here for convenience and is not part of the GULPS standard, though it implements good practices. It makes it easier for Javascript authors to avoid dealing with inconvenient WebAssembly data types.
 
 ```javascript
 import {
@@ -168,10 +168,10 @@ import {
 } from "../../src/sandbox-lib";
 
 // Post an event to the frontend
-postEvent("answer.result", JSON.stringify({ correct: true }));
+postEvent("answer.result", { correct: true });
 
 // Get current user (requires lms capability with get_user)
-const user = getUser();  // { id: "..." }
+const userId = getUserId();
 
 // Get/set user-scoped values (scope: "user,unit") - convenience functions
 const score = getUserValue("correct_answers");
@@ -198,8 +198,6 @@ function onEvent() {
   const eventValue = input.value;
 
   // Process event...
-
-  Host.outputString(JSON.stringify({ processed: true }));
 }
 
 module.exports = { onEvent };
@@ -227,7 +225,17 @@ The server exposes several endpoints which are defined in [./src/server/app.py](
 
 ### Host Functions
 
-Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py). In the future these host functions will be standardized and documented.
+Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py):
+
+<!-- TODO are we actually exposing get_user_id? Should we? -->
+
+- `get_user_id() -> str`
+- `post_event(name: str, value: str)`
+- `get_value(user_id: str, name: str)`
+- `set_value(user_id: str, name: str, value: str)`
+- `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
+
+In the future these host functions will be standardized and documented.
 
 ## Development
 

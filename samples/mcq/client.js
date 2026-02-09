@@ -9,6 +9,7 @@ export function setup(activity) {
   function getConfig() {
     return {
       question: activity.values.question || "",
+      // TODO MCQ values are JSON-serialized because we don't yet support complex types in activity values
       answers: JSON.parse(activity.values.answers || "[]"),
       correct_answers: JSON.parse(activity.values.correct_answers || "[]"),
     };
@@ -131,7 +132,7 @@ export function setup(activity) {
       try {
         await activity.sendEvent(
           "config.save",
-          JSON.stringify({ question, answers, correct_answers })
+          { question, answers, correct_answers }
         );
         feedbackEl.innerHTML = '<div class="feedback correct">Configuration saved!</div>';
         // Update local values for immediate re-render
@@ -192,7 +193,8 @@ export function setup(activity) {
       try {
         const events = await activity.sendEvent(
           "answer.submit",
-          JSON.stringify({ selected })
+          // TODO should we just send selected? (no dict)
+          { selected }
         );
 
         const resultEvent = events.find((ev) => ev.name === "answer.result");

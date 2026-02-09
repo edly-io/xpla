@@ -1,8 +1,11 @@
+import logging
 from pathlib import Path
 from typing import Callable, Any
 
 from extism import host_fn
 from server.activities.runtime import PluginRuntime
+
+logger = logging.getLogger(__file__)
 
 
 class SandboxExecutor:

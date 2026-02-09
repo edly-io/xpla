@@ -6,15 +6,15 @@
 declare module "main" {
     // Handle incoming events from the frontend
     // Input: JSON { "name": "...", "value": "..." }
-    // Output: JSON { "processed": true }
     export function onEvent(): I32;
 }
 
 declare module "extism:host" {
     interface user {
         // LMS functions (require lms capability)
-        lms_submit_grade(ptr: I64): I64;
-        get_user_id(ptr: I64): I64;
+        submit_grade(score: F64): I32;
+        // TODO do we really want to keep this function around?
+        get_user_id(): I64;
 
         // Event posting
         post_event(name_ptr: I64, value_ptr: I64): I64;

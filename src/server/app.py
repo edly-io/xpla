@@ -123,8 +123,10 @@ async def call_plugin(
 logger = logging.getLogger(__name__)
 
 
-@app.post("/api/activity/{activity_id}/events")
-async def send_event(activity_id: str, request: Request) -> JSONResponse:
+@app.post("/api/activity/{activity_id}/events/{event_name}")
+async def send_event(
+    activity_id: str, event_name: str, request: Request
+) -> JSONResponse:
     """Send an event to the activity sandbox and receive response events."""
     try:
         context = load_activity(activity_id)
@@ -132,9 +134,7 @@ async def send_event(activity_id: str, request: Request) -> JSONResponse:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
     # Parse event from request body
-    body = await request.json()
-    event_name = body.get("name", "")
-    event_value = body.get("value", "")
+    event_value = await request.json()
 
     # Call sandbox's onEvent if available
     if context.sandbox is not None:
