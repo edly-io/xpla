@@ -29,6 +29,7 @@ disable=[
     "line-too-long",
     "missing-docstring",
     "too-few-public-methods",
+    "too-many-public-methods",
     "too-many-instance-attributes",
 ]
 

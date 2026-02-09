@@ -66,8 +66,17 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["integer", "float", "string", "boolean"],
-          "description": "Data type of the value."
+          "enum": ["integer", "number", "string", "boolean", "array", "object"],
+          "description": "Data type of the value. Uses JSON Schema type names."
+        },
+        "items": {
+          "$ref": "#/$defs/typeSchema",
+          "description": "Schema for array items. Required when type is 'array'."
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/typeSchema" },
+          "description": "Schema for object properties. Used when type is 'object'."
         },
         "scope": {
           "type": "string",
@@ -82,25 +91,28 @@
         "default": {
           "description": "Default value (must match declared type)."
         }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "type": { "const": "integer" } } },
-          "then": { "properties": { "default": { "type": "integer" } } }
+      }
+    },
+    "typeSchema": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["integer", "number", "string", "boolean", "array", "object"],
+          "description": "Data type."
         },
-        {
-          "if": { "properties": { "type": { "const": "float" } } },
-          "then": { "properties": { "default": { "type": "number" } } }
+        "items": {
+          "$ref": "#/$defs/typeSchema",
+          "description": "Schema for array items."
         },
-        {
-          "if": { "properties": { "type": { "const": "string" } } },
-          "then": { "properties": { "default": { "type": "string" } } }
-        },
-        {
-          "if": { "properties": { "type": { "const": "boolean" } } },
-          "then": { "properties": { "default": { "type": "boolean" } } }
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/typeSchema" },
+          "description": "Schema for object properties."
         }
-      ]
+      }
     }
   }
 }

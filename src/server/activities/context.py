@@ -200,7 +200,7 @@ class ActivityContext:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
             logger.error(
-                f"Failed to decode user_id=%s name=%s value=%s", user_id, name, value
+                "Failed to decode user_id=%s name=%s value=%s", user_id, name, value
             )
             raise
         self.store_value(user_id, name, decoded)

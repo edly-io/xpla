@@ -4,13 +4,17 @@ Capability validation and enforcement.
 Checks plugin calls against the manifest to enforce security boundaries.
 """
 
+from typing import Any
 from urllib.parse import urlparse
+
+import jsonschema
 
 from server.activities.manifest_types import (
     Access,
     Capabilities,
     Scope,
     Type,
+    TypeSchema,
     ValueDefinition,
 )
 
@@ -24,23 +28,40 @@ __all__ = [
 ]
 
 # Type alias for values that can be stored
-ValueType = int | float | str | bool
-
-# Allowed value types and their Python equivalents
-VALUE_TYPES: dict[Type, type | tuple[type, ...]] = {
-    Type.integer: int,
-    Type.float: (int, float),  # int is acceptable for float
-    Type.string: str,
-    Type.boolean: bool,
-}
+ValueType = int | float | str | bool | list[Any] | dict[str, Any]
 
 # Default values for each type (used when no explicit default is provided)
 TYPE_DEFAULTS: dict[Type, ValueType] = {
     Type.integer: 0,
-    Type.float: 0.0,
+    Type.number: 0.0,
     Type.string: "",
     Type.boolean: False,
+    Type.array: [],
+    Type.object: {},
 }
+
+# Map from our type names to JSON Schema type names
+_JSON_SCHEMA_TYPE: dict[Type, str] = {
+    Type.integer: "integer",
+    Type.number: "number",
+    Type.string: "string",
+    Type.boolean: "boolean",
+    Type.array: "array",
+    Type.object: "object",
+}
+
+
+def build_type_schema(definition: ValueDefinition | TypeSchema) -> dict[str, Any]:
+    """Build a JSON Schema fragment from a value/type definition."""
+    schema: dict[str, Any] = {"type": _JSON_SCHEMA_TYPE[definition.type]}
+    if definition.type == Type.array and definition.items is not None:
+        schema["items"] = build_type_schema(definition.items)
+    if definition.type == Type.object and definition.properties is not None:
+        schema["properties"] = {
+            k: build_type_schema(v) for k, v in definition.properties.items()
+        }
+    return schema
+
 
 # Access level hierarchy (higher number = more privileged)
 ACCESS_HIERARCHY: dict[Access, int] = {
@@ -92,19 +113,19 @@ class ValueChecker:
         return TYPE_DEFAULTS[definition.type]
 
     def validate(self, name: str, value: ValueType) -> None:
-        """Validate a value against its manifest definition.
+        """Validate a value against its manifest definition using JSON Schema.
 
         Raises:
             ValueValidationError: If the value is invalid.
         """
         definition = self.get_definition(name)
-        expected_type = VALUE_TYPES[definition.type]
-
-        if not isinstance(value, expected_type):
+        schema = build_type_schema(definition)
+        try:
+            jsonschema.validate(value, schema)
+        except jsonschema.ValidationError as e:
             raise ValueValidationError(
-                f"Value '{name}' must be {definition.type.value}, "
-                f"got {type(value).__name__}"
-            )
+                f"Value '{name}' failed validation: {e.message}"
+            ) from e
 
     def is_user_scoped(self, name: str) -> bool:
         """Check if a value is user-scoped."""

@@ -11,16 +11,18 @@
       "default": ""
     },
     "answers": {
-      "type": "string",
+      "type": "array",
+      "items": { "type": "string" },
       "scope": "unit",
       "access": "user",
-      "default": "[]"
+      "default": []
     },
     "correct_answers": {
-      "type": "string",
+      "type": "array",
+      "items": { "type": "integer" },
       "scope": "unit",
       "access": "unit",
-      "default": "[]"
+      "default": []
     }
   }
 }

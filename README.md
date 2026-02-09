@@ -86,19 +86,20 @@ The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.sc
 
 ##### Values
 
-Each value must have a `type`, `scope`, and `access` field. An optional `default` can be provided (must match the declared type). Example:
+Each value must have a `type`, `scope`, and `access` field. An optional `default` can be provided (must match the declared type). Type names follow [JSON Schema](https://json-schema.org/) vocabulary. Example:
 
 ```json
 {
   "values": {
     "score": { "type": "integer", "scope": "user,unit", "access": "user", "default": 0 },
     "question": { "type": "string", "scope": "unit", "access": "user", "default": "" },
-    "correct_answers": { "type": "string", "scope": "unit", "access": "unit", "default": "[]" }
+    "answers": { "type": "array", "items": { "type": "string" }, "scope": "unit", "access": "user", "default": [] },
+    "correct_answers": { "type": "array", "items": { "type": "integer" }, "scope": "unit", "access": "unit", "default": [] }
   }
 }
 ```
 
-**Types:** `integer`, `float`, `string`, `boolean`. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`.
+**Types:** `integer`, `number`, `string`, `boolean`, `array`, `object`. For `array`, specify an `items` field with a type schema. For `object`, specify a `properties` field. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`, `[]`, `{}`.
 
 **Scopes:**
 - `"user,unit"`: Per-user value, specific to this activity instance. Example: a student's score.

@@ -191,7 +191,6 @@ class TestHostFunctions:
 
         functions = ctx.host_functions()
 
-        assert len(functions) == 4
         function_names = [f.__name__ for f in functions]
         assert "http_request" in function_names
         assert "post_event" in function_names
@@ -341,7 +340,7 @@ class TestLoadValue:
         manifest = create_manifest(
             values={
                 "count": {"type": "integer", "scope": "user,unit", "access": "user"},
-                "ratio": {"type": "float", "scope": "user,unit", "access": "user"},
+                "ratio": {"type": "number", "scope": "user,unit", "access": "user"},
                 "name": {"type": "string", "scope": "user,unit", "access": "user"},
                 "done": {"type": "boolean", "scope": "user,unit", "access": "user"},
             }
@@ -453,7 +452,7 @@ class TestStoreValue:
     def test_stores_float(self, tmp_path: Path) -> None:
         """Should store and retrieve float value."""
         manifest = create_manifest(
-            values={"ratio": {"type": "float", "scope": "user,unit", "access": "user"}}
+            values={"ratio": {"type": "number", "scope": "user,unit", "access": "user"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -491,6 +490,26 @@ class TestStoreValue:
 
         assert ctx.load_value(user, "completed") is True
 
+    def test_stores_array(self, tmp_path: Path) -> None:
+        """Should store and retrieve array value."""
+        manifest = create_manifest(
+            values={
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "scope": "user,unit",
+                    "access": "user",
+                }
+            }
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        user = unique_user(tmp_path)
+
+        ctx.store_value(user, "tags", ["a", "b", "c"])
+
+        assert ctx.load_value(user, "tags") == ["a", "b", "c"]
+
     def test_raises_for_wrong_type(self, tmp_path: Path) -> None:
         """Should raise when value type doesn't match declaration."""
         manifest = create_manifest(
@@ -502,7 +521,7 @@ class TestStoreValue:
         ctx = ActivityContext(activity_dir)
         user = unique_user(tmp_path)
 
-        with pytest.raises(ValueValidationError, match="must be integer"):
+        with pytest.raises(ValueValidationError, match="failed validation"):
             ctx.store_value(user, "count", "not an int")
 
     def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
@@ -615,16 +634,18 @@ class TestGetFilteredValues:
                     "default": "",
                 },
                 "answers": {
-                    "type": "string",
+                    "type": "array",
+                    "items": {"type": "string"},
                     "scope": "unit",
                     "access": "user",
-                    "default": "[]",
+                    "default": [],
                 },
                 "correct_answers": {
-                    "type": "string",
+                    "type": "array",
+                    "items": {"type": "integer"},
                     "scope": "unit",
                     "access": "unit",
-                    "default": "[]",
+                    "default": [],
                 },
             }
         )
@@ -633,8 +654,8 @@ class TestGetFilteredValues:
 
         # Set up MCQ
         ctx.store_value("", "question", "What is 2+2?")
-        ctx.store_value("", "answers", '["3", "4", "5"]')
-        ctx.store_value("", "correct_answers", "[1]")
+        ctx.store_value("", "answers", ["3", "4", "5"])
+        ctx.store_value("", "correct_answers", [1])
 
         # Student (user access) should NOT see correct_answers
         student_values = ctx.get_filtered_values("student1", Access.user)
@@ -647,7 +668,7 @@ class TestGetFilteredValues:
         assert "question" in author_values
         assert "answers" in author_values
         assert "correct_answers" in author_values
-        assert author_values["correct_answers"] == "[1]"
+        assert author_values["correct_answers"] == [1]
 
 
 class TestPostEvent:

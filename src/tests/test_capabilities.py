@@ -11,6 +11,7 @@ from server.activities.manifest_types import (
     Http,
     Scope,
     Type,
+    TypeSchema,
     ValueDefinition,
 )
 
@@ -112,7 +113,7 @@ class TestValueChecker:
                 type=Type.integer, scope=Scope.unit, access=Access.user
             ),
             "ratio": ValueDefinition(
-                type=Type.float, scope=Scope.unit, access=Access.user
+                type=Type.number, scope=Scope.unit, access=Access.user
             ),
             "name": ValueDefinition(
                 type=Type.string, scope=Scope.unit, access=Access.user
@@ -148,7 +149,7 @@ class TestValueChecker:
             )
         }
         checker = ValueChecker(values)
-        with pytest.raises(ValueValidationError, match="must be integer"):
+        with pytest.raises(ValueValidationError, match="failed validation"):
             checker.validate("score", "not an int")
 
     def test_is_user_scoped(self) -> None:
@@ -278,3 +279,80 @@ class TestValueChecker:
         assert checker.can_access("unit_val", Access.platform) is True
         assert checker.can_access("course_val", Access.platform) is True
         assert checker.can_access("platform_val", Access.platform) is True
+
+    def test_get_default_array(self) -> None:
+        """Should return empty list as default for array type."""
+        values = {
+            "items": ValueDefinition(
+                type=Type.array,
+                items=TypeSchema(type=Type.string),
+                scope=Scope.unit,
+                access=Access.user,
+            )
+        }
+        checker = ValueChecker(values)
+        assert checker.get_default("items") == []
+
+    def test_get_default_object(self) -> None:
+        """Should return empty dict as default for object type."""
+        values = {
+            "data": ValueDefinition(
+                type=Type.object, scope=Scope.unit, access=Access.user
+            )
+        }
+        checker = ValueChecker(values)
+        assert checker.get_default("data") == {}
+
+    def test_validate_array(self) -> None:
+        """Should validate array values."""
+        values = {
+            "tags": ValueDefinition(
+                type=Type.array,
+                items=TypeSchema(type=Type.string),
+                scope=Scope.unit,
+                access=Access.user,
+            )
+        }
+        checker = ValueChecker(values)
+        checker.validate("tags", ["a", "b", "c"])  # Should not raise
+
+    def test_validate_array_rejects_wrong_items(self) -> None:
+        """Should reject array with wrong item types."""
+        values = {
+            "tags": ValueDefinition(
+                type=Type.array,
+                items=TypeSchema(type=Type.string),
+                scope=Scope.unit,
+                access=Access.user,
+            )
+        }
+        checker = ValueChecker(values)
+        with pytest.raises(ValueValidationError, match="failed validation"):
+            checker.validate("tags", [1, 2, 3])
+
+    def test_validate_array_rejects_non_array(self) -> None:
+        """Should reject non-array value for array type."""
+        values = {
+            "tags": ValueDefinition(
+                type=Type.array,
+                items=TypeSchema(type=Type.string),
+                scope=Scope.unit,
+                access=Access.user,
+            )
+        }
+        checker = ValueChecker(values)
+        with pytest.raises(ValueValidationError, match="failed validation"):
+            checker.validate("tags", "not an array")
+
+    def test_validate_object(self) -> None:
+        """Should validate object values."""
+        values = {
+            "config": ValueDefinition(
+                type=Type.object,
+                properties={"name": TypeSchema(type=Type.string)},
+                scope=Scope.unit,
+                access=Access.user,
+            )
+        }
+        checker = ValueChecker(values)
+        checker.validate("config", {"name": "test"})  # Should not raise

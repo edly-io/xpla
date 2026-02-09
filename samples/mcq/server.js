@@ -22,16 +22,13 @@ function onEvent() {
 // Save configuration (question, answers, correct_answers)
 function handleConfigSave(config) {
   setValue("question", config.question);
-  setValue("answers", JSON.stringify(config.answers));
-  setValue("correct_answers", JSON.stringify(config.correct_answers));
+  setValue("answers", config.answers);
+  setValue("correct_answers", config.correct_answers);
 
   // Notify frontend of value changes
   postEvent("values.change.question", config.question);
-  postEvent("values.change.answers", JSON.stringify(config.answers));
-  postEvent(
-    "values.change.correct_answers",
-    JSON.stringify(config.correct_answers)
-  );
+  postEvent("values.change.answers", config.answers);
+  postEvent("values.change.correct_answers", config.correct_answers);
 }
 
 // Check submitted answers against correct answers
@@ -39,7 +36,7 @@ function handleAnswerSubmit(submission) {
   const selected = submission.selected;
 
   // Get correct answers from stored config
-  const correctAnswers = JSON.parse(getValue("correct_answers"));
+  const correctAnswers = getValue("correct_answers");
 
   // Compare selected answers with correct answers
   const selectedSet = new Set(selected);
