@@ -7,15 +7,9 @@ import urllib.error
 import pytest
 
 from server.activities.context import ActivityContext, MissingSandboxError
-from server.activities.capabilities import (
-    Access,
-    ActionChecker,
-    ActionValidationError,
-    EventChecker,
-    EventValidationError,
-    ValueValidationError,
-)
-from server.activities.manifest_types import Type, TypeSchema
+from server.activities.events import EventValidationError
+from server.activities.manifest_types import Access
+from server.activities.values import ValueValidationError
 
 
 def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -775,50 +769,3 @@ class TestClearPendingEvents:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         assert not ctx.clear_pending_events()
-
-
-class TestActionChecker:
-    """Tests for ActionChecker."""
-
-    def test_raises_for_undeclared_action(self) -> None:
-        """Should raise ActionValidationError for undeclared action."""
-        checker = ActionChecker(None)
-        with pytest.raises(ActionValidationError, match="not declared"):
-            checker.validate("unknown", {})
-
-    def test_raises_for_invalid_payload(self) -> None:
-        """Should raise ActionValidationError for invalid payload."""
-        checker = ActionChecker({"my.action": TypeSchema(type=Type.object)})
-        with pytest.raises(ActionValidationError, match="failed validation"):
-            checker.validate("my.action", "not an object")
-
-    def test_valid_action_passes(self) -> None:
-        """Should not raise for valid action with matching payload."""
-        checker = ActionChecker({"my.action": TypeSchema(type=Type.object)})
-        checker.validate("my.action", {"key": "value"})
-
-
-class TestEventChecker:
-    """Tests for EventChecker."""
-
-    def test_raises_for_undeclared_event(self) -> None:
-        """Should raise EventValidationError for undeclared event."""
-        checker = EventChecker(None)
-        with pytest.raises(EventValidationError, match="not declared"):
-            checker.validate("unknown", {})
-
-    def test_raises_for_invalid_payload(self) -> None:
-        """Should raise EventValidationError for invalid payload."""
-        checker = EventChecker({"my.event": TypeSchema(type=Type.object)})
-        with pytest.raises(EventValidationError, match="failed validation"):
-            checker.validate("my.event", "not an object")
-
-    def test_valid_event_passes(self) -> None:
-        """Should not raise for valid event with matching payload."""
-        checker = EventChecker({"my.event": TypeSchema(type=Type.object)})
-        checker.validate("my.event", {"key": "value"})
-
-    def test_values_change_always_allowed(self) -> None:
-        """Should skip validation for values.change.* events."""
-        checker = EventChecker(None)
-        checker.validate("values.change.score", 42)

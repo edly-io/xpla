@@ -15,15 +15,11 @@ import urllib.request
 
 from extism import Json
 
-from server.activities.capabilities import (
-    Access,
-    ActionChecker,
-    CapabilityError,
-    CapabilityChecker,
-    EventChecker,
-    ValueChecker,
-    ValueType,
-)
+from server.activities.actions import ActionChecker
+from server.activities.capabilities import CapabilityChecker, CapabilityError
+from server.activities.events import EventChecker
+from server.activities.manifest_types import Access
+from server.activities.values import ValueChecker, ValueType
 from server.activities.manifest_types import GulpsActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor

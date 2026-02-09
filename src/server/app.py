@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
-from server.activities.capabilities import Access, ActionValidationError
+from server.activities.actions import ActionValidationError
+from server.activities.manifest_types import Access
 from server import constants
 
 
