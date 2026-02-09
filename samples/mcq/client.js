@@ -9,9 +9,8 @@ export function setup(activity) {
   function getConfig() {
     return {
       question: activity.values.question || "",
-      // TODO MCQ values are JSON-serialized because we don't yet support complex types in activity values
-      answers: JSON.parse(activity.values.answers || "[]"),
-      correct_answers: JSON.parse(activity.values.correct_answers || "[]"),
+      answers: activity.values.answers || [],
+      correct_answers: activity.values.correct_answers || [],
     };
   }
 
