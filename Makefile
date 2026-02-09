@@ -8,7 +8,9 @@ SERVER_WASMS := $(patsubst %/server.js,%/server.wasm,$(SERVER_JS_SOURCES))
 
 samples: $(SERVER_WASMS) ## Build all sandboxes for sample activities
 
-samples/%/server.wasm: samples/%/server.js src/sandbox-lib/sandbox.d.ts
+SANDBOX_LIB := $(wildcard src/sandbox-lib/*.js)
+
+samples/%/server.wasm: samples/%/server.js $(SANDBOX_LIB) src/sandbox-lib/sandbox.d.ts
 	./src/tools/js2wasm.py $< --output $@
 
 server: ## Run a development server
