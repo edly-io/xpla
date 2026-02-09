@@ -9,6 +9,10 @@ from typing import Any
 
 import extism
 
+# TODO this is not portable
+# This allows developers to log and troubleshoot issues with `console.log(...)`
+extism.set_log_file("/dev/stdout", "info")
+
 
 # TODO do we really need this class?
 class PluginRuntime:
