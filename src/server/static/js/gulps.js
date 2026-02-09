@@ -18,9 +18,7 @@ export class Gulps extends HTMLElement {
   connectedCallback() {
     const valuesAttr = this.getAttribute("data-values");
     if (valuesAttr) {
-      // TODO not all values should be available in all contexts. We need to
-      // introduce a permission system, were anonymous/student/autor/admin users
-      // have access to different values.
+      // Values are filtered server-side based on the simulated user's access level.
       this.values = JSON.parse(valuesAttr);
     }
 

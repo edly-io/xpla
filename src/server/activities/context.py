@@ -34,6 +34,7 @@ class MissingSandboxError(Exception):
 class ActivityContext:
     def __init__(self, activity_dir: Path) -> None:
         self._activity_dir = activity_dir
+        self._user_id: str = "alice"
 
         # Key-value store (used internally for value storage)
         self.kv_store = kv.get_default()
@@ -60,6 +61,14 @@ class ActivityContext:
     @property
     def activity_dir(self) -> Path:
         return self._activity_dir
+
+    @property
+    def user_id(self) -> str:
+        return self._user_id
+
+    @user_id.setter
+    def user_id(self, value: str) -> None:
+        self._user_id = value
 
     @property
     def name(self) -> str:
@@ -166,10 +175,9 @@ class ActivityContext:
 
     def get_user_id(self) -> str:
         """
-        Return the current user ID, inferred from the request.
+        Return the current user ID.
         """
-        # TODO actually fetch the user ID from the context.
-        return "anonymous"
+        return self._user_id
 
     def post_event(self, name: str, value: str) -> str:
         """Post an event to be sent back to the client.

@@ -15,6 +15,25 @@ from server.activities.actions import ActionValidationError
 from server.activities.manifest_types import Access
 from server import constants
 
+SIMULATED_USERS = ["alice", "bob", "charlie"]
+DEFAULT_USER = SIMULATED_USERS[0]
+DEFAULT_ACCESS = Access.user
+
+
+def get_simulation_params(request: Request) -> tuple[str, Access]:
+    """Read simulated user/access from cookies, with validation and fallback."""
+    user_id = request.cookies.get("gulps_user", DEFAULT_USER)
+    if user_id not in SIMULATED_USERS:
+        user_id = DEFAULT_USER
+
+    access_str = request.cookies.get("gulps_access", DEFAULT_ACCESS.value)
+    try:
+        access = Access(access_str)
+    except ValueError:
+        access = DEFAULT_ACCESS
+
+    return user_id, access
+
 
 class ActivityNotFound(Exception):
     """Raised when an activity cannot be found."""
@@ -63,9 +82,8 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    # TODO get user_id and user_access_level from session/auth
-    user_id = "anonymous"
-    user_access_level = Access.user  # Students have "user" access
+    user_id, user_access_level = get_simulation_params(request)
+    activity_context.user_id = user_id
     activity_values = activity_context.get_filtered_values(user_id, user_access_level)
 
     return templates.TemplateResponse(
@@ -74,6 +92,10 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
         context={
             "activity_context": activity_context,
             "values_json": json.dumps(activity_values),
+            "simulated_users": SIMULATED_USERS,
+            "current_user": user_id,
+            "access_levels": [a.value for a in Access],
+            "current_access": user_access_level.value,
         },
     )
 
@@ -109,6 +131,9 @@ async def call_plugin(
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
+    user_id, _ = get_simulation_params(request)
+    context.user_id = user_id
+
     body = await request.body()
     try:
         result = context.call_sandbox_function(function_name, body)
@@ -133,6 +158,9 @@ async def send_action(
         context = load_activity(activity_id)
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+    user_id, _ = get_simulation_params(request)
+    context.user_id = user_id
 
     # Parse action payload from request body
     action_value = await request.json()

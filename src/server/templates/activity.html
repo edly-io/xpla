@@ -5,6 +5,32 @@
 {% block body %}
 <script type="module" src="{{ url_for('static', path='js/gulps.js') }}"></script>
 <h2>{{ activity_context.name }}</h2>
+<div id="simulation-toolbar" style="margin-bottom: 1em; display: flex; gap: 1em; align-items: center;">
+  <label>User
+    <select id="sim-user">
+      {% for u in simulated_users %}
+      <option value="{{ u }}" {% if u == current_user %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Access
+    <select id="sim-access">
+      {% for a in access_levels %}
+      <option value="{{ a }}" {% if a == current_access %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+<script>
+  document.getElementById("sim-user").addEventListener("change", function() {
+    document.cookie = "gulps_user=" + this.value + "; path=/";
+    location.reload();
+  });
+  document.getElementById("sim-access").addEventListener("change", function() {
+    document.cookie = "gulps_access=" + this.value + "; path=/";
+    location.reload();
+  });
+</script>
 <gulps-activity
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
