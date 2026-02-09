@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
-from server.activities.capabilities import Access
+from server.activities.capabilities import Access, ActionValidationError
 from server import constants
 
 
@@ -123,27 +123,33 @@ async def call_plugin(
 logger = logging.getLogger(__name__)
 
 
-@app.post("/api/activity/{activity_id}/events/{event_name}")
-async def send_event(
-    activity_id: str, event_name: str, request: Request
+@app.post("/api/activity/{activity_id}/actions/{action_name}")
+async def send_action(
+    activity_id: str, action_name: str, request: Request
 ) -> JSONResponse:
-    """Send an event to the activity sandbox and receive response events."""
+    """Send an action to the activity sandbox and receive response events."""
     try:
         context = load_activity(activity_id)
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    # Parse event from request body
-    event_value = await request.json()
+    # Parse action payload from request body
+    action_value = await request.json()
 
-    # Call sandbox's onEvent if available
+    # Validate action against manifest
+    try:
+        context.action_checker.validate(action_name, action_value)
+    except ActionValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    # Call sandbox's onAction if available
     if context.sandbox is not None:
-        event_input = json.dumps({"name": event_name, "value": event_value})
+        action_input = json.dumps({"name": action_name, "value": action_value})
         try:
-            context.call_sandbox_function("onEvent", event_input.encode("utf-8"))
+            context.call_sandbox_function("onAction", action_input.encode("utf-8"))
         except RuntimeError as e:
-            # onEvent not defined in sandbox - log warning and continue
-            logger.warning("Activity '%s' has no onEvent handler: %s", activity_id, e)
+            # onAction not defined in sandbox - log warning and continue
+            logger.warning("Activity '%s' has no onAction handler: %s", activity_id, e)
 
     # Return events posted by sandbox
     events = context.clear_pending_events()

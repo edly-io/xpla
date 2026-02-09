@@ -24,5 +24,30 @@
       "access": "unit",
       "default": []
     }
+  },
+  "actions": {
+    "config.save": {
+      "type": "object",
+      "properties": {
+        "question": { "type": "string" },
+        "answers": { "type": "array", "items": { "type": "string" } },
+        "correct_answers": { "type": "array", "items": { "type": "integer" } }
+      }
+    },
+    "answer.submit": {
+      "type": "object",
+      "properties": {
+        "selected": { "type": "array", "items": { "type": "integer" } }
+      }
+    }
+  },
+  "events": {
+    "answer.result": {
+      "type": "object",
+      "properties": {
+        "correct": { "type": "boolean" },
+        "feedback": { "type": "string" }
+      }
+    }
   }
 }

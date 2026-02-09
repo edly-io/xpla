@@ -6,7 +6,7 @@
 declare module "main" {
     // Handle incoming events from the frontend
     // Input: JSON { "name": "...", "value": "..." }
-    export function onEvent(): I32;
+    export function onAction(): I32;
 }
 
 declare module "extism:host" {

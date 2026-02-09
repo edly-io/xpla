@@ -64,15 +64,15 @@ export class Gulps extends HTMLElement {
     return JSON.parse(data.result);
   }
 
-  async sendEvent(name, value = "") {
-    const response = await fetch("/api/activity/" + this.attributes.name.value + "/events/" + name, {
+  async sendAction(name, value = "") {
+    const response = await fetch("/api/activity/" + this.attributes.name.value + "/actions/" + name, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     });
 
     if (!response.ok) {
-      throw new Error(`Event send failed: ${response.status}`);
+      throw new Error(`Action send failed: ${response.status}`);
     }
 
     const data = await response.json();

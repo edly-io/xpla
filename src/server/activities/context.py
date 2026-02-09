@@ -17,8 +17,10 @@ from extism import Json
 
 from server.activities.capabilities import (
     Access,
+    ActionChecker,
     CapabilityError,
     CapabilityChecker,
+    EventChecker,
     ValueChecker,
     ValueType,
 )
@@ -48,6 +50,8 @@ class ActivityContext:
             self.manifest = GulpsActivityManifest.model_validate_json(f.read())
         self.checker = CapabilityChecker(self.manifest.capabilities)
         self.value_checker = ValueChecker(self.manifest.values)
+        self.action_checker = ActionChecker(self.manifest.actions)
+        self.event_checker = EventChecker(self.manifest.events)
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
@@ -175,7 +179,11 @@ class ActivityContext:
         """Post an event to be sent back to the client.
 
         Called by sandbox code to send events (e.g., value changes) to the frontend.
+
+        Raises:
+            EventValidationError: If the event is not declared in manifest.
         """
+        self.event_checker.validate(name, json.loads(value))
         self._pending_events.append({"name": name, "value": value})
         return ""
 

@@ -20,8 +20,12 @@ from server.activities.manifest_types import (
 
 __all__ = [
     "Access",
+    "ActionChecker",
+    "ActionValidationError",
     "CapabilityChecker",
     "CapabilityError",
+    "EventChecker",
+    "EventValidationError",
     "ValueChecker",
     "ValueType",
     "ValueValidationError",
@@ -78,6 +82,14 @@ class CapabilityError(Exception):
 
 class ValueValidationError(Exception):
     """Raised when a value validation fails."""
+
+
+class ActionValidationError(Exception):
+    """Raised when an action validation fails."""
+
+
+class EventValidationError(Exception):
+    """Raised when an event validation fails."""
 
 
 class ValueChecker:
@@ -209,3 +221,59 @@ class CapabilityChecker:
                 raise CapabilityError(
                     f"AI model '{model}' not allowed. " f"Allowed: {sorted(allowed)}"
                 )
+
+
+class ActionChecker:
+    """Validates actions against their manifest declarations."""
+
+    def __init__(self, actions: dict[str, TypeSchema] | None) -> None:
+        self._definitions = actions or {}
+
+    def validate(self, name: str, payload: Any) -> None:
+        """Validate an action name and payload against the manifest.
+
+        Raises:
+            ActionValidationError: If the action is not declared or payload is invalid.
+        """
+        if name not in self._definitions:
+            raise ActionValidationError(
+                f"Action '{name}' not declared in manifest. "
+                f"Declared: {sorted(self._definitions.keys())}"
+            )
+        schema = build_type_schema(self._definitions[name])
+        try:
+            jsonschema.validate(payload, schema)
+        except jsonschema.ValidationError as e:
+            raise ActionValidationError(
+                f"Action '{name}' payload failed validation: {e.message}"
+            ) from e
+
+
+class EventChecker:
+    """Validates events against their manifest declarations."""
+
+    def __init__(self, events: dict[str, TypeSchema] | None) -> None:
+        self._definitions = events or {}
+
+    def validate(self, name: str, payload: Any) -> None:
+        """Validate an event name and payload against the manifest.
+
+        values.change.* events are implicit and always allowed.
+
+        Raises:
+            EventValidationError: If the event is not declared or payload is invalid.
+        """
+        if name.startswith("values.change."):
+            return
+        if name not in self._definitions:
+            raise EventValidationError(
+                f"Event '{name}' not declared in manifest. "
+                f"Declared: {sorted(self._definitions.keys())}"
+            )
+        schema = build_type_schema(self._definitions[name])
+        try:
+            jsonschema.validate(payload, schema)
+        except jsonschema.ValidationError as e:
+            raise EventValidationError(
+                f"Event '{name}' payload failed validation: {e.message}"
+            ) from e

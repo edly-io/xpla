@@ -56,6 +56,16 @@
       "additionalProperties": {
         "$ref": "#/$defs/valueDefinition"
       }
+    },
+    "actions": {
+      "type": "object",
+      "description": "Actions the client can send to the server sandbox.",
+      "additionalProperties": { "$ref": "#/$defs/typeSchema" }
+    },
+    "events": {
+      "type": "object",
+      "description": "Events the server sandbox can emit to the client. values.change.* events are implicit.",
+      "additionalProperties": { "$ref": "#/$defs/typeSchema" }
     }
   },
   "$defs": {

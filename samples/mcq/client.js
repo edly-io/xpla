@@ -130,7 +130,7 @@ export function setup(activity) {
       const feedbackEl = container.querySelector("#save-feedback");
 
       try {
-        await activity.sendEvent(
+        await activity.sendAction(
           "config.save",
           { question, answers, correct_answers }
         );
@@ -191,7 +191,7 @@ export function setup(activity) {
       const feedbackEl = container.querySelector("#answer-feedback");
 
       try {
-        const events = await activity.sendEvent(
+        const events = await activity.sendAction(
           "answer.submit",
           // TODO should we just send selected? (no dict)
           { selected }

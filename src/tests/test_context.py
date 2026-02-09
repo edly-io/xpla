@@ -7,13 +7,23 @@ import urllib.error
 import pytest
 
 from server.activities.context import ActivityContext, MissingSandboxError
-from server.activities.capabilities import Access, ValueValidationError
+from server.activities.capabilities import (
+    Access,
+    ActionChecker,
+    ActionValidationError,
+    EventChecker,
+    EventValidationError,
+    ValueValidationError,
+)
+from server.activities.manifest_types import Type, TypeSchema
 
 
-def create_manifest(
+def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     name: str = "test-activity",
     capabilities: dict[str, Any] | None = None,
     values: dict[str, Any] | None = None,
+    actions: dict[str, Any] | None = None,
+    events: dict[str, Any] | None = None,
     client: str = "client.js",
     server: str | None = None,
 ) -> dict[str, Any]:
@@ -27,6 +37,10 @@ def create_manifest(
         manifest["server"] = server
     if values is not None:
         manifest["values"] = values
+    if actions is not None:
+        manifest["actions"] = actions
+    if events is not None:
+        manifest["events"] = events
     return manifest
 
 
@@ -676,39 +690,62 @@ class TestPostEvent:
 
     def test_appends_event_to_pending(self, tmp_path: Path) -> None:
         """Should append event to pending events list."""
-        manifest = create_manifest()
+        manifest = create_manifest(events={"test.event": {"type": "string"}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.post_event("test.event", "some value")
+        ctx.post_event("test.event", '"some value"')
 
         assert ctx.clear_pending_events() == [
-            {"name": "test.event", "value": "some value"}
+            {"name": "test.event", "value": '"some value"'}
         ]
 
     def test_appends_multiple_events(self, tmp_path: Path) -> None:
         """Should accumulate multiple events."""
-        manifest = create_manifest()
+        manifest = create_manifest(
+            events={"event1": {"type": "string"}, "event2": {"type": "string"}}
+        )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.post_event("event1", "value1")
-        ctx.post_event("event2", "value2")
+        ctx.post_event("event1", '"value1"')
+        ctx.post_event("event2", '"value2"')
 
         assert ctx.clear_pending_events() == [
-            {"name": "event1", "value": "value1"},
-            {"name": "event2", "value": "value2"},
+            {"name": "event1", "value": '"value1"'},
+            {"name": "event2", "value": '"value2"'},
         ]
 
     def test_returns_empty_string(self, tmp_path: Path) -> None:
         """Should return empty string as success indicator."""
+        manifest = create_manifest(events={"test": {"type": "string"}})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        result = ctx.post_event("test", '"value"')
+
+        assert result == ""
+
+    def test_allows_values_change_events(self, tmp_path: Path) -> None:
+        """Should allow values.change.* events without declaration."""
         manifest = create_manifest()
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.post_event("test", "value")
+        ctx.post_event("values.change.score", "42")
 
-        assert result == ""
+        assert ctx.clear_pending_events() == [
+            {"name": "values.change.score", "value": "42"}
+        ]
+
+    def test_raises_for_undeclared_event(self, tmp_path: Path) -> None:
+        """Should raise EventValidationError for undeclared event."""
+        manifest = create_manifest(events={"declared.event": {"type": "string"}})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(EventValidationError, match="not declared"):
+            ctx.post_event("unknown.event", '"value"')
 
 
 class TestClearPendingEvents:
@@ -716,17 +753,19 @@ class TestClearPendingEvents:
 
     def test_returns_and_clears_events(self, tmp_path: Path) -> None:
         """Should return pending events and clear the list."""
-        manifest = create_manifest()
+        manifest = create_manifest(
+            events={"event1": {"type": "string"}, "event2": {"type": "string"}}
+        )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        ctx.post_event("event1", "value1")
-        ctx.post_event("event2", "value2")
+        ctx.post_event("event1", '"value1"')
+        ctx.post_event("event2", '"value2"')
 
         result = ctx.clear_pending_events()
 
         assert result == [
-            {"name": "event1", "value": "value1"},
-            {"name": "event2", "value": "value2"},
+            {"name": "event1", "value": '"value1"'},
+            {"name": "event2", "value": '"value2"'},
         ]
         assert not ctx.clear_pending_events()
 
@@ -736,3 +775,50 @@ class TestClearPendingEvents:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         assert not ctx.clear_pending_events()
+
+
+class TestActionChecker:
+    """Tests for ActionChecker."""
+
+    def test_raises_for_undeclared_action(self) -> None:
+        """Should raise ActionValidationError for undeclared action."""
+        checker = ActionChecker(None)
+        with pytest.raises(ActionValidationError, match="not declared"):
+            checker.validate("unknown", {})
+
+    def test_raises_for_invalid_payload(self) -> None:
+        """Should raise ActionValidationError for invalid payload."""
+        checker = ActionChecker({"my.action": TypeSchema(type=Type.object)})
+        with pytest.raises(ActionValidationError, match="failed validation"):
+            checker.validate("my.action", "not an object")
+
+    def test_valid_action_passes(self) -> None:
+        """Should not raise for valid action with matching payload."""
+        checker = ActionChecker({"my.action": TypeSchema(type=Type.object)})
+        checker.validate("my.action", {"key": "value"})
+
+
+class TestEventChecker:
+    """Tests for EventChecker."""
+
+    def test_raises_for_undeclared_event(self) -> None:
+        """Should raise EventValidationError for undeclared event."""
+        checker = EventChecker(None)
+        with pytest.raises(EventValidationError, match="not declared"):
+            checker.validate("unknown", {})
+
+    def test_raises_for_invalid_payload(self) -> None:
+        """Should raise EventValidationError for invalid payload."""
+        checker = EventChecker({"my.event": TypeSchema(type=Type.object)})
+        with pytest.raises(EventValidationError, match="failed validation"):
+            checker.validate("my.event", "not an object")
+
+    def test_valid_event_passes(self) -> None:
+        """Should not raise for valid event with matching payload."""
+        checker = EventChecker({"my.event": TypeSchema(type=Type.object)})
+        checker.validate("my.event", {"key": "value"})
+
+    def test_values_change_always_allowed(self) -> None:
+        """Should skip validation for values.change.* events."""
+        checker = EventChecker(None)
+        checker.validate("values.change.score", 42)

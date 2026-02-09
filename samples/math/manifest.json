@@ -16,5 +16,23 @@
       "access": "user",
       "default": 0
     }
+  },
+  "actions": {
+    "answer.submit": {
+      "type": "object",
+      "properties": {
+        "question": { "type": "string" },
+        "answer": { "type": "string" }
+      }
+    }
+  },
+  "events": {
+    "answer.result": {
+      "type": "object",
+      "properties": {
+        "correct": { "type": "boolean" },
+        "feedback": { "type": "string" }
+      }
+    }
   }
 }

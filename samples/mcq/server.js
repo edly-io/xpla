@@ -1,21 +1,21 @@
 // MCQ plugin - validates answers and saves configuration via WASM backend
 //
-// Events handled:
+// Actions handled:
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
 import { postEvent, getValue, setValue } from "../../src/sandbox-lib";
 
-// Handle incoming events from frontend
-function onEvent() {
+// Handle incoming actions from frontend
+function onAction() {
   const input = JSON.parse(Host.inputString());
-  const eventName = input.name;
-  const eventValue = input.value;
+  const actionName = input.name;
+  const actionValue = input.value;
 
-  if (eventName === "config.save") {
-    handleConfigSave(eventValue);
-  } else if (eventName === "answer.submit") {
-    handleAnswerSubmit(eventValue);
+  if (actionName === "config.save") {
+    handleConfigSave(actionValue);
+  } else if (actionName === "answer.submit") {
+    handleAnswerSubmit(actionValue);
   }
 }
 
@@ -58,4 +58,4 @@ function handleAnswerSubmit(submission) {
   postEvent("answer.result", { correct: isCorrect, feedback });
 }
 
-module.exports = { onEvent };
+module.exports = { onAction };

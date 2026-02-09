@@ -76,8 +76,8 @@ export function setup(activity) {
     const userAnswer = answerInput.value.trim();
 
     try {
-      // Send event to backend
-      const events = await activity.sendEvent(
+      // Send action to backend
+      const events = await activity.sendAction(
         "answer.submit",
         { question: current.expression, answer: userAnswer }
       );

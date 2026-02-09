@@ -81,3 +81,50 @@ class TestPluginEndpoint:
             "/api/test-activity/plugin/test_function", content="test"
         )
         assert response.status_code == 404
+
+
+class TestActionEndpoint:
+    """Tests for action endpoint."""
+
+    def test_returns_422_for_undeclared_action(
+        self, samples_dir: Path, client: TestClient
+    ) -> None:
+        """Should return 422 when action is not declared in manifest."""
+        # Update manifest to include actions
+        activity_path = samples_dir / "test-activity"
+        manifest: dict[str, Any] = {
+            "name": "test-activity",
+            "client": "client.js",
+            "capabilities": {},
+            "actions": {
+                "known.action": {"type": "object"},
+            },
+        }
+        (activity_path / "manifest.json").write_text(json.dumps(manifest))
+
+        response = client.post(
+            "/api/activity/test-activity/actions/unknown.action",
+            json={"data": "test"},
+        )
+        assert response.status_code == 422
+
+    def test_returns_422_for_invalid_payload(
+        self, samples_dir: Path, client: TestClient
+    ) -> None:
+        """Should return 422 when action payload doesn't match schema."""
+        activity_path = samples_dir / "test-activity"
+        manifest: dict[str, Any] = {
+            "name": "test-activity",
+            "client": "client.js",
+            "capabilities": {},
+            "actions": {
+                "typed.action": {"type": "integer"},
+            },
+        }
+        (activity_path / "manifest.json").write_text(json.dumps(manifest))
+
+        response = client.post(
+            "/api/activity/test-activity/actions/typed.action",
+            json="not an integer",
+        )
+        assert response.status_code == 422

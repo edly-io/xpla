@@ -1,7 +1,7 @@
 // Math quiz plugin - validates answers and submits grades via WASM backend
 //
-// This plugin demonstrates the event-driven architecture:
-// - Receives events via onEvent
+// This plugin demonstrates the action/event architecture:
+// - Receives actions via onAction
 // - Sends events back via post_event host function
 // - Updates values via values.change.* events
 // - Persists counters via get_value/set_value host functions
@@ -14,16 +14,16 @@ import {
 
 const { submit_grade } = Host.getFunctions();
 
-// Handle incoming events from frontend
+// Handle incoming actions from frontend
 // Input: JSON { "name": "...", "value": "..." }
-function onEvent() {
+function onAction() {
   const input = JSON.parse(Host.inputString());
-  const eventName = input.name;
-  const eventValue = input.value;
+  const actionName = input.name;
+  const actionValue = input.value;
 
-  if (eventName === "answer.submit") {
+  if (actionName === "answer.submit") {
     // Parse the submission: { question: "2+2", answer: "4" }
-    const submission = eventValue;
+    const submission = actionValue;
     const result = checkAnswer(submission.question, submission.answer);
 
     // Update counters and emit value change events
@@ -97,4 +97,4 @@ function checkAnswer(question, answer) {
   return { correct, score, feedback };
 }
 
-module.exports = { onEvent };
+module.exports = { onAction };

@@ -68,7 +68,9 @@ my-activity/
   "client": "client.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {}
+  "values": {},
+  "actions": {},
+  "events": {}
 }
 ```
 
@@ -77,6 +79,8 @@ my-activity/
 - `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 - `values` (optional, defaults to `{}`): Declares per-user values that the activity tracks. Values are validated at runtime.
+- `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
+- `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. `values.change.*` events are implicit and don't need to be declared. Validated at runtime.
 
 The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.schema.json`](./src/sandbox-lib/manifest.schema.json). To validate a manifest:
 
@@ -110,6 +114,35 @@ Each value must have a `type`, `scope`, and `access` field. An optional `default
 - `"unit"`: Visible to course authors only. Use for sensitive data like correct answers.
 - `"course"`, `"platform"`: Reserved for future use.
 
+##### Actions & Events
+
+Activities communicate between client and server using **actions** (client→server) and **events** (server→client). Both are declared in the manifest with a payload type schema:
+
+```json
+{
+  "actions": {
+    "answer.submit": {
+      "type": "object",
+      "properties": {
+        "question": { "type": "string" },
+        "answer": { "type": "string" }
+      }
+    }
+  },
+  "events": {
+    "answer.result": {
+      "type": "object",
+      "properties": {
+        "correct": { "type": "boolean" },
+        "feedback": { "type": "string" }
+      }
+    }
+  }
+}
+```
+
+Payloads are validated at runtime: sending an undeclared action or emitting an undeclared event raises a validation error. `values.change.*` events are implicit (auto-derived from `values` declarations) and don't need to be declared.
+
 #### Client module (declared via `client` field)
 
 This client-side scripting module will be loaded alongside the `<gulps-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<gulps-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
@@ -138,11 +171,10 @@ export function setup(activity) {
 The `activity` object exposes the following properties and methods:
 
 - `values`: An object containing the current user's values as declared in `manifest.json`. For example, if the manifest declares `correct_answers` and `wrong_answers`, you can access them as `activity.values.correct_answers` and `activity.values.wrong_answers`.
-- `callSandboxFunction(name, body)`: Calls a function in the backend sandbox. This is particularly useful for submitting student responses to an assessment.
+- `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
+- `onValueChange(name, value)`: Override this callback to react to `values.change.*` events from the server.
 
 The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js).
-
-Note: this pattern is likely to evolve in the near future. We might trade arbitrary sandboxed function calling with a more classical event-driven architecture.
 
 #### Server sandbox (declared via `server` field)
 
@@ -189,22 +221,22 @@ setUserValue("correct_answers", count + 1);
 
 ##### Exported functions
 
-The sandbox script must export an `onEvent` function to receive events from the frontend:
+The sandbox script must export an `onAction` function to receive actions from the frontend:
 
 ```javascript
 // Input: JSON { "name": "...", "value": "..." }
-function onEvent() {
+function onAction() {
   const input = JSON.parse(Host.inputString());
-  const eventName = input.name;
-  const eventValue = input.value;
+  const actionName = input.name;
+  const actionValue = input.value;
 
-  // Process event...
+  // Process action...
 }
 
-module.exports = { onEvent };
+module.exports = { onAction };
 ```
 
-The `onEvent` function is called whenever the frontend sends an event via `activity.sendEvent(name, value)`. The sandbox can send events back to the frontend using the `post_event` host function.
+The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to the frontend using the `postEvent` helper (which calls the `post_event` host function).
 
 ### Building sample activities
 
