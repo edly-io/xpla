@@ -4,6 +4,7 @@
     "esbuild": "^0.25.0"
   },
   "dependencies": {
+    "marked": "^15.0.0",
     "plyr": "^3.7.8"
   }
 }
