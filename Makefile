@@ -5,13 +5,17 @@
 
 SERVER_JS_SOURCES := $(wildcard samples/*/server.js)
 SERVER_WASMS := $(patsubst %/server.js,%/server.wasm,$(SERVER_JS_SOURCES))
+CLIENT_BUNDLES := $(shell grep -rl '"client.bundle.js"' samples/*/manifest.json 2>/dev/null | sed 's|manifest.json|client.bundle.js|')
 
-samples: $(SERVER_WASMS) ## Build all sandboxes for sample activities
+samples: $(SERVER_WASMS) $(CLIENT_BUNDLES) ## Build all sandboxes for sample activities
 
 SANDBOX_LIB := $(wildcard src/sandbox-lib/*.js)
 
 samples/%/server.wasm: samples/%/server.js $(SANDBOX_LIB) src/sandbox-lib/sandbox.d.ts
 	./src/tools/js2wasm.py $< --output $@
+
+samples/%/client.bundle.js: samples/%/client.js
+	./src/tools/bundle_client.py $< --output $@
 
 server: ## Run a development server
 	fastapi dev src/server/app.py

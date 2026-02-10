@@ -1,0 +1,22 @@
+{
+  "name": "video",
+  "client": "client.bundle.js",
+  "server": "server.wasm",
+  "capabilities": {},
+  "values": {
+    "video_url": {
+      "type": "string",
+      "scope": "unit",
+      "default": ""
+    }
+  },
+  "actions": {
+    "config.save": {
+      "type": "object",
+      "properties": {
+        "video_url": { "type": "string" }
+      }
+    }
+  },
+  "events": {}
+}

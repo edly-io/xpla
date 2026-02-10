@@ -1,6 +1,7 @@
 # Runtime data
 dist/
 samples/**/*.wasm
+samples/**/*.bundle.js
 
 # Python
 __pycache__/
