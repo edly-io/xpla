@@ -2,7 +2,7 @@
 // Supports author view (configure video ID) and student view (watch video)
 
 export function setup(activity) {
-  const element = activity.shadow;
+  const element = activity.element;
   const permission = activity.permission;
 
   function getVideoId() {

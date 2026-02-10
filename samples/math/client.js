@@ -26,7 +26,7 @@ function generateQuestion() {
 }
 
 export function setup(activity) {
-  var element = activity.shadow;
+  var element = activity.element;
 
   element.innerHTML = `
     <p>Answer the math question below. Your answer will be validated by the WASM backend and your grade will be submitted to the LMS.</p>

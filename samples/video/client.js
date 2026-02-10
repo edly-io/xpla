@@ -37,7 +37,7 @@ function inlineIcons(root) {
 }
 
 export function setup(activity) {
-  const element = activity.shadow;
+  const element = activity.element;
   const permission = activity.permission;
   let player = null;
 

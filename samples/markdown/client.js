@@ -2,7 +2,7 @@
 // Supports author view (edit markdown) and student view (rendered HTML)
 
 export function setup(activity) {
-  const element = activity.shadow;
+  const element = activity.element;
   const permission = activity.permission;
 
   function render() {

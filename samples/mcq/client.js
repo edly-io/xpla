@@ -2,7 +2,7 @@
 // Supports author view (define question/answers) and student view (answer question)
 
 export function setup(activity) {
-  const element = activity.shadow;
+  const element = activity.element;
   const permission = activity.permission;
   let isAuthorView = permission === "edit";
 

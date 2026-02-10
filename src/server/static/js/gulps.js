@@ -1,7 +1,7 @@
 export class Gulps extends HTMLElement {
   constructor() {
     super();
-    this.shadow = this.attachShadow({ mode: "closed" });
+    this.element = this.attachShadow({ mode: "closed" });
     var sheet = new CSSStyleSheet();
     // TODO how to pass CSS from the host to the shadow element? Should this be part of the standard?
     sheet.replaceSync(`
@@ -11,7 +11,7 @@ export class Gulps extends HTMLElement {
           border: 1px solid #ccc;
         }
     `);
-    this.shadow.adoptedStyleSheets = [sheet];
+    this.element.adoptedStyleSheets = [sheet];
     this.values = {};
     this.permission = "view";
   }
@@ -35,7 +35,7 @@ export class Gulps extends HTMLElement {
   }
 
   render() {
-    this.shadow.innerHTML = "Empty activity";
+    this.element.innerHTML = "Empty activity";
   }
 
 

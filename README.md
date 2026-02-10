@@ -156,7 +156,7 @@ This client-side scripting module will be loaded alongside the `<gulps-activity>
 export function setup(activity) {
   // activity is the <gulps-activity> DOM element
   // Inject HTML into the activity
-  activity.shadow.innerHTML = `
+  activity.element.innerHTML = `
     <h2>Welcome to my activity!</h2>
     <form>
       <input type="text" name="answer">
@@ -165,7 +165,7 @@ export function setup(activity) {
   `;
 
   // Add event listeners
-  const form = activity.shadow.querySelector("form");
+  const form = activity.element.querySelector("form");
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     ...
@@ -175,6 +175,7 @@ export function setup(activity) {
 
 The `activity` object exposes the following properties and methods:
 
+- `element`: the DOM element to which this activity is attached.
 - `values`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared values if `getState` is not exported). Updated in-place when `values.change.*` events arrive.
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
