@@ -55,6 +55,7 @@ def bundle_client(input_js: Path, output_js: Path) -> None:
             "--bundle",
             "--format=esm",
             "--loader:.css=text",
+            "--loader:.svg=text",
             f"--outfile={output_js}",
         ]
     )

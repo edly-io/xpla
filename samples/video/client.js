@@ -1,25 +1,50 @@
-// Activity script for video player (Video.js)
+// Activity script for video player (Plyr)
 // Supports author view (configure video URL) and student view (watch video)
 //
-// Video.js does not support shadow DOM (https://github.com/videojs/video.js/issues/8069),
-// so the player is rendered in the light DOM and projected into the shadow DOM via <slot>.
+// Plyr uses SVG <use href="#plyr-play"> references for icons, which don't work
+// in shadow DOM (fragment refs resolve against the document root, not the shadow
+// root). We work around this by parsing the SVG sprite at init time and replacing
+// every <use> element with the actual inline <path> content after Plyr builds
+// its controls.
 
-import videojs from "video.js";
-import videojsCss from "video.js/dist/video-js.css";
+import Plyr from "plyr";
+import plyrCss from "plyr/dist/plyr.css";
+import plyrSvg from "../../node_modules/plyr/dist/plyr.svg";
+
+// Parse the SVG sprite once: build a map of id -> SVG inner content
+const iconMap = buildIconMap(plyrSvg);
+
+function buildIconMap(svgText) {
+  const map = {};
+  const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+  for (const symbol of doc.querySelectorAll("symbol[id]")) {
+    map["#" + symbol.id] = symbol.innerHTML;
+  }
+  return map;
+}
+
+function inlineIcons(root) {
+  for (const use of root.querySelectorAll("use")) {
+    const href =
+      use.getAttribute("href") || use.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+    if (href && iconMap[href]) {
+      const parent = use.closest("svg");
+      if (parent) {
+        parent.innerHTML = iconMap[href];
+      }
+    }
+  }
+}
 
 export function setup(activity) {
   const element = activity.shadow;
-  const host = activity; // the custom element itself (light DOM)
   const permission = activity.permission;
   let player = null;
 
-  // Inject Video.js CSS into document head (once, for light DOM elements)
-  if (!document.querySelector("style[data-videojs]")) {
-    const style = document.createElement("style");
-    style.dataset.videojs = "";
-    style.textContent = videojsCss;
-    document.head.appendChild(style);
-  }
+  // Inject Plyr CSS into shadow DOM via adoptedStyleSheets
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(plyrCss);
+  element.adoptedStyleSheets = [...element.adoptedStyleSheets, sheet];
 
   function getVideoUrl() {
     return activity.values.video_url || "";
@@ -35,12 +60,10 @@ export function setup(activity) {
   }
 
   function renderEditView(videoUrl) {
-    disposePlayer();
-    clearContent();
-
+    destroyPlayer();
     element.innerHTML = `
       <style>
-        .video-container { font-family: sans-serif; max-width: 640px; }
+        // .video-container { font-family: sans-serif; max-width: 640px; }
         .video-input { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
         .video-input input { flex: 1; padding: 0.25rem; }
         .save-btn { padding: 0.5rem 1rem; cursor: pointer; }
@@ -57,7 +80,7 @@ export function setup(activity) {
           <button type="button" class="save-btn" id="save-btn">Save</button>
         </div>
         <div id="save-feedback"></div>
-        <slot name="video-player"></slot>
+        <div id="player-container"></div>
         ${!videoUrl ? '<p class="no-video">No video to preview.</p>' : ""}
       </div>
     `;
@@ -81,13 +104,10 @@ export function setup(activity) {
   }
 
   function renderPlayView(videoUrl) {
-    disposePlayer();
-    clearContent();
-
+    destroyPlayer();
     if (videoUrl) {
       element.innerHTML = `
-        <style>.video-container { max-width: 640px; }</style>
-        <div class="video-container"><slot name="video-player"></slot></div>
+        <div class="video-container"><div id="player-container"></div></div>
       `;
       createPlayer(videoUrl);
     } else {
@@ -99,37 +119,25 @@ export function setup(activity) {
   }
 
   function createPlayer(url) {
-    const wrapper = document.createElement("div");
-    wrapper.setAttribute("slot", "video-player");
-    wrapper.dataset.videoplayer = "";
-
+    const container = element.querySelector("#player-container");
     const video = document.createElement("video");
-    video.className = "video-js";
     video.setAttribute("controls", "");
-    video.setAttribute("preload", "auto");
-    video.setAttribute("width", "640");
-    video.setAttribute("height", "360");
-    wrapper.appendChild(video);
-
-    // Append to host (light DOM) — projected into shadow DOM via <slot>
-    host.appendChild(wrapper);
-
-    player = videojs(video, {
-      sources: [{ src: url, type: "video/mp4" }],
-    });
+    video.setAttribute("playsinline", "");
+    const source = document.createElement("source");
+    source.src = url;
+    source.type = "video/mp4";
+    video.appendChild(source);
+    container.appendChild(video);
+    player = new Plyr(video, { loadSprite: false });
+    // Replace <use> refs with inline SVG paths (shadow DOM workaround)
+    inlineIcons(container);
   }
 
-  function disposePlayer() {
+  function destroyPlayer() {
     if (player) {
-      player.dispose();
+      player.destroy();
       player = null;
     }
-    // Remove light DOM video elements
-    host.querySelectorAll("[data-videoplayer]").forEach((el) => el.remove());
-  }
-
-  function clearContent() {
-    element.innerHTML = "";
   }
 
   function escapeAttr(str) {
