@@ -90,15 +90,15 @@ The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.sc
 
 ##### Values
 
-Each value must have a `type`, `scope`, and `access` field. An optional `default` can be provided (must match the declared type). Type names follow [JSON Schema](https://json-schema.org/) vocabulary. Example:
+Each value must have a `type` and `scope` field. An optional `default` can be provided (must match the declared type). Type names follow [JSON Schema](https://json-schema.org/) vocabulary. Example:
 
 ```json
 {
   "values": {
-    "score": { "type": "integer", "scope": "user,unit", "access": "user", "default": 0 },
-    "question": { "type": "string", "scope": "unit", "access": "user", "default": "" },
-    "answers": { "type": "array", "items": { "type": "string" }, "scope": "unit", "access": "user", "default": [] },
-    "correct_answers": { "type": "array", "items": { "type": "integer" }, "scope": "unit", "access": "unit", "default": [] }
+    "score": { "type": "integer", "scope": "user,unit", "default": 0 },
+    "question": { "type": "string", "scope": "unit", "default": "" },
+    "answers": { "type": "array", "items": { "type": "string" }, "scope": "unit", "default": [] },
+    "correct_answers": { "type": "array", "items": { "type": "integer" }, "scope": "unit", "default": [] }
   }
 }
 ```
@@ -109,10 +109,15 @@ Each value must have a `type`, `scope`, and `access` field. An optional `default
 - `"user,unit"`: Per-user value, specific to this activity instance. Example: a student's score.
 - `"unit"`: Shared value for all users of this activity instance. Example: the question text configured by an instructor.
 
-**Access levels:** Control who can see each value in the frontend. Access is hierarchical (higher levels can see lower-level values).
-- `"user"`: Visible to students.
-- `"unit"`: Visible to course authors only. Use for sensitive data like correct answers.
-- `"course"`, `"platform"`: Reserved for future use.
+##### Permissions
+
+Access control is handled at runtime through **permissions** rather than per-value declarations. The platform sets a permission level for each request:
+
+- `"view"`: Read-only / anonymous access. Can see the activity but not interact.
+- `"play"`: Active participant (student). Can submit answers.
+- `"edit"`: Course author. Can configure the activity.
+
+The sandbox controls what state to expose to the client via an exported `getState()` function, which can check the current permission level using `getPermission()` from the sandbox library. Similarly, the sandbox can guard actions (e.g. reject submissions when permission is `"view"`).
 
 ##### Actions & Events
 
@@ -170,7 +175,8 @@ export function setup(activity) {
 
 The `activity` object exposes the following properties and methods:
 
-- `values`: An object containing the current user's values as declared in `manifest.json`. For example, if the manifest declares `correct_answers` and `wrong_answers`, you can access them as `activity.values.correct_answers` and `activity.values.wrong_answers`.
+- `values`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared values if `getState` is not exported). Updated in-place when `values.change.*` events arrive.
+- `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
 - `onValueChange(name, value)`: Override this callback to react to `values.change.*` events from the server.
 
@@ -193,7 +199,8 @@ A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/
 ```javascript
 import {
   postEvent,
-  getUser,
+  getPermission,
+  getUserId,
   getValue,
   setValue,
   getUserValue,
@@ -203,37 +210,45 @@ import {
 // Post an event to the frontend
 postEvent("answer.result", { correct: true });
 
-// Get current user (requires lms capability with get_user)
+// Get the current permission level ("view", "play", or "edit")
+const permission = getPermission();
+
+// Get current user ID
 const userId = getUserId();
 
-// Get/set user-scoped values (scope: "user,unit") - convenience functions
+// Get/set user-scoped values (scope: "user,unit")
 const score = getUserValue("correct_answers");
 setUserValue("correct_answers", score + 1);
 
-// Get/set shared values (scope: "unit") - use empty string for userId
+// Get/set shared values (scope: "unit")
 const question = getValue("question");
 setValue("question", "What is 2+2?");
-
-// Get/set with explicit userId (works for any scope)
-const count = getUserValue("correct_answers");
-setUserValue("correct_answers", count + 1);
 ```
 
 ##### Exported functions
 
-The sandbox script must export an `onAction` function to receive actions from the frontend:
+The sandbox script can export the following functions:
+
+- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`.
+- `getState()`: Called when the activity page loads. Returns a JSON string of values to send to the client. Use this to filter values based on the current permission level (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared values.
 
 ```javascript
-// Input: JSON { "name": "...", "value": "..." }
+import { getPermission, getValue } from "../../src/sandbox-lib";
+
+function getState() {
+  const state = { question: getValue("question") };
+  if (getPermission() === "edit") {
+    state.correct_answers = getValue("correct_answers");
+  }
+  Host.outputString(JSON.stringify(state));
+}
+
 function onAction() {
   const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
-
   // Process action...
 }
 
-module.exports = { onAction };
+module.exports = { onAction, getState };
 ```
 
 The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to the frontend using the `postEvent` helper (which calls the `post_event` host function).
@@ -263,6 +278,7 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 <!-- TODO are we actually exposing get_user_id? Should we? -->
 
 - `get_user_id() -> str`
+- `get_permission() -> str`
 - `post_event(name: str, value: str)`
 - `get_value(user_id: str, name: str)`
 - `set_value(user_id: str, name: str, value: str)`

@@ -8,7 +8,7 @@ import pytest
 
 from server.activities.context import ActivityContext, MissingSandboxError
 from server.activities.events import EventValidationError
-from server.activities.manifest_types import Access
+from server.activities.permission import Permission
 from server.activities.values import ValueValidationError
 
 
@@ -329,7 +329,6 @@ class TestLoadValue:
                 "score": {
                     "type": "integer",
                     "scope": "user,unit",
-                    "access": "user",
                     "default": 0,
                 }
             }
@@ -347,10 +346,10 @@ class TestLoadValue:
         """Should return type-specific default when no explicit default."""
         manifest = create_manifest(
             values={
-                "count": {"type": "integer", "scope": "user,unit", "access": "user"},
-                "ratio": {"type": "number", "scope": "user,unit", "access": "user"},
-                "name": {"type": "string", "scope": "user,unit", "access": "user"},
-                "done": {"type": "boolean", "scope": "user,unit", "access": "user"},
+                "count": {"type": "integer", "scope": "user,unit"},
+                "ratio": {"type": "number", "scope": "user,unit"},
+                "name": {"type": "string", "scope": "user,unit"},
+                "done": {"type": "boolean", "scope": "user,unit"},
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
@@ -369,7 +368,6 @@ class TestLoadValue:
                 "score": {
                     "type": "integer",
                     "scope": "user,unit",
-                    "access": "user",
                     "default": 0,
                 }
             }
@@ -386,9 +384,7 @@ class TestLoadValue:
     def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
         """Should raise for value not declared in manifest."""
         manifest = create_manifest(
-            values={
-                "score": {"type": "integer", "scope": "user,unit", "access": "user"}
-            }
+            values={"score": {"type": "integer", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -403,7 +399,6 @@ class TestLoadValue:
                 "score": {
                     "type": "integer",
                     "scope": "user,unit",
-                    "access": "user",
                     "default": 0,
                 }
             }
@@ -425,7 +420,6 @@ class TestLoadValue:
                 "question": {
                     "type": "string",
                     "scope": "unit",
-                    "access": "user",
                     "default": "",
                 }
             }
@@ -445,9 +439,7 @@ class TestStoreValue:
     def test_stores_integer(self, tmp_path: Path) -> None:
         """Should store and retrieve integer value."""
         manifest = create_manifest(
-            values={
-                "count": {"type": "integer", "scope": "user,unit", "access": "user"}
-            }
+            values={"count": {"type": "integer", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -460,7 +452,7 @@ class TestStoreValue:
     def test_stores_float(self, tmp_path: Path) -> None:
         """Should store and retrieve float value."""
         manifest = create_manifest(
-            values={"ratio": {"type": "number", "scope": "user,unit", "access": "user"}}
+            values={"ratio": {"type": "number", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -473,7 +465,7 @@ class TestStoreValue:
     def test_stores_string(self, tmp_path: Path) -> None:
         """Should store and retrieve string value."""
         manifest = create_manifest(
-            values={"name": {"type": "string", "scope": "user,unit", "access": "user"}}
+            values={"name": {"type": "string", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -486,9 +478,7 @@ class TestStoreValue:
     def test_stores_boolean(self, tmp_path: Path) -> None:
         """Should store and retrieve boolean value."""
         manifest = create_manifest(
-            values={
-                "completed": {"type": "boolean", "scope": "user,unit", "access": "user"}
-            }
+            values={"completed": {"type": "boolean", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -506,7 +496,6 @@ class TestStoreValue:
                     "type": "array",
                     "items": {"type": "string"},
                     "scope": "user,unit",
-                    "access": "user",
                 }
             }
         )
@@ -521,9 +510,7 @@ class TestStoreValue:
     def test_raises_for_wrong_type(self, tmp_path: Path) -> None:
         """Should raise when value type doesn't match declaration."""
         manifest = create_manifest(
-            values={
-                "count": {"type": "integer", "scope": "user,unit", "access": "user"}
-            }
+            values={"count": {"type": "integer", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -535,9 +522,7 @@ class TestStoreValue:
     def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
         """Should raise for value not declared in manifest."""
         manifest = create_manifest(
-            values={
-                "score": {"type": "integer", "scope": "user,unit", "access": "user"}
-            }
+            values={"score": {"type": "integer", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -549,9 +534,7 @@ class TestStoreValue:
     def test_overwrites_existing_value(self, tmp_path: Path) -> None:
         """Should overwrite previously stored value."""
         manifest = create_manifest(
-            values={
-                "count": {"type": "integer", "scope": "user,unit", "access": "user"}
-            }
+            values={"count": {"type": "integer", "scope": "user,unit"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -563,56 +546,37 @@ class TestStoreValue:
         assert ctx.load_value(user, "count") == 20
 
 
-class TestGetFilteredValues:
-    """Tests for get_filtered_values method."""
+class TestGetAllValues:
+    """Tests for get_all_values method."""
 
-    def test_filters_by_access_level(self, tmp_path: Path) -> None:
-        """Should exclude values above user's access level."""
+    def test_returns_all_values(self, tmp_path: Path) -> None:
+        """Should return all declared values."""
         manifest = create_manifest(
             values={
-                "public": {"type": "string", "scope": "unit", "access": "user"},
-                "secret": {"type": "string", "scope": "unit", "access": "unit"},
+                "public": {"type": "string", "scope": "unit"},
+                "secret": {"type": "string", "scope": "unit"},
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        # User with "user" access should only see public value
-        result = ctx.get_filtered_values(unique_user(tmp_path), Access.user)
-        assert "public" in result
-        assert "secret" not in result
-
-    def test_higher_access_sees_all(self, tmp_path: Path) -> None:
-        """User with higher access should see all values."""
-        manifest = create_manifest(
-            values={
-                "public": {"type": "string", "scope": "unit", "access": "user"},
-                "secret": {"type": "string", "scope": "unit", "access": "unit"},
-            }
-        )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        # User with "unit" access should see both values
-        result = ctx.get_filtered_values(unique_user(tmp_path), Access.unit)
+        result = ctx.get_all_values(unique_user(tmp_path))
         assert "public" in result
         assert "secret" in result
 
     def test_includes_user_scoped_values(self, tmp_path: Path) -> None:
-        """Should correctly handle user-scoped values with filtering."""
+        """Should include user-scoped values loaded for the given user."""
         manifest = create_manifest(
             values={
                 "score": {
                     "type": "integer",
                     "scope": "user,unit",
-                    "access": "user",
                     "default": 0,
                 },
-                "secret_score": {
-                    "type": "integer",
-                    "scope": "user,unit",
-                    "access": "unit",
-                    "default": 0,
+                "question": {
+                    "type": "string",
+                    "scope": "unit",
+                    "default": "",
                 },
             }
         )
@@ -621,62 +585,112 @@ class TestGetFilteredValues:
         user = unique_user(tmp_path)
 
         ctx.store_value(user, "score", 42)
-        ctx.store_value(user, "secret_score", 100)
+        ctx.store_value("", "question", "What is 2+2?")
 
-        # User access should only see score
-        result = ctx.get_filtered_values(user, Access.user)
-        assert result == {"score": 42}
+        result = ctx.get_all_values(user)
+        assert result == {"score": 42, "question": "What is 2+2?"}
 
-        # Unit access should see both
-        result = ctx.get_filtered_values(user, Access.unit)
-        assert result == {"score": 42, "secret_score": 100}
 
-    def test_mcq_scenario(self, tmp_path: Path) -> None:
-        """Test realistic MCQ scenario where correct_answers is hidden from students."""
+class TestGetPermission:
+    """Tests for get_permission host function."""
+
+    def test_default_permission(self, tmp_path: Path) -> None:
+        """Should default to 'view' permission."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        assert ctx.get_permission() == "view"
+
+    def test_set_permission(self, tmp_path: Path) -> None:
+        """Should return the permission that was set."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.permission = Permission.edit
+        assert ctx.get_permission() == "edit"
+
+        ctx.permission = Permission.play
+        assert ctx.get_permission() == "play"
+
+    def test_in_host_functions(self, tmp_path: Path) -> None:
+        """get_permission should be in the host functions list."""
+        manifest = create_manifest()
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        function_names = [f.__name__ for f in ctx.host_functions()]
+        assert "get_permission" in function_names
+
+
+class TestGetState:
+    """Tests for get_state method."""
+
+    def test_fallback_without_sandbox(self, tmp_path: Path) -> None:
+        """Should fall back to get_all_values when no sandbox exists."""
         manifest = create_manifest(
             values={
-                "question": {
-                    "type": "string",
-                    "scope": "unit",
-                    "access": "user",
-                    "default": "",
-                },
-                "answers": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "scope": "unit",
-                    "access": "user",
-                    "default": [],
-                },
-                "correct_answers": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "scope": "unit",
-                    "access": "unit",
-                    "default": [],
+                "score": {
+                    "type": "integer",
+                    "scope": "user,unit",
+                    "default": 0,
                 },
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
+        ctx.user_id = "alice"
 
-        # Set up MCQ
-        ctx.store_value("", "question", "What is 2+2?")
-        ctx.store_value("", "answers", ["3", "4", "5"])
-        ctx.store_value("", "correct_answers", [1])
+        result = ctx.get_state()
+        assert result == {"score": 0}
 
-        # Student (user access) should NOT see correct_answers
-        student_values = ctx.get_filtered_values("student1", Access.user)
-        assert "question" in student_values
-        assert "answers" in student_values
-        assert "correct_answers" not in student_values
+    @patch("server.activities.context.SandboxExecutor")
+    def test_calls_sandbox_getState(
+        self, mock_sandbox_class: MagicMock, tmp_path: Path
+    ) -> None:
+        """Should call sandbox getState when available."""
+        manifest = create_manifest(server="server.wasm")
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
-        # Author (unit access) should see correct_answers
-        author_values = ctx.get_filtered_values("author1", Access.unit)
-        assert "question" in author_values
-        assert "answers" in author_values
-        assert "correct_answers" in author_values
-        assert author_values["correct_answers"] == [1]
+        mock_sandbox = MagicMock()
+        mock_sandbox.call_function.return_value = b'{"question": "test"}'
+        mock_sandbox_class.return_value = mock_sandbox
+
+        ctx = ActivityContext(activity_dir)
+        result = ctx.get_state()
+
+        mock_sandbox.call_function.assert_called_once_with("getState", b"")
+        assert result == {"question": "test"}
+
+    @patch("server.activities.context.SandboxExecutor")
+    def test_fallback_on_runtime_error(
+        self, mock_sandbox_class: MagicMock, tmp_path: Path
+    ) -> None:
+        """Should fall back to get_all_values when getState raises RuntimeError."""
+        manifest = create_manifest(
+            server="server.wasm",
+            values={
+                "score": {
+                    "type": "integer",
+                    "scope": "user,unit",
+                    "default": 0,
+                },
+            },
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
+
+        mock_sandbox = MagicMock()
+        mock_sandbox.call_function.side_effect = RuntimeError("getState not found")
+        mock_sandbox_class.return_value = mock_sandbox
+
+        ctx = ActivityContext(activity_dir)
+        ctx.user_id = "alice"
+        result = ctx.get_state()
+
+        assert result == {"score": 0}
 
 
 class TestPostEvent:

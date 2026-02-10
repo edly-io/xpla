@@ -1,11 +1,10 @@
-"""Value validation and access control."""
+"""Value validation."""
 
 from typing import Any
 
 import jsonschema
 
 from server.activities.manifest_types import (
-    Access,
     Scope,
     Type,
     TypeSchema,
@@ -39,14 +38,6 @@ _JSON_SCHEMA_TYPE: dict[Type, str] = {
     Type.boolean: "boolean",
     Type.array: "array",
     Type.object: "object",
-}
-
-# Access level hierarchy (higher number = more privileged)
-ACCESS_HIERARCHY: dict[Access, int] = {
-    Access.user: 0,
-    Access.unit: 1,
-    Access.course: 2,
-    Access.platform: 3,
 }
 
 
@@ -125,19 +116,3 @@ class ValueChecker:
     def shared_value_names(self) -> list[str]:
         """Return names of non-user-scoped (shared) values."""
         return [name for name in self.value_names if not self.is_user_scoped(name)]
-
-    def get_access_level(self, name: str) -> Access:
-        """Get the access level for a value."""
-        definition = self.get_definition(name)
-        return definition.access
-
-    def can_access(self, name: str, user_access_level: Access) -> bool:
-        """Check if a user with given access level can see this value.
-
-        Access levels are hierarchical: a user with higher access can see
-        values with lower or equal access requirements.
-        """
-        value_access = self.get_access_level(name)
-        user_rank = ACCESS_HIERARCHY[user_access_level]
-        value_rank = ACCESS_HIERARCHY[value_access]
-        return user_rank >= value_rank

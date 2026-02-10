@@ -13,10 +13,10 @@
       {% endfor %}
     </select>
   </label>
-  <label>Access
-    <select id="sim-access">
-      {% for a in access_levels %}
-      <option value="{{ a }}" {% if a == current_access %}selected{% endif %}>{{ a }}</option>
+  <label>Permission
+    <select id="sim-permission">
+      {% for p in permission_levels %}
+      <option value="{{ p }}" {% if p == current_permission %}selected{% endif %}>{{ p }}</option>
       {% endfor %}
     </select>
   </label>
@@ -26,15 +26,16 @@
     document.cookie = "gulps_user=" + this.value + "; path=/";
     location.reload();
   });
-  document.getElementById("sim-access").addEventListener("change", function() {
-    document.cookie = "gulps_access=" + this.value + "; path=/";
+  document.getElementById("sim-permission").addEventListener("change", function() {
+    document.cookie = "gulps_permission=" + this.value + "; path=/";
     location.reload();
   });
 </script>
 <gulps-activity
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
-    data-values="{{ values_json | escape }}"
+    data-state="{{ state_json | escape }}"
+    data-permission="{{ current_permission }}"
 ></gulps-activity>
 
 {% endblock %}

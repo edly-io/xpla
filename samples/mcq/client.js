@@ -3,7 +3,8 @@
 
 export function setup(activity) {
   const element = activity.shadow;
-  let isAuthorView = true;
+  const permission = activity.permission;
+  let isAuthorView = permission === "edit";
 
   // Parse stored config from values
   function getConfig() {
@@ -14,10 +15,14 @@ export function setup(activity) {
     };
   }
 
-  // Render the toggle button and current view
+  // Render the toggle button (if edit) and current view
   function render() {
     const config = getConfig();
     const hasConfig = config.question && config.answers.length > 0;
+
+    const toggleHtml = permission === "edit"
+      ? `<button class="toggle-btn" id="toggle-view">Switch to ${isAuthorView ? "Student" : "Author"} View</button>`
+      : "";
 
     element.innerHTML = `
       <style>
@@ -36,9 +41,7 @@ export function setup(activity) {
         .no-config { color: #666; font-style: italic; }
       </style>
       <div class="mcq-container">
-        <button class="toggle-btn" id="toggle-view">
-          Switch to ${isAuthorView ? "Student" : "Author"} View
-        </button>
+        ${toggleHtml}
         <div id="view-container"></div>
       </div>
     `;
@@ -51,11 +54,14 @@ export function setup(activity) {
       renderStudentView(viewContainer, config, hasConfig);
     }
 
-    // Toggle button handler
-    element.querySelector("#toggle-view").addEventListener("click", () => {
-      isAuthorView = !isAuthorView;
-      render();
-    });
+    // Toggle button handler (only exists for "edit" permission)
+    const toggleBtn = element.querySelector("#toggle-view");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", () => {
+        isAuthorView = !isAuthorView;
+        render();
+      });
+    }
   }
 
   // Author view: edit question, answers, and correct answers
@@ -162,26 +168,33 @@ export function setup(activity) {
       return;
     }
 
+    const canSubmit = permission !== "view";
     const answersHtml = config.answers
       .map(
         (ans, i) => `
         <div class="student-answer">
-          <input type="checkbox" id="answer-${i}" data-index="${i}">
+          <input type="checkbox" id="answer-${i}" data-index="${i}" ${canSubmit ? "" : "disabled"}>
           <label for="answer-${i}">${escapeHtml(ans)}</label>
         </div>
       `
       )
       .join("");
 
+    const submitHtml = canSubmit
+      ? `<button type="button" class="submit-btn" id="submit-answer">Submit</button>`
+      : "";
+
     container.innerHTML = `
       <div class="student-view">
         <h3>Student View</h3>
         <p><strong>${escapeHtml(config.question)}</strong></p>
         <div id="student-answers">${answersHtml}</div>
-        <button type="button" class="submit-btn" id="submit-answer">Submit</button>
+        ${submitHtml}
         <div id="answer-feedback"></div>
       </div>
     `;
+
+    if (!canSubmit) return;
 
     container.querySelector("#submit-answer").addEventListener("click", async () => {
       const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');

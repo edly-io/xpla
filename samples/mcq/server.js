@@ -4,7 +4,7 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { postEvent, getValue, setValue } from "../../src/sandbox-lib";
+import { postEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
 
 // Handle incoming actions from frontend
 function onAction() {
@@ -19,8 +19,24 @@ function onAction() {
   }
 }
 
+// Return state visible to the current user based on permission level.
+function getState() {
+  const state = {
+    question: getValue("question"),
+    answers: getValue("answers"),
+  };
+  if (getPermission() === "edit") {
+    state.correct_answers = getValue("correct_answers");
+  }
+  Host.outputString(JSON.stringify(state));
+}
+
 // Save configuration (question, answers, correct_answers)
 function handleConfigSave(config) {
+  if (getPermission() !== "edit") {
+    console.log("config.save rejected: permission is " + getPermission());
+    return;
+  }
   setValue("question", config.question);
   setValue("answers", config.answers);
   setValue("correct_answers", config.correct_answers);
@@ -58,4 +74,4 @@ function handleAnswerSubmit(submission) {
   postEvent("answer.result", { correct: isCorrect, feedback });
 }
 
-module.exports = { onAction };
+module.exports = { onAction, getState };

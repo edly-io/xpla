@@ -8,11 +8,20 @@
 
 import {
   postEvent,
+  getPermission,
   getUserValue,
   setUserValue,
 } from "../../src/sandbox-lib";
 
 const { submit_grade } = Host.getFunctions();
+
+// Return state visible to the current user.
+function getState() {
+  Host.outputString(JSON.stringify({
+    correct_answers: getUserValue("correct_answers"),
+    wrong_answers: getUserValue("wrong_answers"),
+  }));
+}
 
 // Handle incoming actions from frontend
 // Input: JSON { "name": "...", "value": "..." }
@@ -22,6 +31,10 @@ function onAction() {
   const actionValue = input.value;
 
   if (actionName === "answer.submit") {
+    if (getPermission() === "view") {
+      console.log("answer.submit rejected: permission is view");
+      return;
+    }
     // Parse the submission: { question: "2+2", answer: "4" }
     const submission = actionValue;
     const result = checkAnswer(submission.question, submission.answer);
@@ -97,4 +110,4 @@ function checkAnswer(question, answer) {
   return { correct, score, feedback };
 }
 
-module.exports = { onAction };
+module.exports = { onAction, getState };

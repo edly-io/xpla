@@ -7,6 +7,9 @@ declare module "main" {
     // Handle incoming events from the frontend
     // Input: JSON { "name": "...", "value": "..." }
     export function onAction(): I32;
+    // Return state to display to the user.
+    // Output: JSON
+    export function getState(): I32;
 }
 
 declare module "extism:host" {
@@ -15,6 +18,9 @@ declare module "extism:host" {
         submit_grade(score: F64): I32;
         // TODO do we really want to keep this function around?
         get_user_id(): I64;
+
+        // Get current user permission
+        get_permission(): I64;
 
         // Event posting
         post_event(name_ptr: I64, value_ptr: I64): I64;

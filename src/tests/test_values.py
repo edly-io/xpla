@@ -1,5 +1,4 @@
 import pytest
-from server.activities.manifest_types import Access
 from server.activities.values import ValueChecker, ValueValidationError
 from server.activities.manifest_types import (
     Scope,
@@ -20,11 +19,9 @@ class TestValueChecker:
     def test_with_values(self) -> None:
         """Should parse all value definitions."""
         values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, access=Access.user
-            ),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
             "attempts": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, access=Access.user, default=0
+                type=Type.integer, scope=Scope.user_unit, default=0
             ),
         }
         checker = ValueChecker(values)
@@ -36,7 +33,6 @@ class TestValueChecker:
             "score": ValueDefinition(
                 type=Type.integer,
                 scope=Scope.user_unit,
-                access=Access.user,
                 default=10,
             )
         }
@@ -44,16 +40,11 @@ class TestValueChecker:
         definition = checker.get_definition("score")
         assert definition.type == Type.integer
         assert definition.scope == Scope.user_unit
-        assert definition.access == Access.user
         assert definition.default == 10
 
     def test_get_definition_not_declared(self) -> None:
         """Should raise for undeclared value."""
-        values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.unit, access=Access.user
-            )
-        }
+        values = {"score": ValueDefinition(type=Type.integer, scope=Scope.unit)}
         checker = ValueChecker(values)
         with pytest.raises(ValueValidationError, match="not declared"):
             checker.get_definition("unknown")
@@ -61,9 +52,7 @@ class TestValueChecker:
     def test_get_default_with_default(self) -> None:
         """Should return default value when defined."""
         values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.unit, access=Access.user, default=100
-            )
+            "score": ValueDefinition(type=Type.integer, scope=Scope.unit, default=100)
         }
         checker = ValueChecker(values)
         assert checker.get_default("score") == 100
@@ -71,18 +60,10 @@ class TestValueChecker:
     def test_get_default_without_default(self) -> None:
         """Should return type-specific default when no explicit default defined."""
         values = {
-            "count": ValueDefinition(
-                type=Type.integer, scope=Scope.unit, access=Access.user
-            ),
-            "ratio": ValueDefinition(
-                type=Type.number, scope=Scope.unit, access=Access.user
-            ),
-            "name": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
-            "enabled": ValueDefinition(
-                type=Type.boolean, scope=Scope.unit, access=Access.user
-            ),
+            "count": ValueDefinition(type=Type.integer, scope=Scope.unit),
+            "ratio": ValueDefinition(type=Type.number, scope=Scope.unit),
+            "name": ValueDefinition(type=Type.string, scope=Scope.unit),
+            "enabled": ValueDefinition(type=Type.boolean, scope=Scope.unit),
         }
         checker = ValueChecker(values)
         assert checker.get_default("count") == 0
@@ -96,7 +77,6 @@ class TestValueChecker:
             "score": ValueDefinition(
                 type=Type.integer,
                 scope=Scope.user_unit,
-                access=Access.user,
                 default=0,
             )
         }
@@ -105,11 +85,7 @@ class TestValueChecker:
 
     def test_validate_fails_type(self) -> None:
         """Should fail validation for wrong type."""
-        values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.unit, access=Access.user
-            )
-        }
+        values = {"score": ValueDefinition(type=Type.integer, scope=Scope.unit)}
         checker = ValueChecker(values)
         with pytest.raises(ValueValidationError, match="failed validation"):
             checker.validate("score", "not an int")
@@ -117,12 +93,8 @@ class TestValueChecker:
     def test_is_user_scoped(self) -> None:
         """Should correctly identify user-scoped values."""
         values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, access=Access.user
-            ),
-            "question": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "question": ValueDefinition(type=Type.string, scope=Scope.unit),
         }
         checker = ValueChecker(values)
         assert checker.is_user_scoped("score") is True
@@ -131,15 +103,9 @@ class TestValueChecker:
     def test_user_value_names(self) -> None:
         """Should return only user-scoped value names."""
         values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, access=Access.user
-            ),
-            "attempts": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, access=Access.user
-            ),
-            "question": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "attempts": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "question": ValueDefinition(type=Type.string, scope=Scope.unit),
         }
         checker = ValueChecker(values)
         assert sorted(checker.user_value_names()) == ["attempts", "score"]
@@ -147,100 +113,12 @@ class TestValueChecker:
     def test_shared_value_names(self) -> None:
         """Should return only shared (non-user-scoped) value names."""
         values = {
-            "score": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, access=Access.user
-            ),
-            "question": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
-            "answers": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "question": ValueDefinition(type=Type.string, scope=Scope.unit),
+            "answers": ValueDefinition(type=Type.string, scope=Scope.unit),
         }
         checker = ValueChecker(values)
         assert sorted(checker.shared_value_names()) == ["answers", "question"]
-
-    def test_get_access_level(self) -> None:
-        """Should return the access level for a value."""
-        values = {
-            "public": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
-            "secret": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.unit
-            ),
-        }
-        checker = ValueChecker(values)
-        assert checker.get_access_level("public") == Access.user
-        assert checker.get_access_level("secret") == Access.unit
-
-    def test_can_access_same_level(self) -> None:
-        """User can access values at their own level."""
-        values = {
-            "val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.unit
-            )
-        }
-        checker = ValueChecker(values)
-        assert checker.can_access("val", Access.unit) is True
-
-    def test_can_access_higher_level(self) -> None:
-        """User with higher access can see lower-level values."""
-        values = {
-            "val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            )
-        }
-        checker = ValueChecker(values)
-        assert checker.can_access("val", Access.unit) is True
-        assert checker.can_access("val", Access.course) is True
-        assert checker.can_access("val", Access.platform) is True
-
-    def test_cannot_access_lower_level(self) -> None:
-        """User with lower access cannot see higher-level values."""
-        values = {
-            "val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.unit
-            )
-        }
-        checker = ValueChecker(values)
-        assert checker.can_access("val", Access.user) is False
-
-    def test_access_hierarchy(self) -> None:
-        """Test the full access hierarchy."""
-        values = {
-            "user_val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.user
-            ),
-            "unit_val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.unit
-            ),
-            "course_val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.course
-            ),
-            "platform_val": ValueDefinition(
-                type=Type.string, scope=Scope.unit, access=Access.platform
-            ),
-        }
-        checker = ValueChecker(values)
-
-        # User can only access user-level
-        assert checker.can_access("user_val", Access.user) is True
-        assert checker.can_access("unit_val", Access.user) is False
-        assert checker.can_access("course_val", Access.user) is False
-        assert checker.can_access("platform_val", Access.user) is False
-
-        # Unit can access user and unit level
-        assert checker.can_access("user_val", Access.unit) is True
-        assert checker.can_access("unit_val", Access.unit) is True
-        assert checker.can_access("course_val", Access.unit) is False
-        assert checker.can_access("platform_val", Access.unit) is False
-
-        # Platform can access all levels
-        assert checker.can_access("user_val", Access.platform) is True
-        assert checker.can_access("unit_val", Access.platform) is True
-        assert checker.can_access("course_val", Access.platform) is True
-        assert checker.can_access("platform_val", Access.platform) is True
 
     def test_get_default_array(self) -> None:
         """Should return empty list as default for array type."""
@@ -249,7 +127,6 @@ class TestValueChecker:
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
                 scope=Scope.unit,
-                access=Access.user,
             )
         }
         checker = ValueChecker(values)
@@ -257,11 +134,7 @@ class TestValueChecker:
 
     def test_get_default_object(self) -> None:
         """Should return empty dict as default for object type."""
-        values = {
-            "data": ValueDefinition(
-                type=Type.object, scope=Scope.unit, access=Access.user
-            )
-        }
+        values = {"data": ValueDefinition(type=Type.object, scope=Scope.unit)}
         checker = ValueChecker(values)
         assert checker.get_default("data") == {}
 
@@ -272,7 +145,6 @@ class TestValueChecker:
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
                 scope=Scope.unit,
-                access=Access.user,
             )
         }
         checker = ValueChecker(values)
@@ -285,7 +157,6 @@ class TestValueChecker:
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
                 scope=Scope.unit,
-                access=Access.user,
             )
         }
         checker = ValueChecker(values)
@@ -299,7 +170,6 @@ class TestValueChecker:
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
                 scope=Scope.unit,
-                access=Access.user,
             )
         }
         checker = ValueChecker(values)
@@ -313,7 +183,6 @@ class TestValueChecker:
                 type=Type.object,
                 properties={"name": TypeSchema(type=Type.string)},
                 scope=Scope.unit,
-                access=Access.user,
             )
         }
         checker = ValueChecker(values)

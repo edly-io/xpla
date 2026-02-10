@@ -18,7 +18,7 @@ from extism import Json
 from server.activities.actions import ActionChecker
 from server.activities.capabilities import CapabilityChecker, CapabilityError
 from server.activities.events import EventChecker
-from server.activities.manifest_types import Access
+from server.activities.permission import Permission
 from server.activities.values import ValueChecker, ValueType
 from server.activities.manifest_types import GulpsActivityManifest
 from server.activities import kv
@@ -35,6 +35,7 @@ class ActivityContext:
     def __init__(self, activity_dir: Path) -> None:
         self._activity_dir = activity_dir
         self._user_id: str = "alice"
+        self._permission: Permission = Permission.view
 
         # Key-value store (used internally for value storage)
         self.kv_store = kv.get_default()
@@ -71,6 +72,14 @@ class ActivityContext:
         self._user_id = value
 
     @property
+    def permission(self) -> Permission:
+        return self._permission
+
+    @permission.setter
+    def permission(self, value: Permission) -> None:
+        self._permission = value
+
+    @property
     def name(self) -> str:
         return self.manifest.name
 
@@ -86,12 +95,12 @@ class ActivityContext:
         """Path to client script, relative to activity directory."""
         return self.manifest.client
 
-    def call_sandbox_function(self, function_name: str, body: bytes) -> bytes:
+    def call_sandbox_function(self, function_name: str, *args: bytes) -> bytes:
         if self.sandbox is None:
             raise MissingSandboxError()
 
         # TODO catch errors?
-        return self.sandbox.call_function(function_name, body)
+        return self.sandbox.call_function(function_name, *args)
 
     def _value_key(self, name: str, user_id: str) -> str:
         """Generate the KV store key for a value."""
@@ -129,30 +138,37 @@ class ActivityContext:
         key = self._value_key(name, user_id)
         self.kv_store.set(key, json.dumps(value))
 
-    def get_filtered_values(
-        self, user_id: str, user_access_level: Access
-    ) -> dict[str, ValueType]:
-        """Get all declared values that the user is allowed to see.
-
-        Filters values based on user's access level. Values with higher access
-        requirements than the user's level are excluded.
+    def get_all_values(self, user_id: str) -> dict[str, ValueType]:
+        """Get all declared values for a user.
 
         Args:
             user_id: The user ID for loading user-scoped values.
-            user_access_level: The user's access level.
 
         Returns:
-            A dict of value names to their current values, filtered by access.
+            A dict of value names to their current values.
         """
         result: dict[str, ValueType] = {}
         for name in self.value_checker.value_names:
-            if not self.value_checker.can_access(name, user_access_level):
-                continue
             if self.value_checker.is_user_scoped(name):
                 result[name] = self.load_value(user_id, name)
             else:
                 result[name] = self.load_value("", name)
         return result
+
+    def get_state(self) -> dict[str, ValueType]:
+        """Get the activity state to send to the client.
+
+        If the sandbox exports a getState function, calls it and returns the
+        result. Otherwise falls back to returning all values.
+        """
+        if self.sandbox is not None:
+            try:
+                result = self.call_sandbox_function("getState", b"")
+                state: dict[str, ValueType] = json.loads(result)
+                return state
+            except RuntimeError:
+                pass
+        return self.get_all_values(self._user_id)
 
     def clear_pending_events(self) -> list[dict[str, str]]:
         """Return and clear all pending events."""
@@ -166,6 +182,7 @@ class ActivityContext:
         """
         return [
             self.get_user_id,
+            self.get_permission,
             self.post_event,
             self.get_value,
             self.set_value,
@@ -178,6 +195,12 @@ class ActivityContext:
         Return the current user ID.
         """
         return self._user_id
+
+    def get_permission(self) -> str:
+        """
+        Return the current permission level.
+        """
+        return self._permission.value
 
     def post_event(self, name: str, value: str) -> str:
         """Post an event to be sent back to the client.

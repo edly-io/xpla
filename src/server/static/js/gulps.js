@@ -13,13 +13,18 @@ export class Gulps extends HTMLElement {
     `);
     this.shadow.adoptedStyleSheets = [sheet];
     this.values = {};
+    this.permission = "view";
   }
 
   connectedCallback() {
-    const valuesAttr = this.getAttribute("data-values");
-    if (valuesAttr) {
-      // Values are filtered server-side based on the simulated user's access level.
-      this.values = JSON.parse(valuesAttr);
+    const stateAttr = this.getAttribute("data-state");
+    if (stateAttr) {
+      this.values = JSON.parse(stateAttr);
+    }
+
+    const permissionAttr = this.getAttribute("data-permission");
+    if (permissionAttr) {
+      this.permission = permissionAttr;
     }
 
     this.render();

@@ -12,27 +12,27 @@ from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
 from server.activities.actions import ActionValidationError
-from server.activities.manifest_types import Access
+from server.activities.permission import Permission
 from server import constants
 
 SIMULATED_USERS = ["alice", "bob", "charlie"]
 DEFAULT_USER = SIMULATED_USERS[0]
-DEFAULT_ACCESS = Access.user
+DEFAULT_PERMISSION = Permission.view
 
 
-def get_simulation_params(request: Request) -> tuple[str, Access]:
-    """Read simulated user/access from cookies, with validation and fallback."""
+def get_simulation_params(request: Request) -> tuple[str, Permission]:
+    """Read simulated user/permission from cookies, with validation and fallback."""
     user_id = request.cookies.get("gulps_user", DEFAULT_USER)
     if user_id not in SIMULATED_USERS:
         user_id = DEFAULT_USER
 
-    access_str = request.cookies.get("gulps_access", DEFAULT_ACCESS.value)
+    permission_str = request.cookies.get("gulps_permission", DEFAULT_PERMISSION.value)
     try:
-        access = Access(access_str)
+        permission = Permission(permission_str)
     except ValueError:
-        access = DEFAULT_ACCESS
+        permission = DEFAULT_PERMISSION
 
-    return user_id, access
+    return user_id, permission
 
 
 class ActivityNotFound(Exception):
@@ -82,20 +82,21 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    user_id, user_access_level = get_simulation_params(request)
+    user_id, permission = get_simulation_params(request)
     activity_context.user_id = user_id
-    activity_values = activity_context.get_filtered_values(user_id, user_access_level)
+    activity_context.permission = permission
+    activity_state = activity_context.get_state()
 
     return templates.TemplateResponse(
         request=request,
         name="activity.html",
         context={
             "activity_context": activity_context,
-            "values_json": json.dumps(activity_values),
+            "state_json": json.dumps(activity_state),
             "simulated_users": SIMULATED_USERS,
             "current_user": user_id,
-            "access_levels": [a.value for a in Access],
-            "current_access": user_access_level.value,
+            "permission_levels": [p.value for p in Permission],
+            "current_permission": permission.value,
         },
     )
 
@@ -131,8 +132,9 @@ async def call_plugin(
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    user_id, _ = get_simulation_params(request)
+    user_id, permission = get_simulation_params(request)
     context.user_id = user_id
+    context.permission = permission
 
     body = await request.body()
     try:
@@ -159,8 +161,9 @@ async def send_action(
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    user_id, _ = get_simulation_params(request)
+    user_id, permission = get_simulation_params(request)
     context.user_id = user_id
+    context.permission = permission
 
     # Parse action payload from request body
     action_value = await request.json()

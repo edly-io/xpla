@@ -3,12 +3,18 @@
 // Provides helper functions for common host function interactions.
 // Only includes functions available to ALL activities.
 
-const { post_event, get_value, set_value, get_user_id } = Host.getFunctions();
+const { post_event, get_value, set_value, get_user_id, get_permission } = Host.getFunctions();
 
 export function postEvent(name, value) {
   const nameMem = Memory.fromString(name);
   const valueMem = Memory.fromString(JSON.stringify(value));
   post_event(nameMem.offset, valueMem.offset);
+}
+
+// Get the current permission level ("view", "play", or "edit").
+export function getPermission() {
+  const resultOffset = get_permission();
+  return Memory.find(resultOffset).readString();
 }
 
 // Get current user info from LMS. Requires lms capability with get_user.

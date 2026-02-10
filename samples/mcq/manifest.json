@@ -7,21 +7,18 @@
     "question": {
       "type": "string",
       "scope": "unit",
-      "access": "user",
       "default": ""
     },
     "answers": {
       "type": "array",
       "items": { "type": "string" },
       "scope": "unit",
-      "access": "user",
       "default": []
     },
     "correct_answers": {
       "type": "array",
       "items": { "type": "integer" },
       "scope": "unit",
-      "access": "unit",
       "default": []
     }
   },
