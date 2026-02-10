@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "plyr": "^3.7.8"
+  }
+}

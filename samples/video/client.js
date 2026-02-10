@@ -9,7 +9,7 @@
 
 import Plyr from "plyr";
 import plyrCss from "plyr/dist/plyr.css";
-import plyrSvg from "../../node_modules/plyr/dist/plyr.svg";
+import plyrSvg from "./node_modules/plyr/dist/plyr.svg";
 
 // Parse the SVG sprite once: build a map of id -> SVG inner content
 const iconMap = buildIconMap(plyrSvg);

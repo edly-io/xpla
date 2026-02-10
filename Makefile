@@ -6,8 +6,15 @@
 SERVER_JS_SOURCES := $(wildcard samples/*/server.js)
 SERVER_WASMS := $(patsubst %/server.js,%/server.wasm,$(SERVER_JS_SOURCES))
 CLIENT_BUNDLES := $(shell grep -rl '"client.bundle.js"' samples/*/manifest.json 2>/dev/null | sed 's|manifest.json|client.bundle.js|')
+SAMPLE_PKGS := $(wildcard samples/*/package.json)
+SAMPLE_MODULES := $(patsubst %/package.json,%/node_modules/.package-lock.json,$(SAMPLE_PKGS))
 
-samples: $(SERVER_WASMS) $(CLIENT_BUNDLES) ## Build all sandboxes for sample activities
+samples: install-samples $(SERVER_WASMS) $(CLIENT_BUNDLES) ## Build all sandboxes for sample activities
+
+install-samples: $(SAMPLE_MODULES) ## Install dependencies for sample activities
+
+samples/%/node_modules/.package-lock.json: samples/%/package.json
+	cd samples/$* && npm install
 
 SANDBOX_LIB := $(wildcard src/sandbox-lib/*.js)
 
