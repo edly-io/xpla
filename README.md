@@ -11,7 +11,7 @@ Offline portability is also one of the goals of this project, though it is yet u
 1. Sandboxed code is shipped to the offline device (typically a mobile phone) and runs there. If the client decompiles the wasm binaries, they have access to the grading logic. This is acceptable when the client is trusted and the sandboxed code does not need network access.
 2. Communication between the frontend and the backend is performed in an event-driven architecture  (see [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). When offline, events are delayed until the client comes back online. Conflicts might happen and must be resolved, for instance when users attempt to connect from multiple devices.
 
-At the moment, a limitation of the current approach is the unsafe client code: arbitrary client code can be executed with full access to the DOM, cookies and browser features. This is a strong limitation of HTML which can (at the moment) be bypassed only by using iframes -- which come with their own set of limitations, including in terms of user experience. We intend to give the possibility to platform administrators to sandbox client code in iframes, though this is not implemented yet.
+At the moment, a limitation of the current approach is the unsafe client code: arbitrary client code can be executed with full access to the DOM, cookies and browser features. This is a strong limitation of HTML which can (at the moment) be bypassed only by using iframes -- which come with their own set of limitations, including in terms of user experience. Platform administrators can choose between two embed modes (shadow DOM or iframe) to trade off isolation vs. integration (see [Embed modes](#embed-modes) below).
 
 ## Comparison with existing standards
 
@@ -182,6 +182,26 @@ The `activity` object exposes the following properties and methods:
 - `onValueChange(name, value)`: Override this callback to react to `values.change.*` events from the server.
 
 The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js).
+
+##### Embed modes
+
+The `<gulps-activity>` element supports an `embed` attribute that controls how the activity is rendered:
+
+- **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
+- **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.
+
+In native/iframe mode, the element sends `postMessage` events to the parent window:
+
+- `{ type: "gulps:ready" }` — sent after setup completes.
+- `{ type: "gulps:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
+
+Each activity has a standalone embed page at `/a/{name}/embed` that uses `<gulps-activity embed="native" ...>`. To embed an activity in an iframe:
+
+```html
+<iframe src="/a/math/embed" style="width: 100%; border: none;"></iframe>
+```
+
+The development server toolbar includes an "Embed" dropdown to toggle between shadow DOM and iframe modes for testing.
 
 #### Server sandbox (declared via `server` field)
 

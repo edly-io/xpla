@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ activity_context.title or "Activity" }}</title>
+    <style>
+        body { margin: 0; padding: 0; }
+    </style>
+</head>
+<body>
+<script type="module" src="{{ url_for('static', path='js/gulps.js') }}"></script>
+<gulps-activity
+    embed="native"
+    name="{{ activity_context.name }}"
+    src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
+    data-state="{{ state_json | escape }}"
+    data-permission="{{ current_permission }}"
+></gulps-activity>
+</body>
+</html>

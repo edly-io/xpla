@@ -20,6 +20,12 @@
       {% endfor %}
     </select>
   </label>
+  <label>Embed
+    <select id="sim-embed">
+      <option value="shadow" selected>Shadow DOM</option>
+      <option value="iframe">iframe</option>
+    </select>
+  </label>
 </div>
 <script>
   document.getElementById("sim-user").addEventListener("change", function() {
@@ -31,11 +37,35 @@
     location.reload();
   });
 </script>
+<div id="activity-container">
 <gulps-activity
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
     data-state="{{ state_json | escape }}"
     data-permission="{{ current_permission }}"
 ></gulps-activity>
+</div>
+<script>
+  document.getElementById("sim-embed").addEventListener("change", function() {
+    const container = document.getElementById("activity-container");
+    if (this.value === "iframe") {
+      const iframe = document.createElement("iframe");
+      iframe.src = "/a/{{ activity_context.name }}/embed";
+      iframe.style.width = "100%";
+      iframe.style.border = "1px solid #ccc";
+      iframe.style.height = "200px";
+      container.innerHTML = "";
+      container.appendChild(iframe);
+
+      window.addEventListener("message", function(e) {
+        if (e.data && e.data.type === "gulps:resize") {
+          iframe.style.height = e.data.height + "px";
+        }
+      });
+    } else {
+      location.reload();
+    }
+  });
+</script>
 
 {% endblock %}

@@ -101,6 +101,30 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
     )
 
 
+@app.get("/a/{activity_id}/embed")
+async def activity_embed(request: Request, activity_id: str) -> HTMLResponse:
+    """Serve an activity in a standalone page for iframe embedding."""
+    try:
+        activity_context = load_activity(activity_id)
+    except ActivityNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    user_id, permission = get_simulation_params(request)
+    activity_context.user_id = user_id
+    activity_context.permission = permission
+    activity_state = activity_context.get_state()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="activity_embed.html",
+        context={
+            "activity_context": activity_context,
+            "state_json": json.dumps(activity_state),
+            "current_permission": permission.value,
+        },
+    )
+
+
 @app.get("/a/{activity_id}/{file_path:path}")
 async def activity_asset(activity_id: str, file_path: str) -> FileResponse:
     """Serve static files from an activity directory."""
