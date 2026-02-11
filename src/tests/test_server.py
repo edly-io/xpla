@@ -33,11 +33,15 @@ def fixtures_samples_dir(
             "name": "test-activity",
             "client": "client.js",
             "capabilities": {},
+            "static": ["index.html"],
         }
         (activity_path / "manifest.json").write_text(json.dumps(manifest))
 
         # Create index.html
         (activity_path / "index.html").write_text("<html><body>Test</body></html>")
+
+        # Create a file not declared in static
+        (activity_path / "secret.txt").write_text("secret")
 
         # Patch SAMPLES_DIR
         monkeypatch.setattr(constants, "SAMPLES_DIR", samples_path)
@@ -65,6 +69,11 @@ class TestStaticFiles:
         response = client.get("/static/js/gulps.js")
         assert response.status_code == 200
         assert "gulps" in response.text.lower() or "Gulps" in response.text
+
+    def test_undeclared_asset_returns_403(self, client: TestClient) -> None:
+        """Should return 403 for files not declared in static."""
+        response = client.get("/a/test-activity/secret.txt")
+        assert response.status_code == 403
 
     def test_activity_not_found(self, client: TestClient) -> None:
         """Should return 404 for unknown activity."""

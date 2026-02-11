@@ -4,32 +4,65 @@
   "server": "server.wasm",
   "capabilities": {},
   "values": {
-    "instructions": { "type": "string", "scope": "unit", "default": "" },
-    "test_code": { "type": "string", "scope": "unit", "default": "" },
-    "starter_code": { "type": "string", "scope": "unit", "default": "" },
-    "user_code": { "type": "string", "scope": "user,unit", "default": "" }
+    "instructions": {
+      "type": "string",
+      "scope": "unit",
+      "default": ""
+    },
+    "test_code": {
+      "type": "string",
+      "scope": "unit",
+      "default": ""
+    },
+    "starter_code": {
+      "type": "string",
+      "scope": "unit",
+      "default": ""
+    },
+    "user_code": {
+      "type": "string",
+      "scope": "user,unit",
+      "default": ""
+    }
   },
   "actions": {
     "config.save": {
       "type": "object",
       "properties": {
-        "instructions": { "type": "string" },
-        "test_code": { "type": "string" },
-        "starter_code": { "type": "string" }
+        "instructions": {
+          "type": "string"
+        },
+        "test_code": {
+          "type": "string"
+        },
+        "starter_code": {
+          "type": "string"
+        }
       }
     },
     "code.run": {
       "type": "object",
       "properties": {
-        "code": { "type": "string" }
+        "code": {
+          "type": "string"
+        }
       }
     },
     "code.check": {
       "type": "object",
       "properties": {
-        "code": { "type": "string" }
+        "code": {
+          "type": "string"
+        }
       }
     }
   },
-  "events": {}
+  "events": {},
+  "static": [
+    "static/pyodide/pyodide.mjs",
+    "static/pyodide/pyodide-lock.json",
+    "static/pyodide/pyodide_stdlib.zip",
+    "static/pyodide/pyodide.asm.wasm",
+    "static/pyodide/pyodide.asm.js"
+  ]
 }

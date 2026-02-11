@@ -66,6 +66,14 @@
       "type": "object",
       "description": "Events the server sandbox can emit to the client. values.change.* events are implicit.",
       "additionalProperties": { "$ref": "#/$defs/typeSchema" }
+    },
+    "static": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*\\.\\.).+$"
+      },
+      "description": "Static file paths that can be served as assets. Must be relative (no leading '/') and cannot contain '..'."
     }
   },
   "$defs": {

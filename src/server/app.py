@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
 from server.activities.actions import ActionValidationError
+from server.activities.manifest_types import GulpsActivityManifest
 from server.activities.permission import Permission
 from server import constants
 
@@ -125,6 +126,13 @@ async def activity_embed(request: Request, activity_id: str) -> HTMLResponse:
     )
 
 
+def _is_allowed_asset(manifest: GulpsActivityManifest, file_path: str) -> bool:
+    """Check whether a file path is allowed to be served as a static asset."""
+    if file_path in (manifest.client, "manifest.json"):
+        return True
+    return file_path in (manifest.static or [])
+
+
 @app.get("/a/{activity_id}/{file_path:path}")
 async def activity_asset(activity_id: str, file_path: str) -> FileResponse:
     """Serve static files from an activity directory."""
@@ -133,15 +141,19 @@ async def activity_asset(activity_id: str, file_path: str) -> FileResponse:
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    full_path = activity_context.activity_dir / file_path
-    if not full_path.exists() or not full_path.is_file():
-        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-
     # Security: ensure path doesn't escape activity directory
+    full_path = activity_context.activity_dir / file_path
     try:
         full_path.resolve().relative_to(activity_context.activity_dir.resolve())
     except ValueError as e:
         raise HTTPException(status_code=403, detail="Access denied") from e
+
+    # Only serve files declared in manifest
+    if not _is_allowed_asset(activity_context.manifest, file_path):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
     return FileResponse(full_path)
 
