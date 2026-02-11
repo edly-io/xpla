@@ -135,6 +135,10 @@ export class Gulps extends HTMLElement {
     }
   }
 
+  getAssetUrl(path) {
+    return new URL(`/a/${this.getAttribute("name")}/${path}`, location.href).href;
+  }
+
   onValueChange(name, value) {
     // Default no-op. Override in client.js to handle value changes.
   }

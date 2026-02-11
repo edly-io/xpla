@@ -179,6 +179,7 @@ The `activity` object exposes the following properties and methods:
 - `values`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared values if `getState` is not exported). Updated in-place when `values.change.*` events arrive.
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
+- `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
 - `onValueChange(name, value)`: Override this callback to react to `values.change.*` events from the server.
 
 The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js).

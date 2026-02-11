@@ -2,6 +2,7 @@
 dist/
 samples/**/*.wasm
 samples/**/*.bundle.js
+samples/*/static/
 
 # Python
 __pycache__/

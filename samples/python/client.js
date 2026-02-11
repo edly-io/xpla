@@ -7,7 +7,8 @@ import { python } from "@codemirror/lang-python";
 
 const TIMEOUT_MS = 5000;
 
-const WORKER_SRC = `
+function makeWorkerSrc(pyodideUrl) {
+  return `
 const TEST_RUNNER = \`
 import json as __json
 __results = []
@@ -32,7 +33,7 @@ let pyodide = null;
 async function ensurePyodide() {
   if (!pyodide) {
     // Pyodide WASM runtime (~20MB) must be fetched at runtime; it cannot be bundled.
-    const mod = await import("https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.mjs");
+    const mod = await import("${pyodideUrl}");
     pyodide = await mod.loadPyodide();
   }
   return pyodide;
@@ -61,60 +62,6 @@ self.onmessage = async (e) => {
   }
 };
 `;
-
-const workerBlob = new Blob([WORKER_SRC], { type: "application/javascript" });
-const workerUrl = URL.createObjectURL(workerBlob);
-
-let worker = null;
-let messageId = 0;
-
-function getWorker() {
-  if (!worker) {
-    worker = new Worker(workerUrl, { type: "module" });
-  }
-  return worker;
-}
-
-function killWorker() {
-  if (worker) {
-    worker.terminate();
-    worker = null;
-  }
-}
-
-function runInWorker(msg, onLoaded) {
-  return new Promise((resolve, reject) => {
-    const id = ++messageId;
-    const w = getWorker();
-    let settled = false;
-
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        killWorker();
-        reject(new Error("Execution timed out (5s limit)"));
-      }
-    }, TIMEOUT_MS);
-
-    function onMessage(e) {
-      if (e.data.id !== id) return;
-      if (e.data.kind === "loaded") {
-        if (onLoaded) onLoaded();
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      w.removeEventListener("message", onMessage);
-      if (e.data.kind === "error") {
-        reject(new Error(e.data.error));
-      } else {
-        resolve(e.data);
-      }
-    }
-
-    w.addEventListener("message", onMessage);
-    w.postMessage({ id, ...msg });
-  });
 }
 
 function createEditor(parent, doc, root) {
@@ -130,6 +77,62 @@ export function setup(activity) {
   const element = activity.element;
   const permission = activity.permission;
   const root = element.getRootNode();
+
+  const pyodideUrl = activity.getAssetUrl("static/pyodide/pyodide.mjs");
+  const workerBlob = new Blob([makeWorkerSrc(pyodideUrl)], { type: "application/javascript" });
+  const workerUrl = URL.createObjectURL(workerBlob);
+
+  let worker = null;
+  let messageId = 0;
+
+  function getWorker() {
+    if (!worker) {
+      worker = new Worker(workerUrl, { type: "module" });
+    }
+    return worker;
+  }
+
+  function killWorker() {
+    if (worker) {
+      worker.terminate();
+      worker = null;
+    }
+  }
+
+  function runInWorker(msg, onLoaded) {
+    return new Promise((resolve, reject) => {
+      const id = ++messageId;
+      const w = getWorker();
+      let settled = false;
+
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          killWorker();
+          reject(new Error("Execution timed out (5s limit)"));
+        }
+      }, TIMEOUT_MS);
+
+      function onMessage(e) {
+        if (e.data.id !== id) return;
+        if (e.data.kind === "loaded") {
+          if (onLoaded) onLoaded();
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        w.removeEventListener("message", onMessage);
+        if (e.data.kind === "error") {
+          reject(new Error(e.data.error));
+        } else {
+          resolve(e.data);
+        }
+      }
+
+      w.addEventListener("message", onMessage);
+      w.postMessage({ id, ...msg });
+    });
+  }
 
   function escapeHtml(str) {
     const div = document.createElement("div");
