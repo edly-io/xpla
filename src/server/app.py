@@ -1,5 +1,5 @@
 """
-FastAPI application for the GULPS server.
+FastAPI application for the xPLA server.
 """
 
 import json
@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, MissingSandboxError
 from server.activities.actions import ActionValidationError
-from server.activities.manifest_types import GulpsActivityManifest
+from server.activities.manifest_types import XplaActivityManifest
 from server.activities.permission import Permission
 from server import constants
 
@@ -23,11 +23,12 @@ DEFAULT_PERMISSION = Permission.view
 
 def get_simulation_params(request: Request) -> tuple[str, Permission]:
     """Read simulated user/permission from cookies, with validation and fallback."""
-    user_id = request.cookies.get("gulps_user", DEFAULT_USER)
+    # TODO cookie names should be defined as variables to be shared with the frontend
+    user_id = request.cookies.get("xpla_user", DEFAULT_USER)
     if user_id not in SIMULATED_USERS:
         user_id = DEFAULT_USER
 
-    permission_str = request.cookies.get("gulps_permission", DEFAULT_PERMISSION.value)
+    permission_str = request.cookies.get("xpla_permission", DEFAULT_PERMISSION.value)
     try:
         permission = Permission(permission_str)
     except ValueError:
@@ -58,8 +59,8 @@ def list_activities() -> list[str]:
 
 
 app = FastAPI(
-    title="GULPS Server",
-    description="LMS simulation for GULPS development",
+    title="xPLA Server",
+    description="LMS simulation for xPLA development",
     version="0.3.0",
 )
 
@@ -126,7 +127,7 @@ async def activity_embed(request: Request, activity_id: str) -> HTMLResponse:
     )
 
 
-def _is_allowed_asset(manifest: GulpsActivityManifest, file_path: str) -> bool:
+def _is_allowed_asset(manifest: XplaActivityManifest, file_path: str) -> bool:
     """Check whether a file path is allowed to be served as a static asset."""
     if file_path in (manifest.client, "manifest.json"):
         return True

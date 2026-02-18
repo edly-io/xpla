@@ -1,10 +1,10 @@
-# GULPS Server
+# Cross-Platform Learning Activities (xPLA)
 
-This is a proof-of-concept for an upcoming standard (GULPS): similar to standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
+This is a proof-of-concept for an upcoming standard (xPLA): similar to standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
 
-This project includes a Python server that serves a few sample GULPS activities, along with the documentation for their implementation (right here in this document).
+This project includes a Python server that serves a few sample xPLA activities, along with the documentation for their implementation (right here in this document).
 
-As a high-level overview: the GULPS standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe GULPS capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
+As a high-level overview: the xPLA standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe xPLA capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
 
 Offline portability is also one of the goals of this project, though it is yet unclear how this will be achieved. At this point there are two options:
 
@@ -15,7 +15,7 @@ At the moment, a limitation of the current approach is the unsafe client code: a
 
 ## Comparison with existing standards
 
-| Feature | SCORM | LTI | XBlock | GULPS |
+| Feature | SCORM | LTI | XBlock | xPLA |
 |---------|-------|-----|--------|-------|
 | **Portability** | ✅ Excellent – self-contained packages work across any compliant LMS | ⚠️ Limited – protocol connects external tools, but tools aren't packaged or transferable | ❌ None – tightly coupled to Open edX | ✅ Excellent – self-contained packages with explicit capability declarations |
 | **Graded assessments** | ❌ Available – but cheating is trivial | ✅ Yes – grade passback via Assignment and Grades Service (LTI 1.3) | ✅ Yes – full grading integration within Open edX | ✅ Yes – sandboxed backend handles grading securely |
@@ -151,11 +151,11 @@ Payloads are validated at runtime: sending an undeclared action or emitting an u
 
 #### Client module (declared via `client` field)
 
-This client-side scripting module will be loaded alongside the `<gulps-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<gulps-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
+This client-side scripting module will be loaded alongside the `<xpla-component>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<xpla-component>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
 
 ```javascript
 export function setup(activity) {
-  // activity is the <gulps-activity> DOM element
+  // activity is the <xpla-component> DOM element
   // Inject HTML into the activity
   activity.element.innerHTML = `
     <h2>Welcome to my activity!</h2>
@@ -183,21 +183,21 @@ The `activity` object exposes the following properties and methods:
 - `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
 - `onValueChange(name, value)`: Override this callback to react to `values.change.*` events from the server.
 
-The `Gulps` class is implemented in [`gulps.js`](./src/server/static/js/gulps.js).
+The `XPLA` class is implemented in [`xpla.js`](./src/server/static/js/xpla.js).
 
 ##### Embed modes
 
-The `<gulps-activity>` element supports an `embed` attribute that controls how the activity is rendered:
+The `<xpla-component>` element supports an `embed` attribute that controls how the activity is rendered:
 
 - **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
 - **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.
 
 In native/iframe mode, the element sends `postMessage` events to the parent window:
 
-- `{ type: "gulps:ready" }` — sent after setup completes.
-- `{ type: "gulps:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
+- `{ type: "xpla:ready" }` — sent after setup completes.
+- `{ type: "xpla:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
 
-Each activity has a standalone embed page at `/a/{name}/embed` that uses `<gulps-activity embed="native" ...>`. To embed an activity in an iframe:
+Each activity has a standalone embed page at `/a/{name}/embed` that uses `<xpla-component embed="native" ...>`. To embed an activity in an iframe:
 
 ```html
 <iframe src="/a/math/embed" style="width: 100%; border: none;"></iframe>
@@ -217,7 +217,7 @@ Sandboxes have access to a standard list of host functions. See "host functions"
 
 ##### Sandbox library
 
-A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/index.js) with helper functions for common host function interactions. This library is here for convenience and is not part of the GULPS standard, though it implements good practices. It makes it easier for Javascript authors to avoid dealing with inconvenient WebAssembly data types.
+A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/index.js) with helper functions for common host function interactions. This library is here for convenience and is not part of the xPLA standard, though it implements good practices. It makes it easier for Javascript authors to avoid dealing with inconvenient WebAssembly data types.
 
 ```javascript
 import {

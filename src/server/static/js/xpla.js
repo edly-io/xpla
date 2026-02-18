@@ -1,4 +1,4 @@
-export class Gulps extends HTMLElement {
+export class XPLA extends HTMLElement {
   constructor() {
     super();
     this.values = {};
@@ -145,4 +145,4 @@ export class Gulps extends HTMLElement {
 }
 
 // Attach elements to classes
-customElements.define("gulps-activity", Gulps);
+customElements.define("xpla-component", XPLA);

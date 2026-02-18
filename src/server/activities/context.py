@@ -20,7 +20,7 @@ from server.activities.capabilities import CapabilityChecker, CapabilityError
 from server.activities.events import EventChecker
 from server.activities.permission import Permission
 from server.activities.values import ValueChecker, ValueType
-from server.activities.manifest_types import GulpsActivityManifest
+from server.activities.manifest_types import XplaActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
@@ -45,7 +45,7 @@ class ActivityContext:
 
         # Manifest capabilities and values (validated by Pydantic)
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
-            self.manifest = GulpsActivityManifest.model_validate_json(f.read())
+            self.manifest = XplaActivityManifest.model_validate_json(f.read())
         self.checker = CapabilityChecker(self.manifest.capabilities)
         self.value_checker = ValueChecker(self.manifest.values)
         self.action_checker = ActionChecker(self.manifest.actions)
@@ -104,7 +104,7 @@ class ActivityContext:
 
     def _value_key(self, name: str, user_id: str) -> str:
         """Generate the KV store key for a value."""
-        return f"gulps.{self.name}.{user_id}.{name}"
+        return f"xpla.{self.name}.{user_id}.{name}"
 
     def load_value(self, user_id: str, name: str) -> ValueType:
         """Get a declared value for a user.
@@ -215,7 +215,7 @@ class ActivityContext:
         return ""
 
     def get_value(self, user_id: str, name: str) -> str:
-        """Get a declared GULPS value for a user.
+        """Get a declared xPLA value for a user.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
@@ -227,7 +227,7 @@ class ActivityContext:
         return json.dumps(value)
 
     def set_value(self, user_id: str, name: str, value: str) -> bool:
-        """Set a declared GULPS value for a user (host function).
+        """Set a declared xPLA value for a user (host function).
 
         Takes JSON-encoded value. Validates against manifest.
         """

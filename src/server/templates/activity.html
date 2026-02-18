@@ -3,7 +3,7 @@
 {% block title %}{{ activity_context.title or "Activity" }}{% endblock %}
 
 {% block body %}
-<script type="module" src="{{ url_for('static', path='js/gulps.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='js/xpla.js') }}"></script>
 <h2>{{ activity_context.name }}</h2>
 <div id="simulation-toolbar" style="margin-bottom: 1em; display: flex; gap: 1em; align-items: center;">
   <label>User
@@ -29,21 +29,21 @@
 </div>
 <script>
   document.getElementById("sim-user").addEventListener("change", function() {
-    document.cookie = "gulps_user=" + this.value + "; path=/";
+    document.cookie = "xpla_user=" + this.value + "; path=/";
     location.reload();
   });
   document.getElementById("sim-permission").addEventListener("change", function() {
-    document.cookie = "gulps_permission=" + this.value + "; path=/";
+    document.cookie = "xpla_permission=" + this.value + "; path=/";
     location.reload();
   });
 </script>
 <div id="activity-container">
-<gulps-activity
+<xpla-component
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
     data-state="{{ state_json | escape }}"
     data-permission="{{ current_permission }}"
-></gulps-activity>
+></xpla-component>
 </div>
 <script>
   document.getElementById("sim-embed").addEventListener("change", function() {
@@ -58,7 +58,7 @@
       container.appendChild(iframe);
 
       window.addEventListener("message", function(e) {
-        if (e.data && e.data.type === "gulps:resize") {
+        if (e.data && e.data.type === "xpla:resize") {
           iframe.style.height = e.data.height + "px";
         }
       });

@@ -9,13 +9,13 @@
     </style>
 </head>
 <body>
-<script type="module" src="{{ url_for('static', path='js/gulps.js') }}"></script>
-<gulps-activity
+<script type="module" src="{{ url_for('static', path='js/xpla.js') }}"></script>
+<xpla-component
     embed="native"
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
     data-state="{{ state_json | escape }}"
     data-permission="{{ current_permission }}"
-></gulps-activity>
+></xpla-component>
 </body>
 </html>

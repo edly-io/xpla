@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gulps.example.com/manifest.schema.json",
-  "title": "GULPS Activity Manifest",
-  "description": "Manifest for a GULPS learning activity, declaring capabilities and values.",
+  "$id": "https://xpla.example.com/manifest.schema.json",
+  "title": "xPLA Activity Manifest",
+  "description": "Manifest for a xPLA learning activity, declaring capabilities and values.",
   "type": "object",
   "required": ["name", "client"],
   "additionalProperties": false,

@@ -1,4 +1,4 @@
-// Type declarations for GULPS sandbox modules
+// Type declarations for xPLA sandbox modules
 //
 // This file declares the Extism host functions available to all sandboxes.
 // Include in your sandbox project's tsconfig.json or reference directly.

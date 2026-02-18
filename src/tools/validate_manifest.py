@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-Validate manifest.json files against the GULPS manifest schema.
+Validate manifest.json files against the xPLA manifest schema.
 """
 
 import argparse
@@ -20,7 +20,7 @@ def main() -> None:
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description="Validate GULPS manifest.json files")
+    parser = argparse.ArgumentParser(description="Validate xPLA manifest.json files")
     parser.add_argument(
         "manifest",
         type=Path,

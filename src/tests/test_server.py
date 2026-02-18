@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-Unit tests for the GULPS server.
+Unit tests for the xPLA server.
 """
 
 import json
@@ -66,9 +66,9 @@ class TestStaticFiles:
 
     def test_serve_library(self, client: TestClient) -> None:
         """Should serve library files."""
-        response = client.get("/static/js/gulps.js")
+        response = client.get("/static/js/xpla.js")
         assert response.status_code == 200
-        assert "gulps" in response.text.lower() or "Gulps" in response.text
+        assert "xpla" in response.text.lower() or "xPLA" in response.text
 
     def test_undeclared_asset_returns_403(self, client: TestClient) -> None:
         """Should return 403 for files not declared in static."""

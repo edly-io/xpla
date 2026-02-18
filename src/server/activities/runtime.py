@@ -1,5 +1,5 @@
 """
-Extism runtime wrapper for GULPS plugins.
+Extism runtime wrapper for xPLA plugins.
 
 This module provides the interface between FastAPI and Extism plugins.
 """
@@ -16,7 +16,7 @@ extism.set_log_file("/dev/stdout", "info")
 
 # TODO do we really need this class?
 class PluginRuntime:
-    """Manages an Extism plugin instance for GULPS."""
+    """Manages an Extism plugin instance for xPLA."""
 
     def __init__(
         self,

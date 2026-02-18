@@ -1,4 +1,4 @@
-// Shared library for GULPS sandbox modules
+// Shared library for xPLA sandbox modules
 //
 // Provides helper functions for common host function interactions.
 // Only includes functions available to ALL activities.
