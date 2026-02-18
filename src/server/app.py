@@ -131,7 +131,7 @@ def _is_allowed_asset(manifest: XplaActivityManifest, file_path: str) -> bool:
     """Check whether a file path is allowed to be served as a static asset."""
     if file_path in (manifest.client, "manifest.json"):
         return True
-    return file_path in (manifest.static or [])
+    return file_path in [item.root for item in (manifest.static or [])]
 
 
 @app.get("/a/{activity_id}/{file_path:path}")
