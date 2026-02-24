@@ -50,6 +50,7 @@ def bundle_client(input_js: Path, output_js: Path) -> None:
     print(f"Bundling {input_js} -> {output_js}")
     subprocess.check_call(
         [
+            "npx",
             "esbuild",
             str(input_js),
             "--bundle",
