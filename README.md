@@ -309,7 +309,39 @@ Alternatively, build all samples with:
 
 ### Runtime frontend
 
-TODO
+This section is aimed at LMS platform developers who want to render xPLA activities in their frontend. The platform must provide a runtime component that loads the activity's client script and exposes a standard API to it.
+
+#### Activity component API
+
+The runtime must provide an `activity` object to each activity's `setup(activity)` function. This object is the sole interface between the activity client code and the platform. It must expose:
+
+| Property / Method | Type | Description |
+|---|---|---|
+| `element` | DOM element | The root DOM element where the activity renders its UI. |
+| `values` | `object` | The activity state, populated by the backend's `getState()` response. Updated in-place when `values.change.*` events arrive. |
+| `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
+| `sendAction(name, value)` | `async (string, any) => Event[]` | Sends an action to the backend sandbox. Returns the list of events emitted in response. Must validate the action name against the manifest. |
+| `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
+| `onValueChange(name, value)` | `(string, any) => void` | Callback invoked when a `values.change.*` event arrives. Default is a no-op; activity code overrides it. |
+
+#### Loading flow
+
+1. The backend calls the sandbox's `getState()` function (if exported) to obtain the initial state for the current user and permission level. If `getState` is not exported, all declared values are returned.
+2. The platform renders the activity component, passing it the initial state and permission level.
+3. The runtime loads the activity's client script (declared in `manifest.client`) and calls its exported `setup(activity)` function.
+
+#### Event processing
+
+When `sendAction` receives a response from the backend, the runtime must process the returned events:
+
+- For events named `values.change.<name>`: update `activity.values[<name>]` and call `activity.onValueChange(<name>, newValue)`.
+- Other events can be handled by the activity via additional mechanisms (platform-specific).
+
+#### Recommendations
+
+- **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpla-component>`), which provides a clean encapsulation boundary and works with any framework. See [`src/server/static/js/xpla.js`](./src/server/static/js/xpla.js).
+- **Pass initial state as a data attribute.** We serialize the state JSON into a `data-state` attribute and the permission into `data-permission`. This avoids extra round-trips. See [`src/server/templates/activity.html`](./src/server/templates/activity.html).
+- **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. See [Embed modes](#embed-modes) below.
 
 ##### Embed modes
 
@@ -334,7 +366,36 @@ The development server toolbar includes an "Embed" dropdown to toggle between sh
 
 ### Runtime backend
 
-TODO
+This section is aimed at LMS platform developers who want to run xPLA activity sandboxes on their server. The backend is responsible for loading activities, executing sandboxed code, providing host functions, and mediating communication between the frontend and the sandbox.
+
+#### Core responsibilities
+
+1. **Manifest validation.** Parse and validate each activity's `manifest.json` against the [JSON Schema](./src/sandbox-lib/manifest.schema.json). This includes validating the declared values, actions, events, capabilities, and static assets.
+
+2. **Sandbox execution.** Load the WebAssembly module declared in `manifest.server` and execute its exported functions (`getState`, `onAction`). We recommend using [Extism](https://extism.org/), which provides plugin runtimes for many host languages (Python, Go, Rust, Java, etc.).
+
+3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host Functions](#host-functions) section below. Our implementation is in [`src/server/activities/context.py`](./src/server/activities/context.py).
+
+4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`src/server/activities/actions.py`](./src/server/activities/actions.py) (actions), [`src/server/activities/events.py`](./src/server/activities/events.py) (events), [`src/server/activities/values.py`](./src/server/activities/values.py) (values).
+
+5. **Key-value store.** Activity values are persisted in a key-value store, scoped by activity name and (for user-scoped values) user ID. The store must support `get` and `set` operations. Our implementation: [`src/server/activities/kv.py`](./src/server/activities/kv.py).
+
+6. **Static asset serving.** Serve files declared in the manifest's `static` array (plus `client` and `manifest.json`). Paths must be validated to prevent directory traversal.
+
+#### Frontend-to-backend endpoints
+
+The exact HTTP API is platform-specific and does not need to follow a standard. The platform must support two types of requests from the frontend:
+
+- **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared values are returned.
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, calls the sandbox's `onAction()` function, collects events emitted during execution, and returns them as JSON.
+
+Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py).
+
+#### Recommendations
+
+- **Use Extism for sandbox execution.** Extism provides a consistent plugin API across many host languages and handles WebAssembly loading, memory management, and host function binding. See [`src/server/activities/sandbox.py`](./src/server/activities/sandbox.py).
+- **Validate everything at runtime.** Don't trust that activity code will send well-formed actions or events. Validate action names and payloads against the manifest before calling the sandbox, and validate events before forwarding them to the frontend.
+- **Scope KV keys carefully.** We use the pattern `xpla.<activity_name>.<user_id>.<value_name>` to prevent activities from interfering with each other's state. For unit-scoped values, the user ID portion is empty.
 
 ## Project structure
 
