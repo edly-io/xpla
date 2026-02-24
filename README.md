@@ -50,6 +50,7 @@ Launch a development server:
 
     make server
 
+Then open http://127.0.0.1:9752 in a browser.
 
 The server is a demo of a few sample activities, including, among others:
 

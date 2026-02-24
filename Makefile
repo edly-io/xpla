@@ -25,7 +25,7 @@ samples/%/client.bundle.js: samples/%/client.js
 	./src/tools/bundle_client.py $< --output $@
 
 server: ## Run a development server
-	fastapi dev src/server/app.py
+	fastapi dev src/server/app.py --host=127.0.0.1 --port=9752
 
 format: ## Format code with black
 	black src/
