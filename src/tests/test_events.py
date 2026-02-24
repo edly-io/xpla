@@ -23,7 +23,13 @@ class TestEventChecker:
         checker = EventChecker({"my.event": TypeSchema(type=Type.object)})
         checker.validate("my.event", {"key": "value"})
 
-    def test_values_change_always_allowed(self) -> None:
-        """Should skip validation for values.change.* events."""
+    def test_undeclared_values_change_rejected(self) -> None:
+        """Should reject undeclared values.change.* events."""
         checker = EventChecker(None)
+        with pytest.raises(EventValidationError, match="not declared"):
+            checker.validate("values.change.score", 42)
+
+    def test_declared_values_change_passes(self) -> None:
+        """Should pass validation for declared values.change.* events."""
+        checker = EventChecker({"values.change.score": TypeSchema(type=Type.integer)})
         checker.validate("values.change.score", 42)

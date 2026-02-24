@@ -16,5 +16,8 @@
       }
     }
   },
-  "events": {}
+  "events": {
+    "values.change.markdown_content": { "type": "string" },
+    "values.change.rendered_html": { "type": "string" }
+  }
 }

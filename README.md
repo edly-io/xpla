@@ -60,7 +60,7 @@ The server is a demo of a few sample activities, including, among others:
 - [YouTube video module](./samples/youtube)
 - [Multiple choice question (MCQ) graded exercise](./samples/mcq)
 
-The UI allows users to switch between student and teacher interfaces, native and iframe embedding modes.
+The UI allows users to switch between student and teacher interfaces (with different permissions: view = anonymous user, play = student, edit = author), native and iframe embedding modes.
 
 ## Development
 
@@ -117,7 +117,7 @@ my-activity/
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 - `values` (optional, defaults to `{}`): Declares per-user values that the activity tracks. Values are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
-- `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. `values.change.*` events are implicit and don't need to be declared. Validated at runtime.
+- `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.
 - `static` (optional): An array of explicit file paths that can be served as static assets. Only listed files (plus `client` and `manifest.json`) are accessible. Paths must be relative (no leading `/`) and cannot contain `..`.
 
 The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.schema.json`](./src/sandbox-lib/manifest.schema.json). To validate a manifest:
@@ -184,7 +184,7 @@ Activities communicate between client and server using **actions** (client→ser
 }
 ```
 
-Payloads are validated at runtime: sending an undeclared action or emitting an undeclared event raises a validation error. `values.change.*` events are implicit (auto-derived from `values` declarations) and don't need to be declared.
+Payloads are validated at runtime: sending an undeclared action or emitting an undeclared event raises a validation error.
 
 #### Client module (declared via `client` field)
 

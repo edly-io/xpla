@@ -26,13 +26,9 @@ class EventChecker:
     def validate(self, name: str, payload: Any) -> None:
         """Validate an event name and payload against the manifest.
 
-        values.change.* events are implicit and always allowed.
-
         Raises:
             EventValidationError: If the event is not declared or payload is invalid.
         """
-        if name.startswith("values.change."):
-            return
         if name not in self._definitions:
             raise EventValidationError(
                 f"Event '{name}' not declared in manifest. "

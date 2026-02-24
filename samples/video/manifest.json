@@ -18,5 +18,7 @@
       }
     }
   },
-  "events": {}
+  "events": {
+    "values.change.video_url": { "type": "string" }
+  }
 }

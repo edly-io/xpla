@@ -734,9 +734,9 @@ class TestPostEvent:
 
         assert result == ""
 
-    def test_allows_values_change_events(self, tmp_path: Path) -> None:
-        """Should allow values.change.* events without declaration."""
-        manifest = create_manifest()
+    def test_allows_declared_values_change_events(self, tmp_path: Path) -> None:
+        """Should allow values.change.* events when declared in manifest."""
+        manifest = create_manifest(events={"values.change.score": {"type": "integer"}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 

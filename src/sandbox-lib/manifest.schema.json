@@ -64,7 +64,7 @@
     },
     "events": {
       "type": "object",
-      "description": "Events the server sandbox can emit to the client. values.change.* events are implicit.",
+      "description": "Events the server sandbox can emit to the client.",
       "additionalProperties": { "$ref": "#/$defs/typeSchema" }
     },
     "static": {

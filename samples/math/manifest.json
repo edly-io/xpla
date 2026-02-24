@@ -31,6 +31,8 @@
         "correct": { "type": "boolean" },
         "feedback": { "type": "string" }
       }
-    }
+    },
+    "values.change.correct_answers": { "type": "integer" },
+    "values.change.wrong_answers": { "type": "integer" }
   }
 }

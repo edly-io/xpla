@@ -57,7 +57,12 @@
       }
     }
   },
-  "events": {},
+  "events": {
+    "values.change.user_code": { "type": "string" },
+    "values.change.instructions": { "type": "string" },
+    "values.change.test_code": { "type": "string" },
+    "values.change.starter_code": { "type": "string" }
+  },
   "static": [
     "static/pyodide/pyodide.mjs",
     "static/pyodide/pyodide-lock.json",

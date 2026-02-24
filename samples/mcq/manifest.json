@@ -45,6 +45,9 @@
         "correct": { "type": "boolean" },
         "feedback": { "type": "string" }
       }
-    }
+    },
+    "values.change.question": { "type": "string" },
+    "values.change.answers": { "type": "array", "items": { "type": "string" } },
+    "values.change.correct_answers": { "type": "array", "items": { "type": "integer" } }
   }
 }
