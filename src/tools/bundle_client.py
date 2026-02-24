@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 Build utility for bundling client-side JavaScript with npm dependencies.
 

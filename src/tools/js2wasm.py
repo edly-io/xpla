@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 Build utility for compiling JavaScript plugins to WebAssembly.
 

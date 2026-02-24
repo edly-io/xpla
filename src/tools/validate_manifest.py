@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 Validate manifest.json files against the xPLA manifest schema.
 """
