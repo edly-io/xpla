@@ -1,17 +1,15 @@
 # Cross-Platform Learning Activities (xPLA)
 
-This is a proof-of-concept for an upcoming standard (xPLA): similar to standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
+This is a proof-of-concept for XPLA (temporary name), an upcoming standard which aims at being an improvement over other similar standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
 
 This project includes a Python server that serves a few sample xPLA activities, along with the documentation for their implementation (right here in this document).
 
 As a high-level overview: the xPLA standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe xPLA capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
 
-Offline portability is also one of the goals of this project, though it is yet unclear how this will be achieved. At this point there are two options:
+Offline mode is supported, with two possible options:
 
 1. Sandboxed code is shipped to the offline device (typically a mobile phone) and runs there. If the client decompiles the wasm binaries, they have access to the grading logic. This is acceptable when the client is trusted and the sandboxed code does not need network access.
 2. Communication between the frontend and the backend is performed in an event-driven architecture  (see [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). When offline, events are delayed until the client comes back online. Conflicts might happen and must be resolved, for instance when users attempt to connect from multiple devices.
-
-At the moment, a limitation of the current approach is the unsafe client code: arbitrary client code can be executed with full access to the DOM, cookies and browser features. This is a strong limitation of HTML which can (at the moment) be bypassed only by using iframes -- which come with their own set of limitations, including in terms of user experience. Platform administrators can choose between two embed modes (shadow DOM or iframe) to trade off isolation vs. integration (see [Embed modes](#embed-modes) below).
 
 ## Comparison with existing standards
 
@@ -22,20 +20,27 @@ At the moment, a limitation of the current approach is the unsafe client code: a
 | **Sandboxed backend code execution** | ❌ No – client-side JavaScript only | ⚠️ Depends – possible in theory, but servers typically run code unsafely | ⚠️ Unsafe – arbitrary Python with full server access | ✅ Sandboxed – WebAssembly with capability-based permissions |
 | **Offline access** | ⚠️ Partial – modules can be downloaded but may require network access at runtime | ❌ No – HTTP server required | ❌ No – connection to an Open edX platform is assumed | ✅ Yes – thanks to event-driven client-to-server communication |
 
+## Limitations
+
+### Unsafe client code
+
+The preferred mode for running xPLA on the client is using [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM). This prevents access to the xPLA from the rest of the DOM, but the reverse is not true: the xPLA can access the rest of the DOM and break it. To avoid this situation, platform administrators can decide to embed xPLA within iframes, which is the only safe mechanism to sandbox HTML (at the moment). But iframes come with their own set of limitations. See ee [Embed modes](#embed-modes) below.
+
+Note that most LMS support a "raw HTML" activity that is usually completely unsandboxed and is free to break the DOM and run arbitrary client code. Thus we are not sure whether the lack of client-side isolation is an actual issue.
+
 ## Installation
 
 Make sure to install the following requirements:
 
 - Python 3.11+
 - [extism-js](https://github.com/extism/js-pdk): for building JS plugins to WebAssembly (remember to also install [binaryen](https://github.com/WebAssembly/binaryen))
+
 Then install the project with:
 
     npm install
     pip install -e .
 
 ## Usage
-
-### Viewing sample activities
 
 Build all sample activities with sandboxes:
 
@@ -45,11 +50,42 @@ Launch a development server:
 
     make server
 
+
+The server is a demo of a few sample activities, including, among others:
+
+- [Markdown-formatted section](./samples/mcq)
+- [Python programming graded exercise](./samples/python)
+- [HTML5 video module](./samples/video)
+- [YouTube video module](./samples/youtube)
+- [Multiple choice question (MCQ) graded exercise](./samples/mcq)
+
+The UI allows users to switch between student and teacher interfaces, native and iframe embedding modes.
+
+## Development
+
+Install requirements:
+
+    pip install -e .[dev]
+
+Run tests:
+
+    make test
+
+## Implementation guide
+
+Here we provide a reference to the three main components of xPLA:
+
+- xPLA modules
+- xPLA runtime frontend
+- xPLA runtime backend
+
+⚠️ This is a work-in-progress. The exact XPLA specifications are currently being defined and are expected to evolve a lot in the very near future.
+
 ### Creating a new activity
 
-Activities are stored as static files. The [`samples`](./samples) directory contains a few activities that you can use as reference for your own.
+This reference is aimed at course authors to create new xPLA modules. We suggest to leverage generative AI to create new modules: when this documentation and sample activities are provided as context, coding LLM typically generate working xPLA in a single shot.
 
-NOTE: the exact specifications of activities are currently being defined and are expected to evolve a lot in the very near future.
+Activities are stored as static files. The [`samples`](./samples) directory contains a few activities that you can use as reference for your own.
 
 The typical file hierarchy of an activity is the following:
 
@@ -185,25 +221,6 @@ The `activity` object exposes the following properties and methods:
 
 The `XPLA` class is implemented in [`xpla.js`](./src/server/static/js/xpla.js).
 
-##### Embed modes
-
-The `<xpla-component>` element supports an `embed` attribute that controls how the activity is rendered:
-
-- **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
-- **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.
-
-In native/iframe mode, the element sends `postMessage` events to the parent window:
-
-- `{ type: "xpla:ready" }` — sent after setup completes.
-- `{ type: "xpla:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
-
-Each activity has a standalone embed page at `/a/{name}/embed` that uses `<xpla-component embed="native" ...>`. To embed an activity in an iframe:
-
-```html
-<iframe src="/a/math/embed" style="width: 100%; border: none;"></iframe>
-```
-
-The development server toolbar includes an "Embed" dropdown to toggle between shadow DOM and iframe modes for testing.
 
 #### Server sandbox (declared via `server` field)
 
@@ -278,6 +295,8 @@ The `onAction` function is called whenever the frontend sends an action via `act
 
 ### Building sample activities
 
+We provide here a convenience script that makes it easy to build server-side code to WebAssembly.
+
 ```bash
 ./src/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
 ```
@@ -287,6 +306,35 @@ This produces `server.wasm` in the specified output path.
 Alternatively, build all samples with:
 
     make samples
+
+### Runtime frontend
+
+TODO
+
+##### Embed modes
+
+The `<xpla-component>` element supports an `embed` attribute that controls how the activity is rendered:
+
+- **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
+- **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.
+
+In native/iframe mode, the element sends `postMessage` events to the parent window:
+
+- `{ type: "xpla:ready" }` — sent after setup completes.
+- `{ type: "xpla:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
+
+Each activity has a standalone embed page at `/a/{name}/embed` that uses `<xpla-component embed="native" ...>`. To embed an activity in an iframe:
+
+```html
+<iframe src="/a/math/embed" style="width: 100%; border: none;"></iframe>
+```
+
+The development server toolbar includes an "Embed" dropdown to toggle between shadow DOM and iframe modes for testing.
+
+
+### Runtime backend
+
+TODO
 
 ## Project structure
 
@@ -308,13 +356,3 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 
 In the future these host functions will be standardized and documented.
-
-## Development
-
-Install requirements:
-
-    pip install -r requirements/dev.in
-
-Run tests:
-
-    make test
