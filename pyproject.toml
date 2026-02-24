@@ -32,6 +32,9 @@ disable=[
     "too-many-public-methods",
     "too-many-instance-attributes",
 ]
+ignore-paths=[
+    "src/server/activities/manifest_types.py"
+]
 
 [tool.mypy]
 plugins = ['pydantic.mypy']

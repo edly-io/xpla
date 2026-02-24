@@ -54,7 +54,7 @@ src/server/activities/manifest_types.py: src/sandbox-lib/manifest.schema.json
 	datamodel-codegen \
 		--input=src/sandbox-lib/manifest.schema.json \
 		--input-file-type=jsonschema \
-		--use-double-quotes --formatters=black \
+		--use-double-quotes --formatters=isort --formatters=black \
 		--output-model-type=pydantic_v2.BaseModel \
 		--use-annotated \
 		--output=src/server/activities/manifest_types.py
