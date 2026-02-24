@@ -12,6 +12,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "black",
+    "datamodel-code-generator",
     "httpx",
     "mypy",
     "pylint",
@@ -31,9 +32,6 @@ disable=[
     "too-few-public-methods",
     "too-many-public-methods",
     "too-many-instance-attributes",
-]
-ignore-paths=[
-    "src/server/activities/manifest_types.py"
 ]
 
 [tool.mypy]
