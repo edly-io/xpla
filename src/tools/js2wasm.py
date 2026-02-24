@@ -54,6 +54,7 @@ def js_to_wasm(input_js: Path, output_wasm: Path) -> None:
         print(f"Bundling {input_js}")
         subprocess.check_call(
             [
+                "npx",
                 "esbuild",
                 str(input_js),
                 "--bundle",
