@@ -21,7 +21,7 @@ declare module "extism:host" {
     get_permission(): I64;
 
     // Event posting
-    post_event(name_ptr: I64, value_ptr: I64): I64;
+    send_event(name_ptr: I64, value_ptr: I64): I64;
 
     // Get/Set value
     get_value(name_ptr: I64): I64;

@@ -6,7 +6,7 @@
 // - code.check: Save user_code (play only)
 
 import {
-  postEvent,
+  sendEvent,
   getValue,
   setValue,
   getPermission,
@@ -16,7 +16,7 @@ import {
 
 function saveUserCode(code) {
   setUserValue("user_code", code);
-  postEvent("values.change.user_code", code);
+  sendEvent("values.change.user_code", code);
 }
 
 function onAction() {
@@ -32,7 +32,7 @@ function onAction() {
     for (const key of ["instructions", "starter_code", "test_code"]) {
       if (actionValue[key] !== undefined) {
         setValue(key, actionValue[key]);
-        postEvent("values.change." + key, actionValue[key]);
+        sendEvent("values.change." + key, actionValue[key]);
       }
     }
   }

@@ -2,12 +2,12 @@
 //
 // This plugin demonstrates the action/event architecture:
 // - Receives actions via onAction
-// - Sends events back via post_event host function
+// - Sends events back via send_event host function
 // - Updates values via values.change.* events
 // - Persists counters via get_user_value/set_user_value host functions
 
 import {
-  postEvent,
+  sendEvent,
   getPermission,
   getUserValue,
   setUserValue,
@@ -45,15 +45,15 @@ function onAction() {
     if (result.correct) {
       const correctCount = getUserValue("correct_answers") + 1;
       setUserValue("correct_answers", correctCount);
-      postEvent("values.change.correct_answers", correctCount);
+      sendEvent("values.change.correct_answers", correctCount);
     } else {
       const wrongCount = getUserValue("wrong_answers") + 1;
       setUserValue("wrong_answers", wrongCount);
-      postEvent("values.change.wrong_answers", wrongCount);
+      sendEvent("values.change.wrong_answers", wrongCount);
     }
 
     // Send feedback event
-    postEvent("answer.result", result);
+    sendEvent("answer.result", result);
   }
 }
 

@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save markdown_content and render to HTML
 
-import { postEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
 import { Marked } from "marked";
 
 function renderMarkdown(content, headerStartLevel) {
@@ -35,8 +35,8 @@ function onAction() {
 
     setValue("markdown_content", markdownContent);
     setValue("rendered_html", html);
-    postEvent("values.change.markdown_content", markdownContent);
-    postEvent("values.change.rendered_html", html);
+    sendEvent("values.change.markdown_content", markdownContent);
+    sendEvent("values.change.rendered_html", html);
   }
 }
 

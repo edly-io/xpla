@@ -4,7 +4,7 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { postEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
 
 // Handle incoming actions from frontend
 function onAction() {
@@ -42,9 +42,9 @@ function handleConfigSave(config) {
   setValue("correct_answers", config.correct_answers);
 
   // Notify frontend of value changes
-  postEvent("values.change.question", config.question);
-  postEvent("values.change.answers", config.answers);
-  postEvent("values.change.correct_answers", config.correct_answers);
+  sendEvent("values.change.question", config.question);
+  sendEvent("values.change.answers", config.answers);
+  sendEvent("values.change.correct_answers", config.correct_answers);
 }
 
 // Check submitted answers against correct answers
@@ -70,7 +70,7 @@ function handleAnswerSubmit(selected) {
     feedback = "Incorrect. Try again!";
   }
 
-  postEvent("answer.result", { correct: isCorrect, feedback });
+  sendEvent("answer.result", { correct: isCorrect, feedback });
 }
 
 module.exports = { onAction, getState };

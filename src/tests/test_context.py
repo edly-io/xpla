@@ -201,7 +201,7 @@ class TestHostFunctions:
 
         function_names = [f.__name__ for f in functions]
         assert "http_request" in function_names
-        assert "post_event" in function_names
+        assert "send_event" in function_names
         assert "get_value" in function_names
         assert "set_value" in function_names
 
@@ -693,8 +693,8 @@ class TestGetState:
         assert result == {"score": 0}
 
 
-class TestPostEvent:
-    """Tests for post_event host function."""
+class TestSendEvent:
+    """Tests for send_event host function."""
 
     def test_appends_event_to_pending(self, tmp_path: Path) -> None:
         """Should append event to pending events list."""
@@ -702,7 +702,7 @@ class TestPostEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.post_event("test.event", '"some value"')
+        ctx.send_event("test.event", '"some value"')
 
         assert ctx.clear_pending_events() == [
             {"name": "test.event", "value": '"some value"'}
@@ -716,8 +716,8 @@ class TestPostEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.post_event("event1", '"value1"')
-        ctx.post_event("event2", '"value2"')
+        ctx.send_event("event1", '"value1"')
+        ctx.send_event("event2", '"value2"')
 
         assert ctx.clear_pending_events() == [
             {"name": "event1", "value": '"value1"'},
@@ -730,7 +730,7 @@ class TestPostEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.post_event("test", '"value"')
+        result = ctx.send_event("test", '"value"')
 
         assert result == ""
 
@@ -740,7 +740,7 @@ class TestPostEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.post_event("values.change.score", "42")
+        ctx.send_event("values.change.score", "42")
 
         assert ctx.clear_pending_events() == [
             {"name": "values.change.score", "value": "42"}
@@ -753,7 +753,7 @@ class TestPostEvent:
         ctx = ActivityContext(activity_dir)
 
         with pytest.raises(EventValidationError, match="not declared"):
-            ctx.post_event("unknown.event", '"value"')
+            ctx.send_event("unknown.event", '"value"')
 
 
 class TestClearPendingEvents:
@@ -766,8 +766,8 @@ class TestClearPendingEvents:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        ctx.post_event("event1", '"value1"')
-        ctx.post_event("event2", '"value2"')
+        ctx.send_event("event1", '"value1"')
+        ctx.send_event("event2", '"value2"')
 
         result = ctx.clear_pending_events()
 

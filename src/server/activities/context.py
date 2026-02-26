@@ -188,7 +188,7 @@ class ActivityContext:
         """
         return [
             self.get_permission,
-            self.post_event,
+            self.send_event,
             self.get_value,
             self.get_user_value,
             self.set_value,
@@ -203,8 +203,8 @@ class ActivityContext:
         """
         return self._permission.value
 
-    def post_event(self, name: str, value: str) -> str:
-        """Post an event to be sent back to the client.
+    def send_event(self, name: str, value: str) -> str:
+        """Send an event back to the client.
 
         Called by sandbox code to send events (e.g., value changes) to the frontend.
 

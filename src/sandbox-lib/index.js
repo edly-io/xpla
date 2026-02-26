@@ -4,7 +4,7 @@
 // Only includes functions available to ALL activities.
 
 const {
-  post_event,
+  send_event,
   get_value,
   get_user_value,
   set_value,
@@ -12,10 +12,10 @@ const {
   get_permission,
 } = Host.getFunctions();
 
-export function postEvent(name, value) {
+export function sendEvent(name, value) {
   const nameMem = Memory.fromString(name);
   const valueMem = Memory.fromString(JSON.stringify(value));
-  post_event(nameMem.offset, valueMem.offset);
+  send_event(nameMem.offset, valueMem.offset);
 }
 
 // Get the current permission level ("view", "play", or "edit").

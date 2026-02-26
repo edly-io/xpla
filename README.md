@@ -239,7 +239,7 @@ A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/
 
 ```javascript
 import {
-  postEvent,
+  sendEvent,
   getPermission,
   getValue,
   setValue,
@@ -248,7 +248,7 @@ import {
 } from "../../src/sandbox-lib";
 
 // Post an event to the frontend
-postEvent("answer.result", { correct: true });
+sendEvent("answer.result", { correct: true });
 
 // Get the current permission level ("view", "play", or "edit")
 const permission = getPermission();
@@ -288,7 +288,7 @@ function onAction() {
 module.exports = { onAction, getState };
 ```
 
-The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to the frontend using the `postEvent` helper (which calls the `post_event` host function).
+The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to the frontend using the `sendEvent` helper (which calls the `send_event` host function).
 
 ### Building sample activities
 
@@ -405,7 +405,7 @@ The server exposes several endpoints which are defined in [./src/server/app.py](
 Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py):
 
 - `get_permission() -> str`
-- `post_event(name: str, value: str)`
+- `send_event(name: str, value: str)`
 - `get_value(name: str)`
 - `get_user_value(name: str)`
 - `set_value(name: str, value: str)`

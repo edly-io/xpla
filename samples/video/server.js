@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save the video_url
 
-import { postEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
 
 function onAction() {
   const input = JSON.parse(Host.inputString());
@@ -16,7 +16,7 @@ function onAction() {
       return;
     }
     setValue("video_url", actionValue.video_url);
-    postEvent("values.change.video_url", actionValue.video_url);
+    sendEvent("values.change.video_url", actionValue.video_url);
   }
 }
 
