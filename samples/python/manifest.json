@@ -66,8 +66,8 @@
   "static": [
     "static/pyodide/pyodide.mjs",
     "static/pyodide/pyodide-lock.json",
-    "static/pyodide/pyodide_stdlib.zip",
     "static/pyodide/pyodide.asm.wasm",
-    "static/pyodide/pyodide.asm.js"
+    "static/pyodide/pyodide.asm.js",
+    "static/pyodide/python_stdlib.zip"
   ]
 }
