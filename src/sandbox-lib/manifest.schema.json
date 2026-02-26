@@ -13,10 +13,12 @@
     },
     "client": {
       "type": "string",
+      "pattern": "^(?!/)(?!.*\\.\\.).+$",
       "description": "Path to the client-side JavaScript file, relative to activity directory."
     },
     "server": {
       "type": "string",
+      "pattern": "^(?!/)(?!.*\\.\\.).+$",
       "description": "Path to the server-side WASM file, relative to activity directory."
     },
     "capabilities": {

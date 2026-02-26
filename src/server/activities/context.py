@@ -53,9 +53,9 @@ class ActivityContext:
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
-        # TODO we need to make sure that the server field does not point to a parent directory
         server_path = self.manifest.server
         if server_path is not None:
+            # Note: we know that this is a safe path thanks to path constraints in the manifests
             wasm_path = self._activity_dir / server_path
             self.sandbox = SandboxExecutor(wasm_path, self.host_functions())
 
@@ -92,7 +92,11 @@ class ActivityContext:
 
     @property
     def client_path(self) -> str:
-        """Path to client script, relative to activity directory."""
+        """
+        Path to client script, relative to activity directory.
+
+        Note that this is a safe path thanks to schema constraints.
+        """
         return self.manifest.client
 
     def call_sandbox_function(self, function_name: str, *args: bytes) -> bytes:
