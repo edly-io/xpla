@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from typing import Callable, Any
@@ -23,8 +24,11 @@ class SandboxExecutor:
         )
         self.wasm_runtime.load()
 
-    # TODO standardize the input_data format? We need something that is compact,
-    # inspectable and works everywhere (including in the frontend)
     # TODO exception management: not implemented error?
-    def call_function(self, name: str, input_data: bytes) -> bytes:
-        return self.wasm_runtime.call(name, input_data)
+    def call_function(self, name: str, arg: Any) -> bytes:
+        """
+        Call a function that is exposed in the sandbox. Input data will be
+        JSON-formatted.
+        """
+        arg_bytes = b"" if arg is None else json.dumps(arg).encode("utf8")
+        return self.wasm_runtime.call(name, arg_bytes)

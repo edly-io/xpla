@@ -90,23 +90,6 @@ export class XPLA extends HTMLElement {
     }
   }
 
-  async callSandboxFunction(functionName, body) {
-    // body will be JSON-formatted and sent to the backend.
-    // TODO do we want to keep this function around? Is this the right API?
-    const response = await fetch("/api/" + this.attributes.name.value + "/plugin/" + functionName, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Plugin call failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return JSON.parse(data.result);
-  }
-
   async sendAction(name, value = "") {
     const response = await fetch("/api/activity/" + this.attributes.name.value + "/actions/" + name, {
       method: "POST",

@@ -384,7 +384,7 @@ This section is aimed at LMS platform developers who want to run xPLA activity s
 The exact HTTP API is platform-specific and does not need to follow a standard. The platform must support two types of requests from the frontend:
 
 - **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared values are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, calls the sandbox's `onAction()` function, collects events emitted during execution, and returns them as JSON.
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The action value must be JSON-formatted. The backend validates the action, calls the sandbox's `onAction()` function, collects events emitted during execution, and returns them as JSON.
 
 Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py).
 

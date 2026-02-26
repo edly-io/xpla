@@ -166,7 +166,7 @@ class TestCallSandboxFunction:
         ctx = ActivityContext(activity_dir)
 
         with pytest.raises(MissingSandboxError):
-            ctx.call_sandbox_function("test_fn", b"input")
+            ctx.call_sandbox_function("test_fn", "input")
 
     @patch("server.activities.context.SandboxExecutor")
     def test_calls_sandbox_function(
@@ -182,9 +182,9 @@ class TestCallSandboxFunction:
         mock_sandbox_class.return_value = mock_sandbox
 
         ctx = ActivityContext(activity_dir)
-        result = ctx.call_sandbox_function("my_function", b"input_data")
+        result = ctx.call_sandbox_function("my_function", "input_data")
 
-        mock_sandbox.call_function.assert_called_once_with("my_function", b"input_data")
+        mock_sandbox.call_function.assert_called_once_with("my_function", "input_data")
         assert result == b"result"
 
 
@@ -661,7 +661,7 @@ class TestGetState:
         ctx = ActivityContext(activity_dir)
         result = ctx.get_state()
 
-        mock_sandbox.call_function.assert_called_once_with("getState", b"")
+        mock_sandbox.call_function.assert_called_once_with("getState", None)
         assert result == {"question": "test"}
 
     @patch("server.activities.context.SandboxExecutor")

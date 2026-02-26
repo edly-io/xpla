@@ -99,12 +99,14 @@ class ActivityContext:
         """
         return self.manifest.client
 
-    def call_sandbox_function(self, function_name: str, *args: bytes) -> bytes:
+    def call_sandbox_function(
+        self, function_name: str, input_data: Any = None
+    ) -> bytes:
         if self.sandbox is None:
             raise MissingSandboxError()
 
         # TODO catch errors?
-        return self.sandbox.call_function(function_name, *args)
+        return self.sandbox.call_function(function_name, input_data)
 
     def _value_key(self, name: str, user_id: str) -> str:
         """Generate the KV store key for a value."""
@@ -167,7 +169,7 @@ class ActivityContext:
         """
         if self.sandbox is not None:
             try:
-                result = self.call_sandbox_function("getState", b"")
+                result = self.call_sandbox_function("getState")
                 state: dict[str, ValueType] = json.loads(result)
                 return state
             except RuntimeError:

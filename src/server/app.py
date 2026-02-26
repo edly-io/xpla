@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from server.activities.context import ActivityContext, MissingSandboxError
+from server.activities.context import ActivityContext
 from server.activities.actions import ActionValidationError
 from server.activities.manifest_types import XplaActivityManifest
 from server.activities.permission import Permission
@@ -168,32 +168,6 @@ async def activity_asset(activity_id: str, file_path: str) -> FileResponse:
     return FileResponse(full_path)
 
 
-@app.post("/api/{activity_id}/plugin/{function_name}")
-async def call_plugin(
-    activity_id: str, function_name: str, request: Request
-) -> JSONResponse:
-    """Execute a function in the activity plugin."""
-    try:
-        context = load_activity(activity_id)
-    except ActivityNotFound as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-
-    user_id, permission = get_simulation_params(request)
-    context.user_id = user_id
-    context.permission = permission
-
-    body = await request.body()
-    try:
-        result = context.call_sandbox_function(function_name, body)
-    except MissingSandboxError as e:
-        raise HTTPException(
-            status_code=404, detail="Activity has no WASM runtime"
-        ) from e
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-    return JSONResponse(content={"result": result.decode("utf-8")})
-
-
 @app.post("/api/activity/{activity_id}/actions/{action_name}")
 async def send_action(
     activity_id: str, action_name: str, request: Request
@@ -219,9 +193,9 @@ async def send_action(
 
     # Call sandbox's onAction if available
     if context.sandbox is not None:
-        action_input = json.dumps({"name": action_name, "value": action_value})
+        action_input = {"name": action_name, "value": action_value}
         try:
-            context.call_sandbox_function("onAction", action_input.encode("utf-8"))
+            context.call_sandbox_function("onAction", action_input)
         except RuntimeError as e:
             # onAction not defined in sandbox - log warning and continue
             logger.warning("Activity '%s' has no onAction handler: %s", activity_id, e)
