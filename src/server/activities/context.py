@@ -20,7 +20,7 @@ from server.activities.capabilities import CapabilityChecker, CapabilityError
 from server.activities.events import EventChecker
 from server.activities.permission import Permission
 from server.activities.values import ValueChecker, ValueType
-from server.activities.manifest_types import XplaActivityManifest
+from server.activities.manifest_types import Scope, XplaActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
@@ -35,6 +35,8 @@ class ActivityContext:
     def __init__(self, activity_dir: Path) -> None:
         self._activity_dir = activity_dir
         self._user_id: str = "alice"
+        self._course_id: str = "democourse"
+        self._activity_id: str = "activityid"
         self._permission: Permission = Permission.view
 
         # Key-value store (used internally for value storage)
@@ -70,6 +72,22 @@ class ActivityContext:
     @user_id.setter
     def user_id(self, value: str) -> None:
         self._user_id = value
+
+    @property
+    def course_id(self) -> str:
+        return self._course_id
+
+    @course_id.setter
+    def course_id(self, value: str) -> None:
+        self._course_id = value
+
+    @property
+    def activity_id(self) -> str:
+        return self._activity_id
+
+    @activity_id.setter
+    def activity_id(self, value: str) -> None:
+        self._activity_id = value
 
     @property
     def permission(self) -> Permission:
@@ -108,12 +126,16 @@ class ActivityContext:
         # TODO catch errors?
         return self.sandbox.call_function(function_name, input_data)
 
-    def _value_key(self, name: str, user_id: str) -> str:
+    def _value_key(
+        self, name: str, course_id: str, activity_id: str, user_id: str
+    ) -> str:
         """Generate the KV store key for a value."""
-        return f"xpla.{self.name}.{user_id}.{name}"
+        return f"xpla.{self.name}.{course_id}.{activity_id}.{user_id}.{name}"
 
-    def load_value(self, user_id: str, name: str) -> ValueType:
-        """Get a declared value for a user.
+    def load_value(
+        self, course_id: str, activity_id: str, user_id: str, name: str
+    ) -> ValueType:
+        """Get a declared value.
 
         Returns the stored value, or the default if not set.
 
@@ -123,7 +145,7 @@ class ActivityContext:
         # Check that value is declared (raises if not)
         default = self.value_checker.get_default(name)
 
-        key = self._value_key(name, user_id)
+        key = self._value_key(name, course_id, activity_id, user_id)
         stored = self.kv_store.get(key)
         if stored is None:
             return default
@@ -132,8 +154,15 @@ class ActivityContext:
         result: ValueType = json.loads(stored)
         return result
 
-    def store_value(self, user_id: str, name: str, value: ValueType) -> None:
-        """Set a declared value for a user.
+    def store_value(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_id: str,
+        user_id: str,
+        name: str,
+        value: ValueType,
+    ) -> None:
+        """Set a declared value.
 
         Raises:
             ValueValidationError: If the value is not declared or invalid.
@@ -141,8 +170,20 @@ class ActivityContext:
         # Validate against manifest definition
         self.value_checker.validate(name, value)
 
-        key = self._value_key(name, user_id)
+        key = self._value_key(name, course_id, activity_id, user_id)
         self.kv_store.set(key, json.dumps(value))
+
+    def _scope_key_segments(self, scope: Scope, user_id: str) -> tuple[str, str, str]:
+        """Return (course_id, activity_id, user_id) key segments for a scope."""
+        scope_map: dict[Scope, tuple[str, str, str]] = {
+            Scope.unit: (self._course_id, self._activity_id, ""),
+            Scope.user_unit: (self._course_id, self._activity_id, user_id),
+            Scope.course: (self._course_id, "", ""),
+            Scope.user_course: (self._course_id, "", user_id),
+            Scope.platform: ("", "", ""),
+            Scope.user_platform: ("", "", user_id),
+        }
+        return scope_map[scope]
 
     def get_all_values(self, user_id: str) -> dict[str, ValueType]:
         """Get all declared values for a user.
@@ -155,10 +196,9 @@ class ActivityContext:
         """
         result: dict[str, ValueType] = {}
         for name in self.value_checker.value_names:
-            if self.value_checker.is_user_scoped(name):
-                result[name] = self.load_value(user_id, name)
-            else:
-                result[name] = self.load_value("", name)
+            scope = self.value_checker.get_scope(name)
+            course_id, activity_id, uid = self._scope_key_segments(scope, user_id)
+            result[name] = self.load_value(course_id, activity_id, uid, name)
         return result
 
     def get_state(self) -> dict[str, ValueType]:
@@ -193,6 +233,14 @@ class ActivityContext:
             self.get_user_value,
             self.set_value,
             self.set_user_value,
+            self.get_course_value,
+            self.set_course_value,
+            self.get_course_user_value,
+            self.set_course_user_value,
+            self.get_platform_value,
+            self.set_platform_value,
+            self.get_platform_user_value,
+            self.set_platform_user_value,
             self.http_request,
             self.submit_grade,
         ]
@@ -216,34 +264,73 @@ class ActivityContext:
         return ""
 
     def get_value(self, name: str) -> str:
-        """Get a declared xPLA value that is scoped to an activity.
-
-        TODO introduce support for course/platform scoping.
+        """Get a unit-scoped value.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        value = self.load_value("", name)
+        value = self.load_value(self._course_id, self._activity_id, "", name)
         return json.dumps(value)
 
     def get_user_value(self, name: str) -> str:
-        """
-        Return a value that is scoped to a user.
-        """
-        value = self.load_value(self._user_id, name)
+        """Get a user,unit-scoped value."""
+        value = self.load_value(self._course_id, self._activity_id, self._user_id, name)
         return json.dumps(value)
 
     def set_value(self, name: str, value: str) -> bool:
-        """Set a declared xPLA value for a user (host function).
-
-        Takes JSON-encoded value. Validates against manifest.
-        """
-        return self._set_value("", name, value)
+        """Set a unit-scoped value. Takes JSON-encoded value."""
+        return self._set_value(self._course_id, self._activity_id, "", name, value)
 
     def set_user_value(self, name: str, value: str) -> bool:
-        return self._set_value(self._user_id, name, value)
+        """Set a user,unit-scoped value."""
+        return self._set_value(
+            self._course_id, self._activity_id, self._user_id, name, value
+        )
 
-    def _set_value(self, user_id: str, name: str, value: str) -> bool:
+    def get_course_value(self, name: str) -> str:
+        """Get a course-scoped value."""
+        value = self.load_value(self._course_id, "", "", name)
+        return json.dumps(value)
+
+    def set_course_value(self, name: str, value: str) -> bool:
+        """Set a course-scoped value."""
+        return self._set_value(self._course_id, "", "", name, value)
+
+    def get_course_user_value(self, name: str) -> str:
+        """Get a user,course-scoped value."""
+        value = self.load_value(self._course_id, "", self._user_id, name)
+        return json.dumps(value)
+
+    def set_course_user_value(self, name: str, value: str) -> bool:
+        """Set a user,course-scoped value."""
+        return self._set_value(self._course_id, "", self._user_id, name, value)
+
+    def get_platform_value(self, name: str) -> str:
+        """Get a platform-scoped value."""
+        value = self.load_value("", "", "", name)
+        return json.dumps(value)
+
+    def set_platform_value(self, name: str, value: str) -> bool:
+        """Set a platform-scoped value."""
+        return self._set_value("", "", "", name, value)
+
+    def get_platform_user_value(self, name: str) -> str:
+        """Get a user,platform-scoped value."""
+        value = self.load_value("", "", self._user_id, name)
+        return json.dumps(value)
+
+    def set_platform_user_value(self, name: str, value: str) -> bool:
+        """Set a user,platform-scoped value."""
+        return self._set_value("", "", self._user_id, name, value)
+
+    def _set_value(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_id: str,
+        user_id: str,
+        name: str,
+        value: str,
+    ) -> bool:
         try:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
@@ -254,7 +341,7 @@ class ActivityContext:
                 value,
             )
             raise
-        self.store_value(user_id, name, decoded)
+        self.store_value(course_id, activity_id, user_id, name, decoded)
         return True
 
     def http_request(

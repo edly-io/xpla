@@ -140,8 +140,15 @@ Each value must have a `type` and `scope` field. An optional `default` can be pr
 **Types:** `integer`, `number`, `string`, `boolean`, `array`, `object`. For `array`, specify an `items` field with a type schema. For `object`, specify a `properties` field. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`, `[]`, `{}`.
 
 **Scopes:**
-- `"user,unit"`: Per-user value, specific to this activity instance. Example: a student's score.
-- `"unit"`: Shared value for all users of this activity instance. Example: the question text configured by an instructor.
+
+| Scope | Description | Example |
+|---|---|---|
+| `"unit"` | Shared across users, scoped to this activity instance. | Question text configured by an instructor. |
+| `"user,unit"` | Per-user, scoped to this activity instance. | A student's score. |
+| `"course"` | Shared across users, scoped to the course. | Course-wide leaderboard. |
+| `"user,course"` | Per-user, scoped to the course. | Cumulative course grade. |
+| `"platform"` | Shared across users, global to the platform. | Internal API key. |
+| `"user,platform"` | Per-user, global to the platform. | User language preference. |
 
 ##### Permissions
 
@@ -237,10 +244,12 @@ A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/
 import {
   sendEvent,
   getPermission,
-  getValue,
-  setValue,
-  getUserValue,
-  setUserValue
+  getValue, setValue,
+  getUserValue, setUserValue,
+  getCourseValue, setCourseValue,
+  getCourseUserValue, setCourseUserValue,
+  getPlatformValue, setPlatformValue,
+  getPlatformUserValue, setPlatformUserValue,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -256,6 +265,14 @@ setUserValue("correct_answers", score + 1);
 // Get/set shared values (scope: "unit")
 const question = getValue("question");
 setValue("question", "What is 2+2?");
+
+// Get/set course-scoped values
+const total = getCourseValue("total_students");
+setCourseUserValue("course_grade", 85);
+
+// Get/set platform-scoped values
+const setting = getPlatformValue("feature_flag");
+setPlatformUserValue("language", "en");
 ```
 
 ##### Exported functions
@@ -337,10 +354,12 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
-- `get_value(name: str)`
-- `get_user_value(name: str)`
-- `set_value(name: str, value: str)`
-- `set_user_value(name: str, value: str)`
+- `get_value(name: str)` / `set_value(name: str, value: str)` — unit scope
+- `get_user_value(name: str)` / `set_user_value(name: str, value: str)` — user,unit scope
+- `get_course_value(name: str)` / `set_course_value(name: str, value: str)` — course scope
+- `get_course_user_value(name: str)` / `set_course_user_value(name: str, value: str)` — user,course scope
+- `get_platform_value(name: str)` / `set_platform_value(name: str, value: str)` — platform scope
+- `get_platform_user_value(name: str)` / `set_platform_user_value(name: str, value: str)` — user,platform scope
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 
 In the future these host functions will be standardized and documented.
@@ -349,7 +368,7 @@ In the future these host functions will be standardized and documented.
 
 - **Use Extism for sandbox execution.** Extism provides a consistent plugin API across many host languages and handles WebAssembly loading, memory management, and host function binding. See [`src/server/activities/sandbox.py`](./src/server/activities/sandbox.py).
 - **Validate everything at runtime.** Don't trust that activity code will send well-formed actions or events. Validate action names and payloads against the manifest before calling the sandbox, and validate events before forwarding them to the frontend.
-- **Scope KV keys carefully.** We use the pattern `xpla.<activity_name>.<user_id>.<value_name>` to prevent activities from interfering with each other's state. For unit-scoped values, the user ID portion is empty.
+- **Scope KV keys carefully.** We use the pattern `xpla.<activity_name>.<course_id>.<activity_id>.<user_id>.<value_name>` to prevent activities from interfering with each other's state. Depending on the scope, some segments are empty (e.g., for platform-scoped values, course_id and activity_id are empty).
 
 #### Frontend API
 

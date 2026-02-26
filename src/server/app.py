@@ -95,6 +95,8 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
 
     user_id, permission = get_simulation_params(request)
     activity_context.user_id = user_id
+    activity_context.course_id = "democourse"
+    activity_context.activity_id = "activityid"
     activity_context.permission = permission
     activity_state = activity_context.get_state()
 
@@ -122,6 +124,8 @@ async def activity_embed(request: Request, activity_id: str) -> HTMLResponse:
 
     user_id, permission = get_simulation_params(request)
     activity_context.user_id = user_id
+    activity_context.course_id = "democourse"
+    activity_context.activity_id = "activityid"
     activity_context.permission = permission
     activity_state = activity_context.get_state()
 
@@ -180,6 +184,8 @@ async def send_action(
 
     user_id, permission = get_simulation_params(request)
     context.user_id = user_id
+    context.course_id = "democourse"
+    context.activity_id = "activityid"
     context.permission = permission
 
     # Parse action payload from request body

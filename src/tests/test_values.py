@@ -95,10 +95,38 @@ class TestValueChecker:
         values = {
             "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
             "question": ValueDefinition(type=Type.string, scope=Scope.unit),
+            "course_score": ValueDefinition(type=Type.integer, scope=Scope.user_course),
+            "course_data": ValueDefinition(type=Type.string, scope=Scope.course),
+            "global_score": ValueDefinition(
+                type=Type.integer, scope=Scope.user_platform
+            ),
+            "global_data": ValueDefinition(type=Type.string, scope=Scope.platform),
         }
         checker = ValueChecker(values)
         assert checker.is_user_scoped("score") is True
         assert checker.is_user_scoped("question") is False
+        assert checker.is_user_scoped("course_score") is True
+        assert checker.is_user_scoped("course_data") is False
+        assert checker.is_user_scoped("global_score") is True
+        assert checker.is_user_scoped("global_data") is False
+
+    def test_get_scope(self) -> None:
+        """Should return the scope of a declared value."""
+        values = {
+            "a": ValueDefinition(type=Type.integer, scope=Scope.unit),
+            "b": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "c": ValueDefinition(type=Type.integer, scope=Scope.course),
+            "d": ValueDefinition(type=Type.integer, scope=Scope.user_course),
+            "e": ValueDefinition(type=Type.integer, scope=Scope.platform),
+            "f": ValueDefinition(type=Type.integer, scope=Scope.user_platform),
+        }
+        checker = ValueChecker(values)
+        assert checker.get_scope("a") == Scope.unit
+        assert checker.get_scope("b") == Scope.user_unit
+        assert checker.get_scope("c") == Scope.course
+        assert checker.get_scope("d") == Scope.user_course
+        assert checker.get_scope("e") == Scope.platform
+        assert checker.get_scope("f") == Scope.user_platform
 
     def test_user_value_names(self) -> None:
         """Should return only user-scoped value names."""

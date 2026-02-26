@@ -100,8 +100,8 @@
         },
         "scope": {
           "type": "string",
-          "enum": ["unit", "user,unit"],
-          "description": "Scope of the value. 'unit' is shared across users, 'user,unit' is per-user."
+          "enum": ["unit", "course", "platform", "user,unit", "user,course", "user,platform"],
+          "description": "Scope of the value. Scopes without 'user' are shared across users. 'unit' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
         },
         "default": {
           "description": "Default value (must match declared type)."

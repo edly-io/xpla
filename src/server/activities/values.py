@@ -104,10 +104,17 @@ class ValueChecker:
                 f"Value '{name}' failed validation: {e.message}"
             ) from e
 
+    def get_scope(self, name: str) -> Scope:
+        """Get the scope of a declared value."""
+        return self.get_definition(name).scope
+
     def is_user_scoped(self, name: str) -> bool:
         """Check if a value is user-scoped."""
-        definition = self.get_definition(name)
-        return definition.scope == Scope.user_unit
+        return self.get_scope(name) in (
+            Scope.user_unit,
+            Scope.user_course,
+            Scope.user_platform,
+        )
 
     def user_value_names(self) -> list[str]:
         """Return names of user-scoped values."""
