@@ -241,7 +241,6 @@ A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/
 import {
   postEvent,
   getPermission,
-  getUserId,
   getValue,
   setValue,
   getUserValue,
@@ -253,9 +252,6 @@ postEvent("answer.result", { correct: true });
 
 // Get the current permission level ("view", "play", or "edit")
 const permission = getPermission();
-
-// Get current user ID
-const userId = getUserId();
 
 // Get/set user-scoped values (scope: "user,unit")
 const score = getUserValue("correct_answers");
@@ -408,13 +404,12 @@ The server exposes several endpoints which are defined in [./src/server/app.py](
 
 Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py):
 
-<!-- TODO are we actually exposing get_user_id? Should we? -->
-
-- `get_user_id() -> str`
 - `get_permission() -> str`
 - `post_event(name: str, value: str)`
-- `get_value(user_id: str, name: str)`
-- `set_value(user_id: str, name: str, value: str)`
+- `get_value(name: str)`
+- `get_user_value(name: str)`
+- `set_value(name: str, value: str)`
+- `set_user_value(name: str, value: str)`
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 
 In the future these host functions will be standardized and documented.

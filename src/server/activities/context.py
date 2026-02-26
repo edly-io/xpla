@@ -181,20 +181,15 @@ class ActivityContext:
         Host functions that will be made available to the sandbox.
         """
         return [
-            self.get_user_id,
             self.get_permission,
             self.post_event,
             self.get_value,
+            self.get_user_value,
             self.set_value,
+            self.set_user_value,
             self.http_request,
             self.submit_grade,
         ]
-
-    def get_user_id(self) -> str:
-        """
-        Return the current user ID.
-        """
-        return self._user_id
 
     def get_permission(self) -> str:
         """
@@ -214,28 +209,43 @@ class ActivityContext:
         self._pending_events.append({"name": name, "value": value})
         return ""
 
-    def get_value(self, user_id: str, name: str) -> str:
-        """Get a declared xPLA value for a user.
+    def get_value(self, name: str) -> str:
+        """Get a declared xPLA value that is scoped to an activity.
+
+        TODO introduce support for course/platform scoping.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        # TODO IMPORTANT get_value should not receive a user_id. Instead, it should infer
-        # the user_id from the request, and automatically infer the full key
-        # name from the activity manifest.
-        value = self.load_value(user_id, name)
+        value = self.load_value("", name)
         return json.dumps(value)
 
-    def set_value(self, user_id: str, name: str, value: str) -> bool:
+    def get_user_value(self, name: str) -> str:
+        """
+        Return a value that is scoped to a user.
+        """
+        value = self.load_value(self._user_id, name)
+        return json.dumps(value)
+
+    def set_value(self, name: str, value: str) -> bool:
         """Set a declared xPLA value for a user (host function).
 
         Takes JSON-encoded value. Validates against manifest.
         """
+        return self._set_value("", name, value)
+
+    def set_user_value(self, name: str, value: str) -> bool:
+        return self._set_value(self._user_id, name, value)
+
+    def _set_value(self, user_id: str, name: str, value: str) -> bool:
         try:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
             logger.error(
-                "Failed to decode user_id=%s name=%s value=%s", user_id, name, value
+                "Failed to decode user_id='%s' name='%s' value='%s'",
+                user_id,
+                name,
+                value,
             )
             raise
         self.store_value(user_id, name, decoded)

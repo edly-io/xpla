@@ -4,7 +4,7 @@
 // - Receives actions via onAction
 // - Sends events back via post_event host function
 // - Updates values via values.change.* events
-// - Persists counters via get_value/set_value host functions
+// - Persists counters via get_user_value/set_user_value host functions
 
 import {
   postEvent,
@@ -17,10 +17,12 @@ const { submit_grade } = Host.getFunctions();
 
 // Return state visible to the current user.
 function getState() {
-  Host.outputString(JSON.stringify({
-    correct_answers: getUserValue("correct_answers"),
-    wrong_answers: getUserValue("wrong_answers"),
-  }));
+  Host.outputString(
+    JSON.stringify({
+      correct_answers: getUserValue("correct_answers"),
+      wrong_answers: getUserValue("wrong_answers"),
+    }),
+  );
 }
 
 // Handle incoming actions from frontend
