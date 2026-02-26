@@ -214,11 +214,11 @@ export function setup(activity) {
 The `activity` object exposes the following properties and methods:
 
 - `element`: the DOM element to which this activity is attached.
-- `values`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared values if `getState` is not exported). Updated in-place when `values.change.*` events arrive.
+- `values`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared values if `getState` is not exported).
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
 - `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
-- `onValueChange(name, value)`: Override this callback to react to `values.change.*` events from the server.
+- `onEvent(name, value)`: Override this callback to handle events from the server. Called for every event with the parsed value.
 
 The `XPLA` class is implemented in [`xpla.js`](./src/server/static/js/xpla.js).
 
@@ -247,7 +247,7 @@ import {
   setUserValue
 } from "../../src/sandbox-lib";
 
-// Post an event to the frontend
+// Send an event to the frontend
 sendEvent("answer.result", { correct: true });
 
 // Get the current permission level ("view", "play", or "edit")
@@ -315,11 +315,11 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | Property / Method | Type | Description |
 |---|---|---|
 | `element` | DOM element | The root DOM element where the activity renders its UI. |
-| `values` | `object` | The activity state, populated by the backend's `getState()` response. Updated in-place when `values.change.*` events arrive. |
+| `values` | `object` | The activity state, populated by the backend's `getState()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
 | `sendAction(name, value)` | `async (string, any) => Event[]` | Sends an action to the backend sandbox. Returns the list of events emitted in response. Must validate the action name against the manifest. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
-| `onValueChange(name, value)` | `(string, any) => void` | Callback invoked when a `values.change.*` event arrives. Default is a no-op; activity code overrides it. |
+| `onEvent(name, value)` | `(string, any) => void` | Callback invoked for every event emitted by the server. Default is a no-op; activity code overrides it. |
 
 #### Loading flow
 
@@ -329,10 +329,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 
 #### Event processing
 
-When `sendAction` receives a response from the backend, the runtime must process the returned events:
-
-- For events named `values.change.<name>`: update `activity.values[<name>]` and call `activity.onValueChange(<name>, newValue)`.
-- Other events can be handled by the activity via additional mechanisms (platform-specific).
+When `sendAction` receives a response from the backend, the runtime calls `activity.onEvent(name, parsedValue)` for each event. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.values` or performing any other side effects as needed.
 
 #### Recommendations
 

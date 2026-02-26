@@ -140,6 +140,18 @@ export function setup(activity) {
     return div.innerHTML;
   }
 
+  activity.onEvent = (name, value) => {
+    if (name === "values.change.user_code") {
+      activity.values.user_code = value;
+    } else if (name === "values.change.instructions") {
+      activity.values.instructions = value;
+    } else if (name === "values.change.test_code") {
+      activity.values.test_code = value;
+    } else if (name === "values.change.starter_code") {
+      activity.values.starter_code = value;
+    }
+  };
+
   function render() {
     if (permission === "edit") {
       renderEditView();
@@ -202,9 +214,6 @@ export function setup(activity) {
           test_code: testEditor.state.doc.toString(),
         };
         await activity.sendAction("config.save", value);
-        activity.values.instructions = value.instructions;
-        activity.values.starter_code = value.starter_code;
-        activity.values.test_code = value.test_code;
         feedbackEl.innerHTML = '<div class="feedback success">Saved!</div>';
       } catch (err) {
         feedbackEl.innerHTML =

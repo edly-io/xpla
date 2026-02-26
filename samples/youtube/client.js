@@ -9,6 +9,12 @@ export function setup(activity) {
     return activity.values.video_id || "";
   }
 
+  activity.onEvent = (name, value) => {
+    if (name === "values.change.video_id") {
+      activity.values.video_id = value;
+    }
+  };
+
   function render() {
     const videoId = getVideoId();
 
@@ -55,7 +61,6 @@ export function setup(activity) {
       const feedbackEl = element.querySelector("#save-feedback");
       try {
         await activity.sendAction("config.save", { video_id: newVideoId });
-        activity.values.video_id = newVideoId;
         feedbackEl.innerHTML = '<div class="feedback success">Saved!</div>';
       } catch (err) {
         feedbackEl.innerHTML = `<div class="feedback error">Error: ${err.message}</div>`;

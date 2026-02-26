@@ -57,12 +57,16 @@ export function setup(activity) {
   correctCountEl.textContent = activity.values.correct_answers || 0;
   wrongCountEl.textContent = activity.values.wrong_answers || 0;
 
-  // Handle value changes from backend
-  activity.onValueChange = (name, value) => {
-    if (name === "correct_answers") {
+  // Handle events from backend
+  activity.onEvent = (name, value) => {
+    if (name === "values.change.correct_answers") {
       correctCountEl.textContent = value;
-    } else if (name === "wrong_answers") {
+    } else if (name === "values.change.wrong_answers") {
       wrongCountEl.textContent = value;
+    } else if (name === "answer.result") {
+      feedbackEl.style.display = "block";
+      feedbackEl.textContent = value.feedback;
+      feedbackEl.className = value.correct ? "correct" : "incorrect";
     }
   };
 
@@ -77,19 +81,10 @@ export function setup(activity) {
 
     try {
       // Send action to backend
-      const events = await activity.sendAction(
+      await activity.sendAction(
         "answer.submit",
         { question: current.expression, answer: userAnswer }
       );
-
-      // Find the result event
-      const resultEvent = events.find((ev) => ev.name === "answer.result");
-      if (resultEvent) {
-        const result = JSON.parse(resultEvent.value);
-        feedbackEl.style.display = "block";
-        feedbackEl.textContent = result.feedback;
-        feedbackEl.className = result.correct ? "correct" : "incorrect";
-      }
     } catch (err) {
       feedbackEl.style.display = "block";
       feedbackEl.textContent = `Error: ${err.message}`;

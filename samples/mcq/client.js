@@ -140,10 +140,6 @@ export function setup(activity) {
           { question, answers, correct_answers }
         );
         feedbackEl.innerHTML = '<div class="feedback correct">Configuration saved!</div>';
-        // Update local values for immediate re-render
-        activity.values.question = question;
-        activity.values.answers = JSON.stringify(answers);
-        activity.values.correct_answers = JSON.stringify(correct_answers);
       } catch (err) {
         feedbackEl.innerHTML = `<div class="feedback incorrect">Error: ${err.message}</div>`;
       }
@@ -203,16 +199,10 @@ export function setup(activity) {
       const feedbackEl = container.querySelector("#answer-feedback");
 
       try {
-        const events = await activity.sendAction(
+        await activity.sendAction(
           "answer.submit",
           selected
         );
-
-        const resultEvent = events.find((ev) => ev.name === "answer.result");
-        if (resultEvent) {
-          const result = JSON.parse(resultEvent.value);
-          feedbackEl.innerHTML = `<div class="feedback ${result.correct ? "correct" : "incorrect"}">${escapeHtml(result.feedback)}</div>`;
-        }
       } catch (err) {
         feedbackEl.innerHTML = `<div class="feedback incorrect">Error: ${err.message}</div>`;
       }
@@ -225,6 +215,22 @@ export function setup(activity) {
     div.textContent = str;
     return div.innerHTML;
   }
+
+  // Handle events from backend
+  activity.onEvent = (name, value) => {
+    if (name === "answer.result") {
+      const feedbackEl = element.querySelector("#answer-feedback");
+      if (feedbackEl) {
+        feedbackEl.innerHTML = `<div class="feedback ${value.correct ? "correct" : "incorrect"}">${escapeHtml(value.feedback)}</div>`;
+      }
+    } else if (name === "values.change.question") {
+      activity.values.question = value;
+    } else if (name === "values.change.answers") {
+      activity.values.answers = value;
+    } else if (name === "values.change.correct_answers") {
+      activity.values.correct_answers = value;
+    }
+  };
 
   // Initial render
   render();

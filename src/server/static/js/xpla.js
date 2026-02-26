@@ -108,13 +108,7 @@ export class XPLA extends HTMLElement {
 
   _processEvents(events) {
     for (const event of events) {
-      // Handle values.change.<name> events
-      if (event.name.startsWith("values.change.")) {
-        const valueName = event.name.slice("values.change.".length);
-        const newValue = JSON.parse(event.value);
-        this.values[valueName] = newValue;
-        this.onValueChange(valueName, newValue);
-      }
+      this.onEvent(event.name, JSON.parse(event.value));
     }
   }
 
@@ -122,8 +116,8 @@ export class XPLA extends HTMLElement {
     return new URL(`/a/${this.getAttribute("name")}/${path}`, location.href).href;
   }
 
-  onValueChange(name, value) {
-    // Default no-op. Override in client.js to handle value changes.
+  onEvent(name, value) {
+    // Default no-op. Override in client.js to handle events.
   }
 }
 

@@ -44,7 +44,6 @@ export function setup(activity) {
       const feedbackEl = element.querySelector("#save-feedback");
       try {
         await activity.sendAction("config.save", { markdown_content: content });
-        activity.values.markdown_content = content;
         feedbackEl.innerHTML = '<div class="feedback success">Saved!</div>';
       } catch (err) {
         feedbackEl.innerHTML = '<div class="feedback error">Error: ' + escapeHtml(err.message) + '</div>';
@@ -72,8 +71,8 @@ export function setup(activity) {
     return div.innerHTML;
   }
 
-  activity.onValueChange = (name, value) => {
-    if (name === "rendered_html") {
+  activity.onEvent = (name, value) => {
+    if (name === "values.change.rendered_html") {
       const preview = element.querySelector("#preview");
       if (preview) {
         preview.innerHTML = value || '<span class="no-preview">No content yet.</span>';
@@ -81,6 +80,8 @@ export function setup(activity) {
         activity.values.rendered_html = value;
         renderPlayView();
       }
+    } else if (name === "values.change.markdown_content") {
+      activity.values.markdown_content = value;
     }
   };
 

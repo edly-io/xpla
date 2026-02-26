@@ -50,6 +50,12 @@ export function setup(activity) {
     return activity.values.video_url || "";
   }
 
+  activity.onEvent = (name, value) => {
+    if (name === "values.change.video_url") {
+      activity.values.video_url = value;
+    }
+  };
+
   function render() {
     const videoUrl = getVideoUrl();
     if (permission === "edit") {
@@ -94,7 +100,6 @@ export function setup(activity) {
       const feedbackEl = element.querySelector("#save-feedback");
       try {
         await activity.sendAction("config.save", { video_url: newUrl });
-        activity.values.video_url = newUrl;
         feedbackEl.innerHTML = '<div class="feedback success">Saved!</div>';
         render();
       } catch (err) {
