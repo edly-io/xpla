@@ -29,7 +29,7 @@
 </div>
 <script>
   document.getElementById("sim-user").addEventListener("change", function() {
-    document.cookie = "xpla_user=" + this.value + "; path=/";
+    document.cookie = "{{ USER_ID_COOKIE }}=" + this.value + "; path=/";
     location.reload();
   });
   document.getElementById("sim-permission").addEventListener("change", function() {

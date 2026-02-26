@@ -19,12 +19,31 @@ from server import constants
 SIMULATED_USERS = ["alice", "bob", "charlie"]
 DEFAULT_USER = SIMULATED_USERS[0]
 DEFAULT_PERMISSION = Permission.view
+USER_ID_COOKIE = "xpla_user"
+
+logger = logging.getLogger(__name__)
+
+
+app = FastAPI(
+    title="xPLA Server",
+    description="LMS simulation for xPLA development",
+    version="0.3.0",
+)
+
+app.mount("/static", StaticFiles(directory=constants.STATIC_DIR), name="static")
+templates = Jinja2Templates(
+    directory=constants.TEMPLATES_DIR,
+    context_processors=[
+        lambda _request: {
+            "USER_ID_COOKIE": USER_ID_COOKIE,
+        }
+    ],
+)
 
 
 def get_simulation_params(request: Request) -> tuple[str, Permission]:
     """Read simulated user/permission from cookies, with validation and fallback."""
-    # TODO cookie names should be defined as variables to be shared with the frontend
-    user_id = request.cookies.get("xpla_user", DEFAULT_USER)
+    user_id = request.cookies.get(USER_ID_COOKIE, DEFAULT_USER)
     if user_id not in SIMULATED_USERS:
         user_id = DEFAULT_USER
 
@@ -56,16 +75,6 @@ def load_activity(activity_id: str) -> ActivityContext:
 
 def list_activities() -> list[str]:
     return sorted(d.name for d in constants.SAMPLES_DIR.iterdir() if d.is_dir())
-
-
-app = FastAPI(
-    title="xPLA Server",
-    description="LMS simulation for xPLA development",
-    version="0.3.0",
-)
-
-app.mount("/static", StaticFiles(directory=constants.STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=constants.TEMPLATES_DIR)
 
 
 @app.get("/")
@@ -183,9 +192,6 @@ async def call_plugin(
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
     return JSONResponse(content={"result": result.decode("utf-8")})
-
-
-logger = logging.getLogger(__name__)
 
 
 @app.post("/api/activity/{activity_id}/actions/{action_name}")

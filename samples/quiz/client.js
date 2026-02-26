@@ -1,5 +1,4 @@
 export function setup(activity) {
-    // TODO what can we do to add HTML without accessing the shadow attribute, which should be private?
     var element = activity.element;
 
     element.innerHTML = `
