@@ -205,8 +205,7 @@ export function setup(activity) {
       try {
         const events = await activity.sendAction(
           "answer.submit",
-          // TODO should we just send selected? (no dict)
-          { selected }
+          selected
         );
 
         const resultEvent = events.find((ev) => ev.name === "answer.result");

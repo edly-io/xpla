@@ -32,10 +32,8 @@
       }
     },
     "answer.submit": {
-      "type": "object",
-      "properties": {
-        "selected": { "type": "array", "items": { "type": "integer" } }
-      }
+      "type": "array",
+      "items": { "type": "integer" }
     }
   },
   "events": {

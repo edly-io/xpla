@@ -48,8 +48,7 @@ function handleConfigSave(config) {
 }
 
 // Check submitted answers against correct answers
-function handleAnswerSubmit(submission) {
-  const selected = submission.selected;
+function handleAnswerSubmit(selected) {
 
   // Get correct answers from stored config
   const correctAnswers = getValue("correct_answers");
