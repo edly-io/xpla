@@ -191,11 +191,11 @@ Payloads are validated at runtime: sending an undeclared action or emitting an u
 
 #### Client module (declared via `client` field)
 
-This client-side scripting module will be loaded alongside the `<xpla-component>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<xpla-component>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
+This client-side scripting module will be loaded alongside the `<xpl-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<xpl-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
 
 ```javascript
 export function setup(activity) {
-  // activity is the <xpla-component> DOM element
+  // activity is the <xpl-activity> DOM element
   // Inject HTML into the activity
   activity.element.innerHTML = `
     <h2>Welcome to my activity!</h2>
@@ -399,9 +399,9 @@ When `sendAction` receives a response from the backend, the runtime calls `activ
 
 ##### Recommendations
 
-- **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpla-component>`), which provides a clean encapsulation boundary and works with any framework. See [`src/server/static/js/xpla.js`](./src/server/static/js/xpla.js).
+- **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpl-activity>`), which provides a clean encapsulation boundary and works with any framework. See [`src/server/static/js/xpla.js`](./src/server/static/js/xpla.js).
 - **Pass initial state as a data attribute.** We serialize the state JSON into a `data-state` attribute and the permission into `data-permission`. This avoids extra round-trips. See [`src/server/templates/activity.html`](./src/server/templates/activity.html).
-- **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. The `<xpla-component>` element supports an `embed` attribute that controls how the activity is rendered:
+- **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. The `<xpl-activity>` element supports an `embed` attribute that controls how the activity is rendered:
   - **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
   - **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.
 
@@ -410,7 +410,7 @@ In native/iframe mode, the element sends `postMessage` events to the parent wind
 - `{ type: "xpla:ready" }` — sent after setup completes.
 - `{ type: "xpla:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
 
-Each activity has a standalone embed page at `/a/{name}/embed` that uses `<xpla-component embed="native" ...>`. To embed an activity in an iframe:
+Each activity has a standalone embed page at `/a/{name}/embed` that uses `<xpl-activity embed="native" ...>`. To embed an activity in an iframe:
 
 ```html
 <iframe src="/a/math/embed" style="width: 100%; border: none;"></iframe>

@@ -38,12 +38,12 @@
   });
 </script>
 <div id="activity-container">
-<xpla-component
+<xpl-activity
     name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_id=activity_context.name, file_path=activity_context.client_path) }}"
     data-state="{{ state_json | escape }}"
     data-permission="{{ current_permission }}"
-></xpla-component>
+></xpl-activity>
 </div>
 <script>
   document.getElementById("sim-embed").addEventListener("change", function() {
