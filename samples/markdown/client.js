@@ -14,8 +14,8 @@ export function setup(activity) {
   }
 
   function renderEditView() {
-    const markdown = activity.values.markdown_content || "";
-    const html = activity.values.rendered_html || "";
+    const markdown = activity.state.markdown_content || "";
+    const html = activity.state.rendered_html || "";
 
     element.innerHTML = `
       <style>
@@ -52,7 +52,7 @@ export function setup(activity) {
   }
 
   function renderPlayView() {
-    const html = activity.values.rendered_html || "";
+    const html = activity.state.rendered_html || "";
 
     element.innerHTML = `
       <style>
@@ -77,11 +77,11 @@ export function setup(activity) {
       if (preview) {
         preview.innerHTML = value || '<span class="no-preview">No content yet.</span>';
       } else {
-        activity.values.rendered_html = value;
+        activity.state.rendered_html = value;
         renderPlayView();
       }
     } else if (name === "values.change.markdown_content") {
-      activity.values.markdown_content = value;
+      activity.state.markdown_content = value;
     }
   };
 

@@ -9,9 +9,9 @@ export function setup(activity) {
   // Parse stored config from values
   function getConfig() {
     return {
-      question: activity.values.question || "",
-      answers: activity.values.answers || [],
-      correct_answers: activity.values.correct_answers || [],
+      question: activity.state.question || "",
+      answers: activity.state.answers || [],
+      correct_answers: activity.state.correct_answers || [],
     };
   }
 
@@ -224,11 +224,11 @@ export function setup(activity) {
         feedbackEl.innerHTML = `<div class="feedback ${value.correct ? "correct" : "incorrect"}">${escapeHtml(value.feedback)}</div>`;
       }
     } else if (name === "values.change.question") {
-      activity.values.question = value;
+      activity.state.question = value;
     } else if (name === "values.change.answers") {
-      activity.values.answers = value;
+      activity.state.answers = value;
     } else if (name === "values.change.correct_answers") {
-      activity.values.correct_answers = value;
+      activity.state.correct_answers = value;
     }
   };
 

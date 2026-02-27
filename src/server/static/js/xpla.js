@@ -1,7 +1,7 @@
 export class XPLA extends HTMLElement {
   constructor() {
     super();
-    this.values = {};
+    this.state = {};
     this.permission = "view";
   }
 
@@ -16,7 +16,7 @@ export class XPLA extends HTMLElement {
 
     const stateAttr = this.getAttribute("data-state");
     if (stateAttr) {
-      this.values = JSON.parse(stateAttr);
+      this.state = JSON.parse(stateAttr);
     }
 
     const permissionAttr = this.getAttribute("data-permission");

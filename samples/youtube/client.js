@@ -6,12 +6,12 @@ export function setup(activity) {
   const permission = activity.permission;
 
   function getVideoId() {
-    return activity.values.video_id || "";
+    return activity.state.video_id || "";
   }
 
   activity.onEvent = (name, value) => {
     if (name === "values.change.video_id") {
-      activity.values.video_id = value;
+      activity.state.video_id = value;
     }
   };
 

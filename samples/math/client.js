@@ -54,8 +54,8 @@ export function setup(activity) {
   const wrongCountEl = element.querySelector("#wrong-count");
 
   // Initialize display with current values
-  correctCountEl.textContent = activity.values.correct_answers || 0;
-  wrongCountEl.textContent = activity.values.wrong_answers || 0;
+  correctCountEl.textContent = activity.state.correct_answers || 0;
+  wrongCountEl.textContent = activity.state.wrong_answers || 0;
 
   // Handle events from backend
   activity.onEvent = (name, value) => {

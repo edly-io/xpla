@@ -142,13 +142,13 @@ export function setup(activity) {
 
   activity.onEvent = (name, value) => {
     if (name === "values.change.user_code") {
-      activity.values.user_code = value;
+      activity.state.user_code = value;
     } else if (name === "values.change.instructions") {
-      activity.values.instructions = value;
+      activity.state.instructions = value;
     } else if (name === "values.change.test_code") {
-      activity.values.test_code = value;
+      activity.state.test_code = value;
     } else if (name === "values.change.starter_code") {
-      activity.values.starter_code = value;
+      activity.state.starter_code = value;
     }
   };
 
@@ -161,9 +161,9 @@ export function setup(activity) {
   }
 
   function renderEditView() {
-    const instructions = activity.values.instructions || "";
-    const starterCode = activity.values.starter_code || "";
-    const testCode = activity.values.test_code || "";
+    const instructions = activity.state.instructions || "";
+    const starterCode = activity.state.starter_code || "";
+    const testCode = activity.state.test_code || "";
 
     element.innerHTML = `
       <style>
@@ -225,8 +225,8 @@ export function setup(activity) {
   }
 
   function renderPlayView() {
-    const instructions = activity.values.instructions || "";
-    const initialCode = activity.values.user_code || activity.values.starter_code || "";
+    const instructions = activity.state.instructions || "";
+    const initialCode = activity.state.user_code || activity.state.starter_code || "";
 
     element.innerHTML = `
       <style>
@@ -308,7 +308,7 @@ export function setup(activity) {
       const studentCode = codeEditor.state.doc.toString();
       activity.sendAction("code.check", { code: studentCode });
 
-      const testCode = activity.values.test_code || "";
+      const testCode = activity.state.test_code || "";
       if (!testCode) {
         container.className = "py-container state-checking";
         resultsContent.innerHTML = '<div class="no-content">No tests configured for this exercise.</div>';

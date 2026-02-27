@@ -47,12 +47,12 @@ export function setup(activity) {
   element.adoptedStyleSheets = [...element.adoptedStyleSheets, sheet];
 
   function getVideoUrl() {
-    return activity.values.video_url || "";
+    return activity.state.video_url || "";
   }
 
   activity.onEvent = (name, value) => {
     if (name === "values.change.video_url") {
-      activity.values.video_url = value;
+      activity.state.video_url = value;
     }
   };
 

@@ -381,7 +381,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | Property / Method | Type | Description |
 |---|---|---|
 | `element` | DOM element | The root DOM element where the activity renders its UI. |
-| `values` | `object` | The activity state, populated by the backend's `getState()` response. |
+| `state` | `object` | The activity state, populated by the backend's `getState()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
 | `sendAction(name, value)` | `async (string, any) => Event[]` | Sends an action to the backend sandbox. Returns the list of events emitted in response. Must validate the action name against the manifest. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
@@ -395,7 +395,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 
 ##### Event processing
 
-When `sendAction` receives a response from the backend, the runtime calls `activity.onEvent(name, parsedValue)` for each event. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.values` or performing any other side effects as needed.
+When `sendAction` receives a response from the backend, the runtime calls `activity.onEvent(name, parsedValue)` for each event. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.state` or performing any other side effects as needed.
 
 ##### Recommendations
 
