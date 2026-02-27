@@ -111,7 +111,7 @@ class ValueChecker:
     def is_user_scoped(self, name: str) -> bool:
         """Check if a value is user-scoped."""
         return self.get_scope(name) in (
-            Scope.user_unit,
+            Scope.user_activity,
             Scope.user_course,
             Scope.user_platform,
         )

@@ -6,19 +6,19 @@
   "values": {
     "question": {
       "type": "string",
-      "scope": "unit",
+      "scope": "activity",
       "default": ""
     },
     "answers": {
       "type": "array",
       "items": { "type": "string" },
-      "scope": "unit",
+      "scope": "activity",
       "default": []
     },
     "correct_answers": {
       "type": "array",
       "items": { "type": "integer" },
-      "scope": "unit",
+      "scope": "activity",
       "default": []
     }
   },

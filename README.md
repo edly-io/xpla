@@ -129,10 +129,10 @@ Each value must have a `type` and `scope` field. An optional `default` can be pr
 ```json
 {
   "values": {
-    "score": { "type": "integer", "scope": "user,unit", "default": 0 },
-    "question": { "type": "string", "scope": "unit", "default": "" },
-    "answers": { "type": "array", "items": { "type": "string" }, "scope": "unit", "default": [] },
-    "correct_answers": { "type": "array", "items": { "type": "integer" }, "scope": "unit", "default": [] }
+    "score": { "type": "integer", "scope": "user,activity", "default": 0 },
+    "question": { "type": "string", "scope": "activity", "default": "" },
+    "answers": { "type": "array", "items": { "type": "string" }, "scope": "activity", "default": [] },
+    "correct_answers": { "type": "array", "items": { "type": "integer" }, "scope": "activity", "default": [] }
   }
 }
 ```
@@ -143,8 +143,8 @@ Each value must have a `type` and `scope` field. An optional `default` can be pr
 
 | Scope | Description | Example |
 |---|---|---|
-| `"unit"` | Shared across users, scoped to this activity instance. | Question text configured by an instructor. |
-| `"user,unit"` | Per-user, scoped to this activity instance. | A student's score. |
+| `"activity"` | Shared across users, scoped to this activity instance. | Question text configured by an instructor. |
+| `"user,activity"` | Per-user, scoped to this activity instance. | A student's score. |
 | `"course"` | Shared across users, scoped to the course. | Course-wide leaderboard. |
 | `"user,course"` | Per-user, scoped to the course. | Cumulative course grade. |
 | `"platform"` | Shared across users, global to the platform. | Internal API key. |
@@ -258,11 +258,11 @@ sendEvent("answer.result", { correct: true });
 // Get the current permission level ("view", "play", or "edit")
 const permission = getPermission();
 
-// Get/set user-scoped values (scope: "user,unit")
+// Get/set user-scoped values (scope: "user,activity")
 const score = getUserValue("correct_answers");
 setUserValue("correct_answers", score + 1);
 
-// Get/set shared values (scope: "unit")
+// Get/set shared values (scope: "activity")
 const question = getValue("question");
 setValue("question", "What is 2+2?");
 
@@ -354,15 +354,15 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
-- `get_value(name: str)` / `set_value(name: str, value: str)` — unit scope
-- `get_user_value(name: str)` / `set_user_value(name: str, value: str)` — user,unit scope
-- `get_course_value(name: str)` / `set_course_value(name: str, value: str)` — course scope
-- `get_course_user_value(name: str)` / `set_course_user_value(name: str, value: str)` — user,course scope
-- `get_platform_value(name: str)` / `set_platform_value(name: str, value: str)` — platform scope
-- `get_platform_user_value(name: str)` / `set_platform_user_value(name: str, value: str)` — user,platform scope
+- `get_value(name: str)` / `set_value(name: str, value: str)`: activity scope
+- `get_user_value(name: str)` / `set_user_value(name: str, value: str)`: user,activity scope
+- `get_course_value(name: str)` / `set_course_value(name: str, value: str)`: course scope
+- `get_course_user_value(name: str)` / `set_course_user_value(name: str, value: str)`: user,course scope
+- `get_platform_value(name: str)` / `set_platform_value(name: str, value: str)`: platform scope
+- `get_platform_user_value(name: str)` / `set_platform_user_value(name: str, value: str)`: user,platform scope
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 
-In the future these host functions will be standardized and documented.
+<!-- TODO actually document these host functions -->
 
 ##### Recommendations
 

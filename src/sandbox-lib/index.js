@@ -32,7 +32,7 @@ export function getPermission() {
   return Memory.find(resultOffset).readString();
 }
 
-// Get a shared (unit-scoped) value.
+// Get a shared (activity-scoped) value.
 export function getValue(name) {
   const nameMem = Memory.fromString(name);
   const resultOffset = get_value(nameMem.offset);
@@ -40,7 +40,7 @@ export function getValue(name) {
   return JSON.parse(result);
 }
 
-// Set a shared (unit-scoped) value.
+// Set a shared (activity-scoped) value.
 export function setValue(name, value) {
   const nameMem = Memory.fromString(name);
   const valueJSON = JSON.stringify(value);

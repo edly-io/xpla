@@ -176,8 +176,8 @@ class ActivityContext:
     def _scope_key_segments(self, scope: Scope, user_id: str) -> tuple[str, str, str]:
         """Return (course_id, activity_id, user_id) key segments for a scope."""
         scope_map: dict[Scope, tuple[str, str, str]] = {
-            Scope.unit: (self._course_id, self._activity_id, ""),
-            Scope.user_unit: (self._course_id, self._activity_id, user_id),
+            Scope.activity: (self._course_id, self._activity_id, ""),
+            Scope.user_activity: (self._course_id, self._activity_id, user_id),
             Scope.course: (self._course_id, "", ""),
             Scope.user_course: (self._course_id, "", user_id),
             Scope.platform: ("", "", ""),
@@ -264,7 +264,7 @@ class ActivityContext:
         return ""
 
     def get_value(self, name: str) -> str:
-        """Get a unit-scoped value.
+        """Get an activity-scoped value.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
@@ -273,16 +273,16 @@ class ActivityContext:
         return json.dumps(value)
 
     def get_user_value(self, name: str) -> str:
-        """Get a user,unit-scoped value."""
+        """Get a user,activity-scoped value."""
         value = self.load_value(self._course_id, self._activity_id, self._user_id, name)
         return json.dumps(value)
 
     def set_value(self, name: str, value: str) -> bool:
-        """Set a unit-scoped value. Takes JSON-encoded value."""
+        """Set an activity-scoped value. Takes JSON-encoded value."""
         return self._set_value(self._course_id, self._activity_id, "", name, value)
 
     def set_user_value(self, name: str, value: str) -> bool:
-        """Set a user,unit-scoped value."""
+        """Set a user,activity-scoped value."""
         return self._set_value(
             self._course_id, self._activity_id, self._user_id, name, value
         )

@@ -19,9 +19,9 @@ class TestValueChecker:
     def test_with_values(self) -> None:
         """Should parse all value definitions."""
         values = {
-            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_activity),
             "attempts": ValueDefinition(
-                type=Type.integer, scope=Scope.user_unit, default=0
+                type=Type.integer, scope=Scope.user_activity, default=0
             ),
         }
         checker = ValueChecker(values)
@@ -32,19 +32,19 @@ class TestValueChecker:
         values = {
             "score": ValueDefinition(
                 type=Type.integer,
-                scope=Scope.user_unit,
+                scope=Scope.user_activity,
                 default=10,
             )
         }
         checker = ValueChecker(values)
         definition = checker.get_definition("score")
         assert definition.type == Type.integer
-        assert definition.scope == Scope.user_unit
+        assert definition.scope == Scope.user_activity
         assert definition.default == 10
 
     def test_get_definition_not_declared(self) -> None:
         """Should raise for undeclared value."""
-        values = {"score": ValueDefinition(type=Type.integer, scope=Scope.unit)}
+        values = {"score": ValueDefinition(type=Type.integer, scope=Scope.activity)}
         checker = ValueChecker(values)
         with pytest.raises(ValueValidationError, match="not declared"):
             checker.get_definition("unknown")
@@ -52,7 +52,9 @@ class TestValueChecker:
     def test_get_default_with_default(self) -> None:
         """Should return default value when defined."""
         values = {
-            "score": ValueDefinition(type=Type.integer, scope=Scope.unit, default=100)
+            "score": ValueDefinition(
+                type=Type.integer, scope=Scope.activity, default=100
+            )
         }
         checker = ValueChecker(values)
         assert checker.get_default("score") == 100
@@ -60,10 +62,10 @@ class TestValueChecker:
     def test_get_default_without_default(self) -> None:
         """Should return type-specific default when no explicit default defined."""
         values = {
-            "count": ValueDefinition(type=Type.integer, scope=Scope.unit),
-            "ratio": ValueDefinition(type=Type.number, scope=Scope.unit),
-            "name": ValueDefinition(type=Type.string, scope=Scope.unit),
-            "enabled": ValueDefinition(type=Type.boolean, scope=Scope.unit),
+            "count": ValueDefinition(type=Type.integer, scope=Scope.activity),
+            "ratio": ValueDefinition(type=Type.number, scope=Scope.activity),
+            "name": ValueDefinition(type=Type.string, scope=Scope.activity),
+            "enabled": ValueDefinition(type=Type.boolean, scope=Scope.activity),
         }
         checker = ValueChecker(values)
         assert checker.get_default("count") == 0
@@ -76,7 +78,7 @@ class TestValueChecker:
         values = {
             "score": ValueDefinition(
                 type=Type.integer,
-                scope=Scope.user_unit,
+                scope=Scope.user_activity,
                 default=0,
             )
         }
@@ -85,7 +87,7 @@ class TestValueChecker:
 
     def test_validate_fails_type(self) -> None:
         """Should fail validation for wrong type."""
-        values = {"score": ValueDefinition(type=Type.integer, scope=Scope.unit)}
+        values = {"score": ValueDefinition(type=Type.integer, scope=Scope.activity)}
         checker = ValueChecker(values)
         with pytest.raises(ValueValidationError, match="failed validation"):
             checker.validate("score", "not an int")
@@ -93,8 +95,8 @@ class TestValueChecker:
     def test_is_user_scoped(self) -> None:
         """Should correctly identify user-scoped values."""
         values = {
-            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
-            "question": ValueDefinition(type=Type.string, scope=Scope.unit),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_activity),
+            "question": ValueDefinition(type=Type.string, scope=Scope.activity),
             "course_score": ValueDefinition(type=Type.integer, scope=Scope.user_course),
             "course_data": ValueDefinition(type=Type.string, scope=Scope.course),
             "global_score": ValueDefinition(
@@ -113,16 +115,16 @@ class TestValueChecker:
     def test_get_scope(self) -> None:
         """Should return the scope of a declared value."""
         values = {
-            "a": ValueDefinition(type=Type.integer, scope=Scope.unit),
-            "b": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
+            "a": ValueDefinition(type=Type.integer, scope=Scope.activity),
+            "b": ValueDefinition(type=Type.integer, scope=Scope.user_activity),
             "c": ValueDefinition(type=Type.integer, scope=Scope.course),
             "d": ValueDefinition(type=Type.integer, scope=Scope.user_course),
             "e": ValueDefinition(type=Type.integer, scope=Scope.platform),
             "f": ValueDefinition(type=Type.integer, scope=Scope.user_platform),
         }
         checker = ValueChecker(values)
-        assert checker.get_scope("a") == Scope.unit
-        assert checker.get_scope("b") == Scope.user_unit
+        assert checker.get_scope("a") == Scope.activity
+        assert checker.get_scope("b") == Scope.user_activity
         assert checker.get_scope("c") == Scope.course
         assert checker.get_scope("d") == Scope.user_course
         assert checker.get_scope("e") == Scope.platform
@@ -131,9 +133,9 @@ class TestValueChecker:
     def test_user_value_names(self) -> None:
         """Should return only user-scoped value names."""
         values = {
-            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
-            "attempts": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
-            "question": ValueDefinition(type=Type.string, scope=Scope.unit),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_activity),
+            "attempts": ValueDefinition(type=Type.integer, scope=Scope.user_activity),
+            "question": ValueDefinition(type=Type.string, scope=Scope.activity),
         }
         checker = ValueChecker(values)
         assert sorted(checker.user_value_names()) == ["attempts", "score"]
@@ -141,9 +143,9 @@ class TestValueChecker:
     def test_shared_value_names(self) -> None:
         """Should return only shared (non-user-scoped) value names."""
         values = {
-            "score": ValueDefinition(type=Type.integer, scope=Scope.user_unit),
-            "question": ValueDefinition(type=Type.string, scope=Scope.unit),
-            "answers": ValueDefinition(type=Type.string, scope=Scope.unit),
+            "score": ValueDefinition(type=Type.integer, scope=Scope.user_activity),
+            "question": ValueDefinition(type=Type.string, scope=Scope.activity),
+            "answers": ValueDefinition(type=Type.string, scope=Scope.activity),
         }
         checker = ValueChecker(values)
         assert sorted(checker.shared_value_names()) == ["answers", "question"]
@@ -154,7 +156,7 @@ class TestValueChecker:
             "items": ValueDefinition(
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
-                scope=Scope.unit,
+                scope=Scope.activity,
             )
         }
         checker = ValueChecker(values)
@@ -162,7 +164,7 @@ class TestValueChecker:
 
     def test_get_default_object(self) -> None:
         """Should return empty dict as default for object type."""
-        values = {"data": ValueDefinition(type=Type.object, scope=Scope.unit)}
+        values = {"data": ValueDefinition(type=Type.object, scope=Scope.activity)}
         checker = ValueChecker(values)
         assert checker.get_default("data") == {}
 
@@ -172,7 +174,7 @@ class TestValueChecker:
             "tags": ValueDefinition(
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
-                scope=Scope.unit,
+                scope=Scope.activity,
             )
         }
         checker = ValueChecker(values)
@@ -184,7 +186,7 @@ class TestValueChecker:
             "tags": ValueDefinition(
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
-                scope=Scope.unit,
+                scope=Scope.activity,
             )
         }
         checker = ValueChecker(values)
@@ -197,7 +199,7 @@ class TestValueChecker:
             "tags": ValueDefinition(
                 type=Type.array,
                 items=TypeSchema(type=Type.string),
-                scope=Scope.unit,
+                scope=Scope.activity,
             )
         }
         checker = ValueChecker(values)
@@ -210,7 +212,7 @@ class TestValueChecker:
             "config": ValueDefinition(
                 type=Type.object,
                 properties={"name": TypeSchema(type=Type.string)},
-                scope=Scope.unit,
+                scope=Scope.activity,
             )
         }
         checker = ValueChecker(values)

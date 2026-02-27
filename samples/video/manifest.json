@@ -6,7 +6,7 @@
   "values": {
     "video_url": {
       "type": "string",
-      "scope": "unit",
+      "scope": "activity",
       "default": ""
     }
   },

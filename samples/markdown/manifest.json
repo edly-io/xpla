@@ -4,9 +4,9 @@
   "server": "server.wasm",
   "capabilities": {},
   "values": {
-    "markdown_content": { "type": "string", "scope": "unit", "default": "" },
-    "header_start_level": { "type": "integer", "scope": "unit", "default": 2 },
-    "rendered_html": { "type": "string", "scope": "unit", "default": "" }
+    "markdown_content": { "type": "string", "scope": "activity", "default": "" },
+    "header_start_level": { "type": "integer", "scope": "activity", "default": 2 },
+    "rendered_html": { "type": "string", "scope": "activity", "default": "" }
   },
   "actions": {
     "config.save": {

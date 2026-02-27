@@ -6,12 +6,12 @@
   "values": {
     "correct_answers": {
       "type": "integer",
-      "scope": "user,unit",
+      "scope": "user,activity",
       "default": 0
     },
     "wrong_answers": {
       "type": "integer",
-      "scope": "user,unit",
+      "scope": "user,activity",
       "default": 0
     }
   },

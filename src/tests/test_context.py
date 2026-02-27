@@ -324,11 +324,6 @@ class TestHttpRequest:
         assert result == "ok"
 
 
-def unique_user(tmp_path: Path) -> str:
-    """Generate a unique user ID based on tmp_path to avoid KV store collisions."""
-    return f"user_{tmp_path.name}"
-
-
 class TestLoadValue:
     """Tests for load_value method."""
 
@@ -338,7 +333,7 @@ class TestLoadValue:
             values={
                 "score": {
                     "type": "integer",
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                     "default": 0,
                 }
             }
@@ -346,7 +341,7 @@ class TestLoadValue:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.load_value("c", "a", unique_user(tmp_path), "score")
+        result = ctx.load_value("c", "a", "alice", "score")
 
         assert result == 0
 
@@ -356,15 +351,15 @@ class TestLoadValue:
         """Should return type-specific default when no explicit default."""
         manifest = create_manifest(
             values={
-                "count": {"type": "integer", "scope": "user,unit"},
-                "ratio": {"type": "number", "scope": "user,unit"},
-                "name": {"type": "string", "scope": "user,unit"},
-                "done": {"type": "boolean", "scope": "user,unit"},
+                "count": {"type": "integer", "scope": "user,activity"},
+                "ratio": {"type": "number", "scope": "user,activity"},
+                "name": {"type": "string", "scope": "user,activity"},
+                "done": {"type": "boolean", "scope": "user,activity"},
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         assert ctx.load_value("c", "a", user, "count") == 0
         assert ctx.load_value("c", "a", user, "ratio") == 0.0
@@ -377,14 +372,14 @@ class TestLoadValue:
             values={
                 "score": {
                     "type": "integer",
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                     "default": 0,
                 }
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "score", 42)
         result = ctx.load_value("c", "a", user, "score")
@@ -394,13 +389,13 @@ class TestLoadValue:
     def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
         """Should raise for value not declared in manifest."""
         manifest = create_manifest(
-            values={"score": {"type": "integer", "scope": "user,unit"}}
+            values={"score": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
         with pytest.raises(ValueValidationError, match="not declared"):
-            ctx.load_value("c", "a", unique_user(tmp_path), "unknown")
+            ctx.load_value("c", "a", "alice", "unknown")
 
     def test_values_isolated_by_user(self, tmp_path: Path) -> None:
         """Should store separate values for different users."""
@@ -408,14 +403,14 @@ class TestLoadValue:
             values={
                 "score": {
                     "type": "integer",
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                     "default": 0,
                 }
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        base_user = unique_user(tmp_path)
+        base_user = "alice"
 
         ctx.store_value("c", "a", f"{base_user}_1", "score", 10)
         ctx.store_value("c", "a", f"{base_user}_2", "score", 20)
@@ -429,7 +424,7 @@ class TestLoadValue:
             values={
                 "question": {
                     "type": "string",
-                    "scope": "unit",
+                    "scope": "activity",
                     "default": "",
                 }
             }
@@ -449,11 +444,11 @@ class TestStoreValue:
     def test_stores_integer(self, tmp_path: Path) -> None:
         """Should store and retrieve integer value."""
         manifest = create_manifest(
-            values={"count": {"type": "integer", "scope": "user,unit"}}
+            values={"count": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "count", 42)
 
@@ -462,11 +457,11 @@ class TestStoreValue:
     def test_stores_float(self, tmp_path: Path) -> None:
         """Should store and retrieve float value."""
         manifest = create_manifest(
-            values={"ratio": {"type": "number", "scope": "user,unit"}}
+            values={"ratio": {"type": "number", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "ratio", 3.14)
 
@@ -475,11 +470,11 @@ class TestStoreValue:
     def test_stores_string(self, tmp_path: Path) -> None:
         """Should store and retrieve string value."""
         manifest = create_manifest(
-            values={"name": {"type": "string", "scope": "user,unit"}}
+            values={"name": {"type": "string", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "name", "Alice")
 
@@ -488,11 +483,11 @@ class TestStoreValue:
     def test_stores_boolean(self, tmp_path: Path) -> None:
         """Should store and retrieve boolean value."""
         manifest = create_manifest(
-            values={"completed": {"type": "boolean", "scope": "user,unit"}}
+            values={"completed": {"type": "boolean", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "completed", True)
 
@@ -505,13 +500,13 @@ class TestStoreValue:
                 "tags": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                 }
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "tags", ["a", "b", "c"])
 
@@ -520,11 +515,11 @@ class TestStoreValue:
     def test_raises_for_wrong_type(self, tmp_path: Path) -> None:
         """Should raise when value type doesn't match declaration."""
         manifest = create_manifest(
-            values={"count": {"type": "integer", "scope": "user,unit"}}
+            values={"count": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         with pytest.raises(ValueValidationError, match="failed validation"):
             ctx.store_value("c", "a", user, "count", "not an int")
@@ -532,11 +527,11 @@ class TestStoreValue:
     def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
         """Should raise for value not declared in manifest."""
         manifest = create_manifest(
-            values={"score": {"type": "integer", "scope": "user,unit"}}
+            values={"score": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         with pytest.raises(ValueValidationError, match="not declared"):
             ctx.store_value("c", "a", user, "unknown", 42)
@@ -544,11 +539,11 @@ class TestStoreValue:
     def test_overwrites_existing_value(self, tmp_path: Path) -> None:
         """Should overwrite previously stored value."""
         manifest = create_manifest(
-            values={"count": {"type": "integer", "scope": "user,unit"}}
+            values={"count": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("c", "a", user, "count", 10)
         ctx.store_value("c", "a", user, "count", 20)
@@ -563,14 +558,14 @@ class TestGetAllValues:
         """Should return all declared values."""
         manifest = create_manifest(
             values={
-                "public": {"type": "string", "scope": "unit"},
-                "secret": {"type": "string", "scope": "unit"},
+                "public": {"type": "string", "scope": "activity"},
+                "secret": {"type": "string", "scope": "activity"},
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.get_all_values(unique_user(tmp_path))
+        result = ctx.get_all_values("alice")
         assert "public" in result
         assert "secret" in result
 
@@ -580,19 +575,19 @@ class TestGetAllValues:
             values={
                 "score": {
                     "type": "integer",
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                     "default": 0,
                 },
                 "question": {
                     "type": "string",
-                    "scope": "unit",
+                    "scope": "activity",
                     "default": "",
                 },
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value(ctx.course_id, ctx.activity_id, user, "score", 42)
         ctx.store_value(ctx.course_id, ctx.activity_id, "", "question", "What is 2+2?")
@@ -618,7 +613,7 @@ class TestGetAllValues:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value(ctx.course_id, "", "", "course_total", 100)
         ctx.store_value(ctx.course_id, "", user, "course_score", 85)
@@ -644,7 +639,7 @@ class TestGetAllValues:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = unique_user(tmp_path)
+        user = "alice"
 
         ctx.store_value("", "", "", "global_setting", "on")
         ctx.store_value("", "", user, "global_pref", "dark")
@@ -739,21 +734,25 @@ class TestCourseAndPlatformHostFunctions:
         ctx.set_platform_user_value("pref", '"en"')
         assert json.loads(ctx.get_platform_user_value("pref")) == "en"
 
-    def test_course_values_isolated_from_unit(self, tmp_path: Path) -> None:
-        """Course-scoped values should not collide with unit-scoped values."""
+    def test_course_values_isolated_from_activity(self, tmp_path: Path) -> None:
+        """Course-scoped values should not collide with activity-scoped values."""
         manifest = create_manifest(
             values={
-                "count_unit": {"type": "integer", "scope": "unit", "default": 0},
+                "count_activity": {
+                    "type": "integer",
+                    "scope": "activity",
+                    "default": 0,
+                },
                 "count_course": {"type": "integer", "scope": "course", "default": 0},
             }
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.set_value("count_unit", "10")
+        ctx.set_value("count_activity", "10")
         ctx.set_course_value("count_course", "20")
 
-        assert json.loads(ctx.get_value("count_unit")) == 10
+        assert json.loads(ctx.get_value("count_activity")) == 10
         assert json.loads(ctx.get_course_value("count_course")) == 20
 
 
@@ -766,7 +765,7 @@ class TestGetState:
             values={
                 "score": {
                     "type": "integer",
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                     "default": 0,
                 },
             }
@@ -807,7 +806,7 @@ class TestGetState:
             values={
                 "score": {
                     "type": "integer",
-                    "scope": "user,unit",
+                    "scope": "user,activity",
                     "default": 0,
                 },
             },

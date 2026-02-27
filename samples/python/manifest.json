@@ -6,22 +6,22 @@
   "values": {
     "instructions": {
       "type": "string",
-      "scope": "unit",
+      "scope": "activity",
       "default": ""
     },
     "test_code": {
       "type": "string",
-      "scope": "unit",
+      "scope": "activity",
       "default": ""
     },
     "starter_code": {
       "type": "string",
-      "scope": "unit",
+      "scope": "activity",
       "default": ""
     },
     "user_code": {
       "type": "string",
-      "scope": "user,unit",
+      "scope": "user,activity",
       "default": ""
     }
   },
