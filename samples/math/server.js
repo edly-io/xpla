@@ -4,13 +4,13 @@
 // - Receives actions via onAction
 // - Sends events back via send_event host function
 // - Updates values via values.change.* events
-// - Persists counters via get_user_value/set_user_value host functions
+// - Persists counters via getValue/setValue host functions
 
 import {
   sendEvent,
   getPermission,
-  getUserValue,
-  setUserValue,
+  getValue,
+  setValue,
 } from "../../src/sandbox-lib";
 
 const { submit_grade } = Host.getFunctions();
@@ -19,8 +19,8 @@ const { submit_grade } = Host.getFunctions();
 function getState() {
   Host.outputString(
     JSON.stringify({
-      correct_answers: getUserValue("correct_answers"),
-      wrong_answers: getUserValue("wrong_answers"),
+      correct_answers: getValue("correct_answers"),
+      wrong_answers: getValue("wrong_answers"),
     }),
   );
 }
@@ -43,12 +43,12 @@ function onAction() {
 
     // Update counters and emit value change events
     if (result.correct) {
-      const correctCount = getUserValue("correct_answers") + 1;
-      setUserValue("correct_answers", correctCount);
+      const correctCount = getValue("correct_answers") + 1;
+      setValue("correct_answers", correctCount);
       sendEvent("values.change.correct_answers", correctCount);
     } else {
-      const wrongCount = getUserValue("wrong_answers") + 1;
-      setUserValue("wrong_answers", wrongCount);
+      const wrongCount = getValue("wrong_answers") + 1;
+      setValue("wrong_answers", wrongCount);
       sendEvent("values.change.wrong_answers", wrongCount);
     }
 

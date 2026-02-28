@@ -230,17 +230,7 @@ class ActivityContext:
             self.get_permission,
             self.send_event,
             self.get_value,
-            self.get_user_value,
             self.set_value,
-            self.set_user_value,
-            self.get_course_value,
-            self.set_course_value,
-            self.get_course_user_value,
-            self.set_course_user_value,
-            self.get_platform_value,
-            self.set_platform_value,
-            self.get_platform_user_value,
-            self.set_platform_user_value,
             self.http_request,
             self.submit_grade,
         ]
@@ -264,79 +254,25 @@ class ActivityContext:
         return ""
 
     def get_value(self, name: str) -> str:
-        """Get an activity-scoped value.
+        """Get a value, resolving scope from manifest.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        value = self.load_value(self._course_id, self._activity_id, "", name)
-        return json.dumps(value)
-
-    def get_user_value(self, name: str) -> str:
-        """Get a user,activity-scoped value."""
-        value = self.load_value(self._course_id, self._activity_id, self._user_id, name)
+        scope = self.value_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
+        value = self.load_value(course_id, activity_id, user_id, name)
         return json.dumps(value)
 
     def set_value(self, name: str, value: str) -> bool:
-        """Set an activity-scoped value. Takes JSON-encoded value."""
-        return self._set_value(self._course_id, self._activity_id, "", name, value)
-
-    def set_user_value(self, name: str, value: str) -> bool:
-        """Set a user,activity-scoped value."""
-        return self._set_value(
-            self._course_id, self._activity_id, self._user_id, name, value
-        )
-
-    def get_course_value(self, name: str) -> str:
-        """Get a course-scoped value."""
-        value = self.load_value(self._course_id, "", "", name)
-        return json.dumps(value)
-
-    def set_course_value(self, name: str, value: str) -> bool:
-        """Set a course-scoped value."""
-        return self._set_value(self._course_id, "", "", name, value)
-
-    def get_course_user_value(self, name: str) -> str:
-        """Get a user,course-scoped value."""
-        value = self.load_value(self._course_id, "", self._user_id, name)
-        return json.dumps(value)
-
-    def set_course_user_value(self, name: str, value: str) -> bool:
-        """Set a user,course-scoped value."""
-        return self._set_value(self._course_id, "", self._user_id, name, value)
-
-    def get_platform_value(self, name: str) -> str:
-        """Get a platform-scoped value."""
-        value = self.load_value("", "", "", name)
-        return json.dumps(value)
-
-    def set_platform_value(self, name: str, value: str) -> bool:
-        """Set a platform-scoped value."""
-        return self._set_value("", "", "", name, value)
-
-    def get_platform_user_value(self, name: str) -> str:
-        """Get a user,platform-scoped value."""
-        value = self.load_value("", "", self._user_id, name)
-        return json.dumps(value)
-
-    def set_platform_user_value(self, name: str, value: str) -> bool:
-        """Set a user,platform-scoped value."""
-        return self._set_value("", "", self._user_id, name, value)
-
-    def _set_value(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self,
-        course_id: str,
-        activity_id: str,
-        user_id: str,
-        name: str,
-        value: str,
-    ) -> bool:
+        """Set a value, resolving scope from manifest. Takes JSON-encoded value."""
+        scope = self.value_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
         try:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
             logger.error(
-                "Failed to decode user_id='%s' name='%s' value='%s'",
-                user_id,
+                "Failed to decode name='%s' value='%s'",
                 name,
                 value,
             )

@@ -200,20 +200,14 @@ class TestHostFunctions:
         functions = ctx.host_functions()
 
         function_names = [f.__name__ for f in functions]
-        assert "http_request" in function_names
-        assert "send_event" in function_names
-        assert "get_value" in function_names
-        assert "set_value" in function_names
-        assert "get_user_value" in function_names
-        assert "set_user_value" in function_names
-        assert "get_course_value" in function_names
-        assert "set_course_value" in function_names
-        assert "get_course_user_value" in function_names
-        assert "set_course_user_value" in function_names
-        assert "get_platform_value" in function_names
-        assert "set_platform_value" in function_names
-        assert "get_platform_user_value" in function_names
-        assert "set_platform_user_value" in function_names
+        assert function_names == [
+            "get_permission",
+            "send_event",
+            "get_value",
+            "set_value",
+            "http_request",
+            "submit_grade",
+        ]
 
 
 class TestHttpRequest:
@@ -681,10 +675,37 @@ class TestGetPermission:
         assert "get_permission" in function_names
 
 
-class TestCourseAndPlatformHostFunctions:
-    """Tests for course and platform scope host functions."""
+class TestScopeAwareGetSetValue:
+    """Tests for scope-aware get_value/set_value host functions."""
 
-    def test_course_value_get_set(self, tmp_path: Path) -> None:
+    def test_activity_scope(self, tmp_path: Path) -> None:
+        """Should get/set activity-scoped values."""
+        manifest = create_manifest(
+            values={"question": {"type": "string", "scope": "activity", "default": ""}}
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        assert json.loads(ctx.get_value("question")) == ""
+        ctx.set_value("question", '"What is 2+2?"')
+        assert json.loads(ctx.get_value("question")) == "What is 2+2?"
+
+    def test_user_activity_scope(self, tmp_path: Path) -> None:
+        """Should get/set user,activity-scoped values."""
+        manifest = create_manifest(
+            values={
+                "score": {"type": "integer", "scope": "user,activity", "default": 0}
+            }
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        ctx.user_id = "alice"
+
+        assert json.loads(ctx.get_value("score")) == 0
+        ctx.set_value("score", "42")
+        assert json.loads(ctx.get_value("score")) == 42
+
+    def test_course_scope(self, tmp_path: Path) -> None:
         """Should get/set course-scoped values."""
         manifest = create_manifest(
             values={"total": {"type": "integer", "scope": "course", "default": 0}}
@@ -692,11 +713,11 @@ class TestCourseAndPlatformHostFunctions:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_course_value("total")) == 0
-        ctx.set_course_value("total", "99")
-        assert json.loads(ctx.get_course_value("total")) == 99
+        assert json.loads(ctx.get_value("total")) == 0
+        ctx.set_value("total", "99")
+        assert json.loads(ctx.get_value("total")) == 99
 
-    def test_course_user_value_get_set(self, tmp_path: Path) -> None:
+    def test_user_course_scope(self, tmp_path: Path) -> None:
         """Should get/set user,course-scoped values."""
         manifest = create_manifest(
             values={"grade": {"type": "integer", "scope": "user,course", "default": 0}}
@@ -705,11 +726,11 @@ class TestCourseAndPlatformHostFunctions:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_course_user_value("grade")) == 0
-        ctx.set_course_user_value("grade", "85")
-        assert json.loads(ctx.get_course_user_value("grade")) == 85
+        assert json.loads(ctx.get_value("grade")) == 0
+        ctx.set_value("grade", "85")
+        assert json.loads(ctx.get_value("grade")) == 85
 
-    def test_platform_value_get_set(self, tmp_path: Path) -> None:
+    def test_platform_scope(self, tmp_path: Path) -> None:
         """Should get/set platform-scoped values."""
         manifest = create_manifest(
             values={"setting": {"type": "string", "scope": "platform", "default": ""}}
@@ -717,11 +738,11 @@ class TestCourseAndPlatformHostFunctions:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_platform_value("setting")) == ""
-        ctx.set_platform_value("setting", '"dark"')
-        assert json.loads(ctx.get_platform_value("setting")) == "dark"
+        assert json.loads(ctx.get_value("setting")) == ""
+        ctx.set_value("setting", '"dark"')
+        assert json.loads(ctx.get_value("setting")) == "dark"
 
-    def test_platform_user_value_get_set(self, tmp_path: Path) -> None:
+    def test_user_platform_scope(self, tmp_path: Path) -> None:
         """Should get/set user,platform-scoped values."""
         manifest = create_manifest(
             values={"pref": {"type": "string", "scope": "user,platform", "default": ""}}
@@ -730,12 +751,12 @@ class TestCourseAndPlatformHostFunctions:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_platform_user_value("pref")) == ""
-        ctx.set_platform_user_value("pref", '"en"')
-        assert json.loads(ctx.get_platform_user_value("pref")) == "en"
+        assert json.loads(ctx.get_value("pref")) == ""
+        ctx.set_value("pref", '"en"')
+        assert json.loads(ctx.get_value("pref")) == "en"
 
-    def test_course_values_isolated_from_activity(self, tmp_path: Path) -> None:
-        """Course-scoped values should not collide with activity-scoped values."""
+    def test_different_scopes_isolated(self, tmp_path: Path) -> None:
+        """Values with different scopes should not collide."""
         manifest = create_manifest(
             values={
                 "count_activity": {
@@ -750,10 +771,10 @@ class TestCourseAndPlatformHostFunctions:
         ctx = ActivityContext(activity_dir)
 
         ctx.set_value("count_activity", "10")
-        ctx.set_course_value("count_course", "20")
+        ctx.set_value("count_course", "20")
 
         assert json.loads(ctx.get_value("count_activity")) == 10
-        assert json.loads(ctx.get_course_value("count_course")) == 20
+        assert json.loads(ctx.get_value("count_course")) == 20
 
 
 class TestGetState:

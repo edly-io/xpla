@@ -10,12 +10,10 @@ import {
   getValue,
   setValue,
   getPermission,
-  getUserValue,
-  setUserValue,
 } from "../../src/sandbox-lib";
 
 function saveUserCode(code) {
-  setUserValue("user_code", code);
+  setValue("user_code", code);
   sendEvent("values.change.user_code", code);
 }
 
@@ -51,7 +49,7 @@ function getState() {
     instructions: getValue("instructions"),
     starter_code: getValue("starter_code"),
     test_code: getValue("test_code"),
-    user_code: getUserValue("user_code"),
+    user_code: getValue("user_code"),
   };
   Host.outputString(JSON.stringify(state));
 }

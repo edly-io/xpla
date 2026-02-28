@@ -38,7 +38,7 @@ Here are some ideas to address this limitation:
 
 1. Store a raw sqlite database as `bytes` as activity values: this is almost certainly overkill, and probably not very performant...
 2. Create a new `index` type that would somehow allow activities to query data by range: implementation would be left to the platform developers, which may require a lot of work. It is unclear how the existing `get/set_value` host functions would be reused with this type.
-3. Extend the existing `list` type to allow querying by range: for instance, `getUserValue("mylist[10:]")` would return all values after the 10th element. This is probably easier to implement for platform developers, but not very versatile.
+3. Extend the existing `list` type to allow querying by range: for instance, `getValue("mylist[10:]")` would return all values after the 10th element. This is probably easier to implement for platform developers, but not very versatile.
 4. Expose host functions such as `get_indexed_value(key, from, to)`: this would be most convenient for activity developers, but then a whole bunch of new host functions would then be required to insert, append and delete data.
 
 More research is needed.
@@ -278,11 +278,6 @@ import {
   sendEvent,
   getPermission,
   getValue, setValue,
-  getUserValue, setUserValue,
-  getCourseValue, setCourseValue,
-  getCourseUserValue, setCourseUserValue,
-  getPlatformValue, setPlatformValue,
-  getPlatformUserValue, setPlatformUserValue,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -291,21 +286,12 @@ sendEvent("answer.result", { correct: true });
 // Get the current permission level ("view", "play", or "edit")
 const permission = getPermission();
 
-// Get/set user-scoped values (scope: "user,activity")
-const score = getUserValue("correct_answers");
-setUserValue("correct_answers", score + 1);
+// Get/set values (scope is resolved automatically from manifest)
+const score = getValue("correct_answers");
+setValue("correct_answers", score + 1);
 
-// Get/set shared values (scope: "activity")
 const question = getValue("question");
 setValue("question", "What is 2+2?");
-
-// Get/set course-scoped values
-const total = getCourseValue("total_students");
-setCourseUserValue("course_grade", 85);
-
-// Get/set platform-scoped values
-const setting = getPlatformValue("feature_flag");
-setPlatformUserValue("language", "en");
 ```
 
 ##### Exported functions
@@ -387,13 +373,9 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
-- `get_value(name: str)` / `set_value(name: str, value: str)`: activity scope
-- `get_user_value(name: str)` / `set_user_value(name: str, value: str)`: user,activity scope
-- `get_course_value(name: str)` / `set_course_value(name: str, value: str)`: course scope
-- `get_course_user_value(name: str)` / `set_course_user_value(name: str, value: str)`: user,course scope
-- `get_platform_value(name: str)` / `set_platform_value(name: str, value: str)`: platform scope
-- `get_platform_user_value(name: str)` / `set_platform_user_value(name: str, value: str)`: user,platform scope
+- `get_value(name: str)` / `set_value(name: str, value: str)`: scope resolved from manifest
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
+- `submit_grade(score: float)`
 
 <!-- TODO actually document these host functions -->
 
