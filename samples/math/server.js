@@ -101,12 +101,6 @@ function checkAnswer(question, answer) {
   const score = correct ? 100 : 0;
 
   // Submit grade to LMS via host function
-  const gradeInput = JSON.stringify({
-    score: score,
-    max_score: 100,
-    comment: feedback,
-  });
-  const mem = Memory.fromString(gradeInput);
   submit_grade(score);
 
   return { correct, score, feedback };
