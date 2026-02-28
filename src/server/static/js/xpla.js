@@ -62,11 +62,11 @@ export class XPLA extends HTMLElement {
 
     // If inside an iframe, send ready/resize messages to parent
     if (window.parent !== window) {
-      window.parent.postMessage({ type: "gulps:ready" }, "*");
+      window.parent.postMessage({ type: "xpla:ready" }, "*");
 
       const observer = new ResizeObserver(() => {
         window.parent.postMessage(
-          { type: "gulps:resize", height: wrapper.scrollHeight },
+          { type: "xpla:resize", height: wrapper.scrollHeight },
           "*",
         );
       });
