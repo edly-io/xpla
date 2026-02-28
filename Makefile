@@ -30,7 +30,7 @@ server: ## Run a development server
 format: ## Format code with black
 	black src/
 
-test: test-lint test-unit test-types test-format test-manifests ## Run all tests
+test: test-lint test-unit test-types test-format test-manifests test-codegen ## Run all tests
 
 test-lint: ## Run pylint tests
 	pylint src/
@@ -47,19 +47,22 @@ test-format: ## Run formatting tests
 test-manifests: ## Validate all manifest.json files
 	@for f in samples/*/manifest.json; do echo "$$f" && ./src/tools/validate_manifest.py "$$f" || exit 1; done
 
+test-codegen: ## Make sure that manifest types are up-to-date
+	$(MAKE) --always-make manifest-types CODEGEN_OPTIONS="--check"
+
 # This command must be run every time the schema is updated
 .PHONY: manifest-types
 manifest-types: src/server/activities/manifest_types.py ## Generate manifest types based on schema
 src/server/activities/manifest_types.py: src/sandbox-lib/manifest.schema.json 
-	datamodel-codegen \
+	datamodel-codegen $(CODEGEN_OPTIONS) \
 		--input=src/sandbox-lib/manifest.schema.json \
 		--input-file-type=jsonschema \
 		--use-double-quotes \
 		--formatters black isort \
 		--output-model-type=pydantic_v2.BaseModel \
 		--use-annotated \
-		--output=src/server/activities/manifest_types.py
-
+		--output=src/server/activities/manifest_types.py \
+		--disable-timestamp
 
 ###### Additional commands
 
