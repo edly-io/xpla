@@ -23,9 +23,9 @@ declare module "extism:host" {
     // Event posting
     send_event(name_ptr: I64, value_ptr: I64): I64;
 
-    // Get/Set value (scope resolved from manifest)
-    get_value(name_ptr: I64): I64;
-    set_value(name_ptr: I64, value_ptr: I64): I32;
+    // Get/Set field (scope resolved from manifest)
+    get_field(name_ptr: I64): I64;
+    set_field(name_ptr: I64, value_ptr: I64): I32;
 
     // HTTP requests (require http capability)
     http_request(

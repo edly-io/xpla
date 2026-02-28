@@ -3,14 +3,14 @@
 // This plugin demonstrates the action/event architecture:
 // - Receives actions via onAction
 // - Sends events back via send_event host function
-// - Updates values via values.change.* events
-// - Persists counters via getValue/setValue host functions
+// - Updates fields via fields.change.* events
+// - Persists counters via getField/setField host functions
 
 import {
   sendEvent,
   getPermission,
-  getValue,
-  setValue,
+  getField,
+  setField,
 } from "../../src/sandbox-lib";
 
 const { submit_grade } = Host.getFunctions();
@@ -19,8 +19,8 @@ const { submit_grade } = Host.getFunctions();
 function getState() {
   Host.outputString(
     JSON.stringify({
-      correct_answers: getValue("correct_answers"),
-      wrong_answers: getValue("wrong_answers"),
+      correct_answers: getField("correct_answers"),
+      wrong_answers: getField("wrong_answers"),
     }),
   );
 }
@@ -43,13 +43,13 @@ function onAction() {
 
     // Update counters and emit value change events
     if (result.correct) {
-      const correctCount = getValue("correct_answers") + 1;
-      setValue("correct_answers", correctCount);
-      sendEvent("values.change.correct_answers", correctCount);
+      const correctCount = getField("correct_answers") + 1;
+      setField("correct_answers", correctCount);
+      sendEvent("fields.change.correct_answers", correctCount);
     } else {
-      const wrongCount = getValue("wrong_answers") + 1;
-      setValue("wrong_answers", wrongCount);
-      sendEvent("values.change.wrong_answers", wrongCount);
+      const wrongCount = getField("wrong_answers") + 1;
+      setField("wrong_answers", wrongCount);
+      sendEvent("fields.change.wrong_answers", wrongCount);
     }
 
     // Send feedback event

@@ -30,22 +30,22 @@ The preferred mode for running xPLA on the client is using [shadow DOM](https://
 
 Note that most LMS support a "raw HTML" activity that is usually completely unsandboxed and is free to break the DOM and run arbitrary client code. Thus we are not sure whether the lack of client-side isolation is an actual issue.
 
-### Activity properties stored as key-values
+### Activity fields stored as key-values
 
-Activities define a number of properties that may be scoped per user, activity instance, course or platform. At the moment, these properties as stored as key-values that must be defined in `manifest.json` (see below). This means that it's impossible (or actually: very difficult) to store relational data. In particular, the current implementation makes it impractical to implement a chat activity with a large number of chats: the `list` type would store all chats, and reading/writing chats would be prohibitive.
+Activities define a number of fields that may be scoped per user, activity instance, course or platform. At the moment, these fields are stored as key-values that must be defined in `manifest.json` (see below). This means that it's impossible (or actually: very difficult) to store relational data. In particular, the current implementation makes it impractical to implement a chat activity with a large number of chats: the `list` type would store all chats, and reading/writing chats would be prohibitive.
 
 Here are some ideas to address this limitation:
 
-1. Store a raw sqlite database as `bytes` as activity values: this is almost certainly overkill, and probably not very performant...
-2. Create a new `index` type that would somehow allow activities to query data by range: implementation would be left to the platform developers, which may require a lot of work. It is unclear how the existing `get/set_value` host functions would be reused with this type.
-3. Extend the existing `list` type to allow querying by range: for instance, `getValue("mylist[10:]")` would return all values after the 10th element. This is probably easier to implement for platform developers, but not very versatile.
-4. Expose host functions such as `get_indexed_value(key, from, to)`: this would be most convenient for activity developers, but then a whole bunch of new host functions would then be required to insert, append and delete data.
+1. Store a raw sqlite database as `bytes` as activity fields: this is almost certainly overkill, and probably not very performant...
+2. Create a new `index` type that would somehow allow activities to query data by range: implementation would be left to the platform developers, which may require a lot of work. It is unclear how the existing `get/set_field` host functions would be reused with this type.
+3. Extend the existing `list` type to allow querying by range: for instance, `getField("mylist[10:]")` would return all values after the 10th element. This is probably easier to implement for platform developers, but not very versatile.
+4. Expose host functions such as `get_indexed_field(key, from, to)`: this would be most convenient for activity developers, but then a whole bunch of new host functions would then be required to insert, append and delete data.
 
 More research is needed.
 
 ### No versioning or migration mechanism
 
-Currently, activity types do not have an associated version. In particular, this means that when we modify the types of activity values, existing data must be migrated manually, at runtime, by the activity itself. We need a mechanism to facilitate upgrading activities to a new version and migrate existing data. We could draw inspiration from the [content upgrade](https://h5p.org/documentation/developers/content-upgrade) API in H5P.
+Currently, activity types do not have an associated version. In particular, this means that when we modify the types of activity fields, existing data must be migrated manually, at runtime, by the activity itself. We need a mechanism to facilitate upgrading activities to a new version and migrate existing data. We could draw inspiration from the [content upgrade](https://h5p.org/documentation/developers/content-upgrade) API in H5P.
 
 ### WASM Performance
 
@@ -59,7 +59,7 @@ In addition, WASM modules built with Javascript take around 2 MB of space each. 
 
 ### No import/export standard
 
-We have not yet defined a standard to import and export activity instances. We would need to export all activity values, with the exception of values that are scoped to users or the platform. Actually, it would be up to the platform to decide whether to export activity values that are scoped to the course, depending on whether we export a single instance or an entire course.
+We have not yet defined a standard to import and export activity instances. We would need to export all activity fields, with the exception of fields that are scoped to users or the platform. Actually, it would be up to the platform to decide whether to export activity fields that are scoped to the course, depending on whether we export a single instance or an entire course.
 
 ## Installation
 
@@ -134,7 +134,7 @@ my-activity/
   "client": "client.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {},
+  "fields": {},
   "actions": {},
   "events": {}
 }
@@ -144,7 +144,7 @@ my-activity/
 - `client` (required): Path to the client-side JavaScript module, relative to `manifest.json`.
 - `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
-- `values` (optional, defaults to `{}`): Declares per-user values that the activity tracks. Values are validated at runtime.
+- `fields` (optional, defaults to `{}`): Declares activity fields with type and scope. Fields are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
 - `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.
 - `static` (optional): An array of explicit file paths that can be served as static assets. Only listed files (plus `client` and `manifest.json`) are accessible. Paths must be relative (no leading `/`) and cannot contain `..`.
@@ -155,13 +155,13 @@ The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.sc
 ./src/tools/validate_manifest.py samples/my-activity/manifest.json
 ```
 
-##### Values
+##### Fields
 
-Each value must have a `type` and `scope` field. An optional `default` can be provided (must match the declared type). Type names follow [JSON Schema](https://json-schema.org/) vocabulary. Example:
+Each field must have a `type` and `scope`. An optional `default` can be provided (must match the declared type). Type names follow [JSON Schema](https://json-schema.org/) vocabulary. Example:
 
 ```json
 {
-  "values": {
+  "fields": {
     "score": { "type": "integer", "scope": "user,activity", "default": 0 },
     "question": { "type": "string", "scope": "activity", "default": "" },
     "answers": { "type": "array", "items": { "type": "string" }, "scope": "activity", "default": [] },
@@ -185,7 +185,7 @@ Each value must have a `type` and `scope` field. An optional `default` can be pr
 
 ##### Permissions
 
-Access control is handled at runtime through **permissions** rather than per-value declarations. The platform sets a permission level for each request:
+Access control is handled at runtime through **permissions** rather than per-field declarations. The platform sets a permission level for each request:
 
 - `"view"`: Read-only / anonymous access. Can see the activity but not interact.
 - `"play"`: Active participant (student). Can submit answers.
@@ -250,7 +250,7 @@ export function setup(activity) {
 The `activity` object exposes the following properties and methods:
 
 - `element`: the DOM element to which this activity is attached.
-- `values`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared values if `getState` is not exported).
+- `state`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared fields if `getState` is not exported).
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
 - `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
@@ -265,7 +265,7 @@ When declared in the manifest, this [WebAssembly](https://webassembly.org/) modu
 
 It is language-agnostic, as the original script can be written in any of the languages supported by WebAssembly. We use [Extism](https://extism.org/) both to build and call these modules. Since Extism supports a wide variety of host languages, sandboxes are portable and can be run from any platform ([Open edX](https://openedx.org/), [Moodle](https://moodle.org), [Canvas](https://canvas.instructure.com/)...).
 
-Note that sandboxes do not persist state. Thus, to get access to configuration settings, user-specific values, etc. the sandbox should have the key-value store read/write capabilities (see `manifest.json` above).
+Note that sandboxes do not persist state. Thus, to get access to configuration settings, user-specific fields, etc. the sandbox should have the key-value store read/write capabilities (see `manifest.json` above).
 
 Sandboxes have access to a standard list of host functions. See [Host functions](#host-functions) in the Platform API section below.
 
@@ -277,7 +277,7 @@ A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/
 import {
   sendEvent,
   getPermission,
-  getValue, setValue,
+  getField, setField,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -286,12 +286,12 @@ sendEvent("answer.result", { correct: true });
 // Get the current permission level ("view", "play", or "edit")
 const permission = getPermission();
 
-// Get/set values (scope is resolved automatically from manifest)
-const score = getValue("correct_answers");
-setValue("correct_answers", score + 1);
+// Get/set fields (scope is resolved automatically from manifest)
+const score = getField("correct_answers");
+setField("correct_answers", score + 1);
 
-const question = getValue("question");
-setValue("question", "What is 2+2?");
+const question = getField("question");
+setField("question", "What is 2+2?");
 ```
 
 ##### Exported functions
@@ -299,15 +299,15 @@ setValue("question", "What is 2+2?");
 The sandbox script can export the following functions:
 
 - `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`.
-- `getState()`: Called when the activity page loads. Returns a JSON string of values to send to the client. Use this to filter values based on the current permission level (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared values.
+- `getState()`: Called when the activity page loads. Returns a JSON string of fields to send to the client. Use this to filter fields based on the current permission level (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
-import { getPermission, getValue } from "../../src/sandbox-lib";
+import { getPermission, getField } from "../../src/sandbox-lib";
 
 function getState() {
-  const state = { question: getValue("question") };
+  const state = { question: getField("question") };
   if (getPermission() === "edit") {
-    state.correct_answers = getValue("correct_answers");
+    state.correct_answers = getField("correct_answers");
   }
   Host.outputString(JSON.stringify(state));
 }
@@ -346,15 +346,15 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 ##### Core responsibilities
 
-1. **Manifest validation.** Parse and validate each activity's `manifest.json` against the [JSON Schema](./src/sandbox-lib/manifest.schema.json). This includes validating the declared values, actions, events, capabilities, and static assets.
+1. **Manifest validation.** Parse and validate each activity's `manifest.json` against the [JSON Schema](./src/sandbox-lib/manifest.schema.json). This includes validating the declared fields, actions, events, capabilities, and static assets.
 
 2. **Sandbox execution.** Load the WebAssembly module declared in `manifest.server` and execute its exported functions (`getState`, `onAction`). We recommend using [Extism](https://extism.org/), which provides plugin runtimes for many host languages (Python, Go, Rust, Java, etc.).
 
 3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`src/server/activities/context.py`](./src/server/activities/context.py).
 
-4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`src/server/activities/actions.py`](./src/server/activities/actions.py) (actions), [`src/server/activities/events.py`](./src/server/activities/events.py) (events), [`src/server/activities/values.py`](./src/server/activities/values.py) (values).
+4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`src/server/activities/actions.py`](./src/server/activities/actions.py) (actions), [`src/server/activities/events.py`](./src/server/activities/events.py) (events), [`src/server/activities/fields.py`](./src/server/activities/fields.py) (fields).
 
-5. **Key-value store.** Activity values are persisted in a key-value store, scoped by activity name and (for user-scoped values) user ID. The store must support `get` and `set` operations. Our implementation: [`src/server/activities/kv.py`](./src/server/activities/kv.py).
+5. **Key-value store.** Activity fields are persisted in a key-value store, scoped by activity name and (for user-scoped fields) user ID. The store must support `get` and `set` operations. Our implementation: [`src/server/activities/kv.py`](./src/server/activities/kv.py).
 
 6. **Static asset serving.** Serve files declared in the manifest's `static` array (plus `client` and `manifest.json`). Paths must be validated to prevent directory traversal.
 
@@ -362,7 +362,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 The exact HTTP API is platform-specific and does not need to follow a standard. The platform must support two types of requests from the frontend:
 
-- **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared values are returned.
+- **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
 - **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The action value must be JSON-formatted. The backend validates the action, calls the sandbox's `onAction()` function, collects events emitted during execution, and returns them as JSON.
 
 Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py).
@@ -373,7 +373,7 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
-- `get_value(name: str)` / `set_value(name: str, value: str)`: scope resolved from manifest
+- `get_field(name: str)` / `set_field(name: str, value: str)`: scope resolved from manifest
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 - `submit_grade(score: float)`
 

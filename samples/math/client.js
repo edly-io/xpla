@@ -53,15 +53,15 @@ export function setup(activity) {
   const correctCountEl = element.querySelector("#correct-count");
   const wrongCountEl = element.querySelector("#wrong-count");
 
-  // Initialize display with current values
+  // Initialize display with current field values
   correctCountEl.textContent = activity.state.correct_answers || 0;
   wrongCountEl.textContent = activity.state.wrong_answers || 0;
 
   // Handle events from backend
   activity.onEvent = (name, value) => {
-    if (name === "values.change.correct_answers") {
+    if (name === "fields.change.correct_answers") {
       correctCountEl.textContent = value;
-    } else if (name === "values.change.wrong_answers") {
+    } else if (name === "fields.change.wrong_answers") {
       wrongCountEl.textContent = value;
     } else if (name === "answer.result") {
       feedbackEl.style.display = "block";

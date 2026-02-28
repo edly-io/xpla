@@ -3,7 +3,7 @@
   "client": "client.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {
+  "fields": {
     "correct_answers": {
       "type": "integer",
       "scope": "user,activity",
@@ -32,7 +32,7 @@
         "feedback": { "type": "string" }
       }
     },
-    "values.change.correct_answers": { "type": "integer" },
-    "values.change.wrong_answers": { "type": "integer" }
+    "fields.change.correct_answers": { "type": "integer" },
+    "fields.change.wrong_answers": { "type": "integer" }
   }
 }

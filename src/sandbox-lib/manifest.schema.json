@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://xpla.example.com/manifest.schema.json",
   "title": "xPLA Activity Manifest",
-  "description": "Manifest for a xPLA learning activity, declaring capabilities and values.",
+  "description": "Manifest for a xPLA learning activity, declaring capabilities and fields.",
   "type": "object",
   "required": ["name", "client"],
   "additionalProperties": false,
@@ -52,11 +52,11 @@
         }
       }
     },
-    "values": {
+    "fields": {
       "type": "object",
-      "description": "Declared activity values with type and scope.",
+      "description": "Declared activity fields with type and scope.",
       "additionalProperties": {
-        "$ref": "#/$defs/valueDefinition"
+        "$ref": "#/$defs/fieldDefinition"
       }
     },
     "actions": {
@@ -79,7 +79,7 @@
     }
   },
   "$defs": {
-    "valueDefinition": {
+    "fieldDefinition": {
       "type": "object",
       "required": ["type", "scope"],
       "additionalProperties": false,
@@ -87,7 +87,7 @@
         "type": {
           "type": "string",
           "enum": ["integer", "number", "string", "boolean", "array", "object"],
-          "description": "Data type of the value. Uses JSON Schema type names."
+          "description": "Data type of the field. Uses JSON Schema type names."
         },
         "items": {
           "$ref": "#/$defs/typeSchema",
@@ -101,7 +101,7 @@
         "scope": {
           "type": "string",
           "enum": ["activity", "course", "platform", "user,activity", "user,course", "user,platform"],
-          "description": "Scope of the value. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
+          "description": "Scope of the field. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
         },
         "default": {
           "description": "Default value (must match declared type)."

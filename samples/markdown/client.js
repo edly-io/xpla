@@ -72,7 +72,7 @@ export function setup(activity) {
   }
 
   activity.onEvent = (name, value) => {
-    if (name === "values.change.rendered_html") {
+    if (name === "fields.change.rendered_html") {
       const preview = element.querySelector("#preview");
       if (preview) {
         preview.innerHTML = value || '<span class="no-preview">No content yet.</span>';
@@ -80,7 +80,7 @@ export function setup(activity) {
         activity.state.rendered_html = value;
         renderPlayView();
       }
-    } else if (name === "values.change.markdown_content") {
+    } else if (name === "fields.change.markdown_content") {
       activity.state.markdown_content = value;
     }
   };

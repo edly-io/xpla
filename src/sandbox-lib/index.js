@@ -5,8 +5,8 @@
 
 const {
   send_event,
-  get_value,
-  set_value,
+  get_field,
+  set_field,
   get_permission,
 } = Host.getFunctions();
 
@@ -22,18 +22,18 @@ export function getPermission() {
   return Memory.find(resultOffset).readString();
 }
 
-// Get a value (scope resolved from manifest).
-export function getValue(name) {
+// Get a field (scope resolved from manifest).
+export function getField(name) {
   const nameMem = Memory.fromString(name);
-  const resultOffset = get_value(nameMem.offset);
+  const resultOffset = get_field(nameMem.offset);
   const result = Memory.find(resultOffset).readString();
   return JSON.parse(result);
 }
 
-// Set a value (scope resolved from manifest).
-export function setValue(name, value) {
+// Set a field (scope resolved from manifest).
+export function setField(name, value) {
   const nameMem = Memory.fromString(name);
   const valueJSON = JSON.stringify(value);
   const valueMem = Memory.fromString(valueJSON);
-  set_value(nameMem.offset, valueMem.offset);
+  set_field(nameMem.offset, valueMem.offset);
 }

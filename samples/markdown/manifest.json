@@ -3,7 +3,7 @@
   "client": "client.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {
+  "fields": {
     "markdown_content": { "type": "string", "scope": "activity", "default": "" },
     "header_start_level": { "type": "integer", "scope": "activity", "default": 2 },
     "rendered_html": { "type": "string", "scope": "activity", "default": "" }
@@ -17,7 +17,7 @@
     }
   },
   "events": {
-    "values.change.markdown_content": { "type": "string" },
-    "values.change.rendered_html": { "type": "string" }
+    "fields.change.markdown_content": { "type": "string" },
+    "fields.change.rendered_html": { "type": "string" }
   }
 }

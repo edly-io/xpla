@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save markdown_content and render to HTML
 
-import { sendEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
 import { Marked } from "marked";
 
 function renderMarkdown(content, headerStartLevel) {
@@ -30,22 +30,22 @@ function onAction() {
       return;
     }
     const markdownContent = actionValue.markdown_content;
-    const headerStartLevel = getValue("header_start_level") || 2;
+    const headerStartLevel = getField("header_start_level") || 2;
     const html = renderMarkdown(markdownContent, headerStartLevel);
 
-    setValue("markdown_content", markdownContent);
-    setValue("rendered_html", html);
-    sendEvent("values.change.markdown_content", markdownContent);
-    sendEvent("values.change.rendered_html", html);
+    setField("markdown_content", markdownContent);
+    setField("rendered_html", html);
+    sendEvent("fields.change.markdown_content", markdownContent);
+    sendEvent("fields.change.rendered_html", html);
   }
 }
 
 function getState() {
   const state = {
-    rendered_html: getValue("rendered_html"),
+    rendered_html: getField("rendered_html"),
   };
   if (getPermission() === "edit") {
-    state.markdown_content = getValue("markdown_content");
+    state.markdown_content = getField("markdown_content");
   }
   Host.outputString(JSON.stringify(state));
 }

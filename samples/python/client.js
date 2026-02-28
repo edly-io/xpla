@@ -141,13 +141,13 @@ export function setup(activity) {
   }
 
   activity.onEvent = (name, value) => {
-    if (name === "values.change.user_code") {
+    if (name === "fields.change.user_code") {
       activity.state.user_code = value;
-    } else if (name === "values.change.instructions") {
+    } else if (name === "fields.change.instructions") {
       activity.state.instructions = value;
-    } else if (name === "values.change.test_code") {
+    } else if (name === "fields.change.test_code") {
       activity.state.test_code = value;
-    } else if (name === "values.change.starter_code") {
+    } else if (name === "fields.change.starter_code") {
       activity.state.starter_code = value;
     }
   };

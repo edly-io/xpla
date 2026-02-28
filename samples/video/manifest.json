@@ -3,7 +3,7 @@
   "client": "client.bundle.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {
+  "fields": {
     "video_url": {
       "type": "string",
       "scope": "activity",
@@ -19,6 +19,6 @@
     }
   },
   "events": {
-    "values.change.video_url": { "type": "string" }
+    "fields.change.video_url": { "type": "string" }
   }
 }

@@ -9,13 +9,13 @@ import pytest
 from server.activities.context import ActivityContext, MissingSandboxError
 from server.activities.events import EventValidationError
 from server.activities.permission import Permission
-from server.activities.values import ValueValidationError
+from server.activities.fields import FieldValidationError
 
 
 def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     name: str = "test-activity",
     capabilities: dict[str, Any] | None = None,
-    values: dict[str, Any] | None = None,
+    fields: dict[str, Any] | None = None,
     actions: dict[str, Any] | None = None,
     events: dict[str, Any] | None = None,
     client: str = "client.js",
@@ -29,8 +29,8 @@ def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-a
     }
     if server is not None:
         manifest["server"] = server
-    if values is not None:
-        manifest["values"] = values
+    if fields is not None:
+        manifest["fields"] = fields
     if actions is not None:
         manifest["actions"] = actions
     if events is not None:
@@ -203,8 +203,8 @@ class TestHostFunctions:
         assert function_names == [
             "get_permission",
             "send_event",
-            "get_value",
-            "set_value",
+            "get_field",
+            "set_field",
             "http_request",
             "submit_grade",
         ]
@@ -318,13 +318,13 @@ class TestHttpRequest:
         assert result == "ok"
 
 
-class TestLoadValue:
-    """Tests for load_value method."""
+class TestLoadField:
+    """Tests for load_field method."""
 
     def test_returns_default_when_not_set(self, tmp_path: Path) -> None:
-        """Should return default value when value not yet stored."""
+        """Should return default value when field not yet stored."""
         manifest = create_manifest(
-            values={
+            fields={
                 "score": {
                     "type": "integer",
                     "scope": "user,activity",
@@ -335,7 +335,7 @@ class TestLoadValue:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.load_value("c", "a", "alice", "score")
+        result = ctx.load_field("c", "a", "alice", "score")
 
         assert result == 0
 
@@ -344,7 +344,7 @@ class TestLoadValue:
     ) -> None:
         """Should return type-specific default when no explicit default."""
         manifest = create_manifest(
-            values={
+            fields={
                 "count": {"type": "integer", "scope": "user,activity"},
                 "ratio": {"type": "number", "scope": "user,activity"},
                 "name": {"type": "string", "scope": "user,activity"},
@@ -355,15 +355,15 @@ class TestLoadValue:
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        assert ctx.load_value("c", "a", user, "count") == 0
-        assert ctx.load_value("c", "a", user, "ratio") == 0.0
-        assert ctx.load_value("c", "a", user, "name") == ""
-        assert ctx.load_value("c", "a", user, "done") is False
+        assert ctx.load_field("c", "a", user, "count") == 0
+        assert ctx.load_field("c", "a", user, "ratio") == 0.0
+        assert ctx.load_field("c", "a", user, "name") == ""
+        assert ctx.load_field("c", "a", user, "done") is False
 
     def test_returns_stored_value(self, tmp_path: Path) -> None:
         """Should return stored value when set."""
         manifest = create_manifest(
-            values={
+            fields={
                 "score": {
                     "type": "integer",
                     "scope": "user,activity",
@@ -375,26 +375,26 @@ class TestLoadValue:
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "score", 42)
-        result = ctx.load_value("c", "a", user, "score")
+        ctx.store_field("c", "a", user, "score", 42)
+        result = ctx.load_field("c", "a", user, "score")
 
         assert result == 42
 
-    def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
-        """Should raise for value not declared in manifest."""
+    def test_raises_for_undeclared_field(self, tmp_path: Path) -> None:
+        """Should raise for field not declared in manifest."""
         manifest = create_manifest(
-            values={"score": {"type": "integer", "scope": "user,activity"}}
+            fields={"score": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        with pytest.raises(ValueValidationError, match="not declared"):
-            ctx.load_value("c", "a", "alice", "unknown")
+        with pytest.raises(FieldValidationError, match="not declared"):
+            ctx.load_field("c", "a", "alice", "unknown")
 
-    def test_values_isolated_by_user(self, tmp_path: Path) -> None:
+    def test_fields_isolated_by_user(self, tmp_path: Path) -> None:
         """Should store separate values for different users."""
         manifest = create_manifest(
-            values={
+            fields={
                 "score": {
                     "type": "integer",
                     "scope": "user,activity",
@@ -406,16 +406,16 @@ class TestLoadValue:
         ctx = ActivityContext(activity_dir)
         base_user = "alice"
 
-        ctx.store_value("c", "a", f"{base_user}_1", "score", 10)
-        ctx.store_value("c", "a", f"{base_user}_2", "score", 20)
+        ctx.store_field("c", "a", f"{base_user}_1", "score", 10)
+        ctx.store_field("c", "a", f"{base_user}_2", "score", 20)
 
-        assert ctx.load_value("c", "a", f"{base_user}_1", "score") == 10
-        assert ctx.load_value("c", "a", f"{base_user}_2", "score") == 20
+        assert ctx.load_field("c", "a", f"{base_user}_1", "score") == 10
+        assert ctx.load_field("c", "a", f"{base_user}_2", "score") == 20
 
-    def test_shared_value_uses_empty_user_id(self, tmp_path: Path) -> None:
-        """Should use empty string for shared (non-user) values."""
+    def test_shared_field_uses_empty_user_id(self, tmp_path: Path) -> None:
+        """Should use empty string for shared (non-user) fields."""
         manifest = create_manifest(
-            values={
+            fields={
                 "question": {
                     "type": "string",
                     "scope": "activity",
@@ -426,71 +426,71 @@ class TestLoadValue:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.store_value("c", "a", "", "question", "What is 2+2?")
-        result = ctx.load_value("c", "a", "", "question")
+        ctx.store_field("c", "a", "", "question", "What is 2+2?")
+        result = ctx.load_field("c", "a", "", "question")
 
         assert result == "What is 2+2?"
 
 
-class TestStoreValue:
-    """Tests for store_value method."""
+class TestStoreField:
+    """Tests for store_field method."""
 
     def test_stores_integer(self, tmp_path: Path) -> None:
         """Should store and retrieve integer value."""
         manifest = create_manifest(
-            values={"count": {"type": "integer", "scope": "user,activity"}}
+            fields={"count": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "count", 42)
+        ctx.store_field("c", "a", user, "count", 42)
 
-        assert ctx.load_value("c", "a", user, "count") == 42
+        assert ctx.load_field("c", "a", user, "count") == 42
 
     def test_stores_float(self, tmp_path: Path) -> None:
         """Should store and retrieve float value."""
         manifest = create_manifest(
-            values={"ratio": {"type": "number", "scope": "user,activity"}}
+            fields={"ratio": {"type": "number", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "ratio", 3.14)
+        ctx.store_field("c", "a", user, "ratio", 3.14)
 
-        assert ctx.load_value("c", "a", user, "ratio") == 3.14
+        assert ctx.load_field("c", "a", user, "ratio") == 3.14
 
     def test_stores_string(self, tmp_path: Path) -> None:
         """Should store and retrieve string value."""
         manifest = create_manifest(
-            values={"name": {"type": "string", "scope": "user,activity"}}
+            fields={"name": {"type": "string", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "name", "Alice")
+        ctx.store_field("c", "a", user, "name", "Alice")
 
-        assert ctx.load_value("c", "a", user, "name") == "Alice"
+        assert ctx.load_field("c", "a", user, "name") == "Alice"
 
     def test_stores_boolean(self, tmp_path: Path) -> None:
         """Should store and retrieve boolean value."""
         manifest = create_manifest(
-            values={"completed": {"type": "boolean", "scope": "user,activity"}}
+            fields={"completed": {"type": "boolean", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "completed", True)
+        ctx.store_field("c", "a", user, "completed", True)
 
-        assert ctx.load_value("c", "a", user, "completed") is True
+        assert ctx.load_field("c", "a", user, "completed") is True
 
     def test_stores_array(self, tmp_path: Path) -> None:
         """Should store and retrieve array value."""
         manifest = create_manifest(
-            values={
+            fields={
                 "tags": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -502,56 +502,56 @@ class TestStoreValue:
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "tags", ["a", "b", "c"])
+        ctx.store_field("c", "a", user, "tags", ["a", "b", "c"])
 
-        assert ctx.load_value("c", "a", user, "tags") == ["a", "b", "c"]
+        assert ctx.load_field("c", "a", user, "tags") == ["a", "b", "c"]
 
     def test_raises_for_wrong_type(self, tmp_path: Path) -> None:
         """Should raise when value type doesn't match declaration."""
         manifest = create_manifest(
-            values={"count": {"type": "integer", "scope": "user,activity"}}
+            fields={"count": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        with pytest.raises(ValueValidationError, match="failed validation"):
-            ctx.store_value("c", "a", user, "count", "not an int")
+        with pytest.raises(FieldValidationError, match="failed validation"):
+            ctx.store_field("c", "a", user, "count", "not an int")
 
-    def test_raises_for_undeclared_value(self, tmp_path: Path) -> None:
-        """Should raise for value not declared in manifest."""
+    def test_raises_for_undeclared_field(self, tmp_path: Path) -> None:
+        """Should raise for field not declared in manifest."""
         manifest = create_manifest(
-            values={"score": {"type": "integer", "scope": "user,activity"}}
+            fields={"score": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        with pytest.raises(ValueValidationError, match="not declared"):
-            ctx.store_value("c", "a", user, "unknown", 42)
+        with pytest.raises(FieldValidationError, match="not declared"):
+            ctx.store_field("c", "a", user, "unknown", 42)
 
     def test_overwrites_existing_value(self, tmp_path: Path) -> None:
         """Should overwrite previously stored value."""
         manifest = create_manifest(
-            values={"count": {"type": "integer", "scope": "user,activity"}}
+            fields={"count": {"type": "integer", "scope": "user,activity"}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("c", "a", user, "count", 10)
-        ctx.store_value("c", "a", user, "count", 20)
+        ctx.store_field("c", "a", user, "count", 10)
+        ctx.store_field("c", "a", user, "count", 20)
 
-        assert ctx.load_value("c", "a", user, "count") == 20
+        assert ctx.load_field("c", "a", user, "count") == 20
 
 
-class TestGetAllValues:
-    """Tests for get_all_values method."""
+class TestGetAllFields:
+    """Tests for get_all_fields method."""
 
-    def test_returns_all_values(self, tmp_path: Path) -> None:
-        """Should return all declared values."""
+    def test_returns_all_fields(self, tmp_path: Path) -> None:
+        """Should return all declared fields."""
         manifest = create_manifest(
-            values={
+            fields={
                 "public": {"type": "string", "scope": "activity"},
                 "secret": {"type": "string", "scope": "activity"},
             }
@@ -559,14 +559,14 @@ class TestGetAllValues:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.get_all_values("alice")
+        result = ctx.get_all_fields("alice")
         assert "public" in result
         assert "secret" in result
 
-    def test_includes_user_scoped_values(self, tmp_path: Path) -> None:
-        """Should include user-scoped values loaded for the given user."""
+    def test_includes_user_scoped_fields(self, tmp_path: Path) -> None:
+        """Should include user-scoped fields loaded for the given user."""
         manifest = create_manifest(
-            values={
+            fields={
                 "score": {
                     "type": "integer",
                     "scope": "user,activity",
@@ -583,16 +583,16 @@ class TestGetAllValues:
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value(ctx.course_id, ctx.activity_id, user, "score", 42)
-        ctx.store_value(ctx.course_id, ctx.activity_id, "", "question", "What is 2+2?")
+        ctx.store_field(ctx.course_id, ctx.activity_id, user, "score", 42)
+        ctx.store_field(ctx.course_id, ctx.activity_id, "", "question", "What is 2+2?")
 
-        result = ctx.get_all_values(user)
+        result = ctx.get_all_fields(user)
         assert result == {"score": 42, "question": "What is 2+2?"}
 
-    def test_includes_course_scoped_values(self, tmp_path: Path) -> None:
-        """Should include course-scoped and user,course-scoped values."""
+    def test_includes_course_scoped_fields(self, tmp_path: Path) -> None:
+        """Should include course-scoped and user,course-scoped fields."""
         manifest = create_manifest(
-            values={
+            fields={
                 "course_total": {
                     "type": "integer",
                     "scope": "course",
@@ -609,16 +609,16 @@ class TestGetAllValues:
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value(ctx.course_id, "", "", "course_total", 100)
-        ctx.store_value(ctx.course_id, "", user, "course_score", 85)
+        ctx.store_field(ctx.course_id, "", "", "course_total", 100)
+        ctx.store_field(ctx.course_id, "", user, "course_score", 85)
 
-        result = ctx.get_all_values(user)
+        result = ctx.get_all_fields(user)
         assert result == {"course_total": 100, "course_score": 85}
 
-    def test_includes_platform_scoped_values(self, tmp_path: Path) -> None:
-        """Should include platform-scoped and user,platform-scoped values."""
+    def test_includes_platform_scoped_fields(self, tmp_path: Path) -> None:
+        """Should include platform-scoped and user,platform-scoped fields."""
         manifest = create_manifest(
-            values={
+            fields={
                 "global_setting": {
                     "type": "string",
                     "scope": "platform",
@@ -635,10 +635,10 @@ class TestGetAllValues:
         ctx = ActivityContext(activity_dir)
         user = "alice"
 
-        ctx.store_value("", "", "", "global_setting", "on")
-        ctx.store_value("", "", user, "global_pref", "dark")
+        ctx.store_field("", "", "", "global_setting", "on")
+        ctx.store_field("", "", user, "global_pref", "dark")
 
-        result = ctx.get_all_values(user)
+        result = ctx.get_all_fields(user)
         assert result == {"global_setting": "on", "global_pref": "dark"}
 
 
@@ -675,25 +675,25 @@ class TestGetPermission:
         assert "get_permission" in function_names
 
 
-class TestScopeAwareGetSetValue:
-    """Tests for scope-aware get_value/set_value host functions."""
+class TestScopeAwareGetSetField:
+    """Tests for scope-aware get_field/set_field host functions."""
 
     def test_activity_scope(self, tmp_path: Path) -> None:
-        """Should get/set activity-scoped values."""
+        """Should get/set activity-scoped fields."""
         manifest = create_manifest(
-            values={"question": {"type": "string", "scope": "activity", "default": ""}}
+            fields={"question": {"type": "string", "scope": "activity", "default": ""}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_value("question")) == ""
-        ctx.set_value("question", '"What is 2+2?"')
-        assert json.loads(ctx.get_value("question")) == "What is 2+2?"
+        assert json.loads(ctx.get_field("question")) == ""
+        ctx.set_field("question", '"What is 2+2?"')
+        assert json.loads(ctx.get_field("question")) == "What is 2+2?"
 
     def test_user_activity_scope(self, tmp_path: Path) -> None:
-        """Should get/set user,activity-scoped values."""
+        """Should get/set user,activity-scoped fields."""
         manifest = create_manifest(
-            values={
+            fields={
                 "score": {"type": "integer", "scope": "user,activity", "default": 0}
             }
         )
@@ -701,64 +701,64 @@ class TestScopeAwareGetSetValue:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_value("score")) == 0
-        ctx.set_value("score", "42")
-        assert json.loads(ctx.get_value("score")) == 42
+        assert json.loads(ctx.get_field("score")) == 0
+        ctx.set_field("score", "42")
+        assert json.loads(ctx.get_field("score")) == 42
 
     def test_course_scope(self, tmp_path: Path) -> None:
-        """Should get/set course-scoped values."""
+        """Should get/set course-scoped fields."""
         manifest = create_manifest(
-            values={"total": {"type": "integer", "scope": "course", "default": 0}}
+            fields={"total": {"type": "integer", "scope": "course", "default": 0}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_value("total")) == 0
-        ctx.set_value("total", "99")
-        assert json.loads(ctx.get_value("total")) == 99
+        assert json.loads(ctx.get_field("total")) == 0
+        ctx.set_field("total", "99")
+        assert json.loads(ctx.get_field("total")) == 99
 
     def test_user_course_scope(self, tmp_path: Path) -> None:
-        """Should get/set user,course-scoped values."""
+        """Should get/set user,course-scoped fields."""
         manifest = create_manifest(
-            values={"grade": {"type": "integer", "scope": "user,course", "default": 0}}
+            fields={"grade": {"type": "integer", "scope": "user,course", "default": 0}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_value("grade")) == 0
-        ctx.set_value("grade", "85")
-        assert json.loads(ctx.get_value("grade")) == 85
+        assert json.loads(ctx.get_field("grade")) == 0
+        ctx.set_field("grade", "85")
+        assert json.loads(ctx.get_field("grade")) == 85
 
     def test_platform_scope(self, tmp_path: Path) -> None:
-        """Should get/set platform-scoped values."""
+        """Should get/set platform-scoped fields."""
         manifest = create_manifest(
-            values={"setting": {"type": "string", "scope": "platform", "default": ""}}
+            fields={"setting": {"type": "string", "scope": "platform", "default": ""}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_value("setting")) == ""
-        ctx.set_value("setting", '"dark"')
-        assert json.loads(ctx.get_value("setting")) == "dark"
+        assert json.loads(ctx.get_field("setting")) == ""
+        ctx.set_field("setting", '"dark"')
+        assert json.loads(ctx.get_field("setting")) == "dark"
 
     def test_user_platform_scope(self, tmp_path: Path) -> None:
-        """Should get/set user,platform-scoped values."""
+        """Should get/set user,platform-scoped fields."""
         manifest = create_manifest(
-            values={"pref": {"type": "string", "scope": "user,platform", "default": ""}}
+            fields={"pref": {"type": "string", "scope": "user,platform", "default": ""}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_value("pref")) == ""
-        ctx.set_value("pref", '"en"')
-        assert json.loads(ctx.get_value("pref")) == "en"
+        assert json.loads(ctx.get_field("pref")) == ""
+        ctx.set_field("pref", '"en"')
+        assert json.loads(ctx.get_field("pref")) == "en"
 
     def test_different_scopes_isolated(self, tmp_path: Path) -> None:
-        """Values with different scopes should not collide."""
+        """Fields with different scopes should not collide."""
         manifest = create_manifest(
-            values={
+            fields={
                 "count_activity": {
                     "type": "integer",
                     "scope": "activity",
@@ -770,20 +770,20 @@ class TestScopeAwareGetSetValue:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.set_value("count_activity", "10")
-        ctx.set_value("count_course", "20")
+        ctx.set_field("count_activity", "10")
+        ctx.set_field("count_course", "20")
 
-        assert json.loads(ctx.get_value("count_activity")) == 10
-        assert json.loads(ctx.get_value("count_course")) == 20
+        assert json.loads(ctx.get_field("count_activity")) == 10
+        assert json.loads(ctx.get_field("count_course")) == 20
 
 
 class TestGetState:
     """Tests for get_state method."""
 
     def test_fallback_without_sandbox(self, tmp_path: Path) -> None:
-        """Should fall back to get_all_values when no sandbox exists."""
+        """Should fall back to get_all_fields when no sandbox exists."""
         manifest = create_manifest(
-            values={
+            fields={
                 "score": {
                     "type": "integer",
                     "scope": "user,activity",
@@ -821,10 +821,10 @@ class TestGetState:
     def test_fallback_on_runtime_error(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
-        """Should fall back to get_all_values when getState raises RuntimeError."""
+        """Should fall back to get_all_fields when getState raises RuntimeError."""
         manifest = create_manifest(
             server="server.wasm",
-            values={
+            fields={
                 "score": {
                     "type": "integer",
                     "scope": "user,activity",
@@ -887,16 +887,16 @@ class TestSendEvent:
 
         assert result == ""
 
-    def test_allows_declared_values_change_events(self, tmp_path: Path) -> None:
-        """Should allow values.change.* events when declared in manifest."""
-        manifest = create_manifest(events={"values.change.score": {"type": "integer"}})
+    def test_allows_declared_fields_change_events(self, tmp_path: Path) -> None:
+        """Should allow fields.change.* events when declared in manifest."""
+        manifest = create_manifest(events={"fields.change.score": {"type": "integer"}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.send_event("values.change.score", "42")
+        ctx.send_event("fields.change.score", "42")
 
         assert ctx.clear_pending_events() == [
-            {"name": "values.change.score", "value": "42"}
+            {"name": "fields.change.score", "value": "42"}
         ]
 
     def test_raises_for_undeclared_event(self, tmp_path: Path) -> None:

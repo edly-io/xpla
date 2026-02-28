@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save the video_id
 
-import { sendEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
 
 function onAction() {
   const input = JSON.parse(Host.inputString());
@@ -15,14 +15,14 @@ function onAction() {
       console.log("config.save rejected: permission is " + getPermission());
       return;
     }
-    setValue("video_id", actionValue.video_id);
-    sendEvent("values.change.video_id", actionValue.video_id);
+    setField("video_id", actionValue.video_id);
+    sendEvent("fields.change.video_id", actionValue.video_id);
   }
 }
 
 function getState() {
   const state = {
-    video_id: getValue("video_id"),
+    video_id: getField("video_id"),
   };
   Host.outputString(JSON.stringify(state));
 }

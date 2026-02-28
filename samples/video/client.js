@@ -51,7 +51,7 @@ export function setup(activity) {
   }
 
   activity.onEvent = (name, value) => {
-    if (name === "values.change.video_url") {
+    if (name === "fields.change.video_url") {
       activity.state.video_url = value;
     }
   };

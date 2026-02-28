@@ -10,7 +10,7 @@ export function setup(activity) {
   }
 
   activity.onEvent = (name, value) => {
-    if (name === "values.change.video_id") {
+    if (name === "fields.change.video_id") {
       activity.state.video_id = value;
     }
   };

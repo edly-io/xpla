@@ -3,7 +3,7 @@
   "client": "client.bundle.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {
+  "fields": {
     "instructions": {
       "type": "string",
       "scope": "activity",
@@ -58,10 +58,10 @@
     }
   },
   "events": {
-    "values.change.user_code": { "type": "string" },
-    "values.change.instructions": { "type": "string" },
-    "values.change.test_code": { "type": "string" },
-    "values.change.starter_code": { "type": "string" }
+    "fields.change.user_code": { "type": "string" },
+    "fields.change.instructions": { "type": "string" },
+    "fields.change.test_code": { "type": "string" },
+    "fields.change.starter_code": { "type": "string" }
   },
   "static": [
     "static/pyodide/pyodide.mjs",

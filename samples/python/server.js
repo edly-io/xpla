@@ -7,14 +7,14 @@
 
 import {
   sendEvent,
-  getValue,
-  setValue,
+  getField,
+  setField,
   getPermission,
 } from "../../src/sandbox-lib";
 
 function saveUserCode(code) {
-  setValue("user_code", code);
-  sendEvent("values.change.user_code", code);
+  setField("user_code", code);
+  sendEvent("fields.change.user_code", code);
 }
 
 function onAction() {
@@ -29,8 +29,8 @@ function onAction() {
     }
     for (const key of ["instructions", "starter_code", "test_code"]) {
       if (actionValue[key] !== undefined) {
-        setValue(key, actionValue[key]);
-        sendEvent("values.change." + key, actionValue[key]);
+        setField(key, actionValue[key]);
+        sendEvent("fields.change." + key, actionValue[key]);
       }
     }
   }
@@ -46,10 +46,10 @@ function onAction() {
 
 function getState() {
   const state = {
-    instructions: getValue("instructions"),
-    starter_code: getValue("starter_code"),
-    test_code: getValue("test_code"),
-    user_code: getValue("user_code"),
+    instructions: getField("instructions"),
+    starter_code: getField("starter_code"),
+    test_code: getField("test_code"),
+    user_code: getField("user_code"),
   };
   Host.outputString(JSON.stringify(state));
 }

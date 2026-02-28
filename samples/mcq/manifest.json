@@ -3,7 +3,7 @@
   "client": "client.js",
   "server": "server.wasm",
   "capabilities": {},
-  "values": {
+  "fields": {
     "question": {
       "type": "string",
       "scope": "activity",
@@ -44,8 +44,8 @@
         "feedback": { "type": "string" }
       }
     },
-    "values.change.question": { "type": "string" },
-    "values.change.answers": { "type": "array", "items": { "type": "string" } },
-    "values.change.correct_answers": { "type": "array", "items": { "type": "integer" } }
+    "fields.change.question": { "type": "string" },
+    "fields.change.answers": { "type": "array", "items": { "type": "string" } },
+    "fields.change.correct_answers": { "type": "array", "items": { "type": "integer" } }
   }
 }

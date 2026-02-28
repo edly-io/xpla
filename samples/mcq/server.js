@@ -4,7 +4,7 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { sendEvent, getValue, setValue, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
 
 // Handle incoming actions from frontend
 function onAction() {
@@ -22,11 +22,11 @@ function onAction() {
 // Return state visible to the current user based on permission level.
 function getState() {
   const state = {
-    question: getValue("question"),
-    answers: getValue("answers"),
+    question: getField("question"),
+    answers: getField("answers"),
   };
   if (getPermission() === "edit") {
-    state.correct_answers = getValue("correct_answers");
+    state.correct_answers = getField("correct_answers");
   }
   Host.outputString(JSON.stringify(state));
 }
@@ -37,21 +37,21 @@ function handleConfigSave(config) {
     console.log("config.save rejected: permission is " + getPermission());
     return;
   }
-  setValue("question", config.question);
-  setValue("answers", config.answers);
-  setValue("correct_answers", config.correct_answers);
+  setField("question", config.question);
+  setField("answers", config.answers);
+  setField("correct_answers", config.correct_answers);
 
-  // Notify frontend of value changes
-  sendEvent("values.change.question", config.question);
-  sendEvent("values.change.answers", config.answers);
-  sendEvent("values.change.correct_answers", config.correct_answers);
+  // Notify frontend of field changes
+  sendEvent("fields.change.question", config.question);
+  sendEvent("fields.change.answers", config.answers);
+  sendEvent("fields.change.correct_answers", config.correct_answers);
 }
 
 // Check submitted answers against correct answers
 function handleAnswerSubmit(selected) {
 
   // Get correct answers from stored config
-  const correctAnswers = getValue("correct_answers");
+  const correctAnswers = getField("correct_answers");
 
   // Compare selected answers with correct answers
   const selectedSet = new Set(selected);

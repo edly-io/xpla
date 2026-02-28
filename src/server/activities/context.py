@@ -19,7 +19,7 @@ from server.activities.actions import ActionChecker
 from server.activities.capabilities import CapabilityChecker, CapabilityError
 from server.activities.events import EventChecker
 from server.activities.permission import Permission
-from server.activities.values import ValueChecker, ValueType
+from server.activities.fields import FieldChecker, FieldType
 from server.activities.manifest_types import Scope, XplaActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
@@ -39,17 +39,17 @@ class ActivityContext:
         self._activity_id: str = "activityid"
         self._permission: Permission = Permission.view
 
-        # Key-value store (used internally for value storage)
+        # Key-value store (used internally for field storage)
         self.kv_store = kv.get_default()
 
         # Events posted by sandbox during execution
         self._pending_events: list[dict[str, str]] = []
 
-        # Manifest capabilities and values (validated by Pydantic)
+        # Manifest capabilities and fields (validated by Pydantic)
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
             self.manifest = XplaActivityManifest.model_validate_json(f.read())
         self.checker = CapabilityChecker(self.manifest.capabilities)
-        self.value_checker = ValueChecker(self.manifest.values)
+        self.field_checker = FieldChecker(self.manifest.fields)
         self.action_checker = ActionChecker(self.manifest.actions)
         self.event_checker = EventChecker(self.manifest.events)
 
@@ -126,51 +126,51 @@ class ActivityContext:
         # TODO catch errors?
         return self.sandbox.call_function(function_name, input_data)
 
-    def _value_key(
+    def _field_key(
         self, name: str, course_id: str, activity_id: str, user_id: str
     ) -> str:
-        """Generate the KV store key for a value."""
+        """Generate the KV store key for a field."""
         return f"xpla.{self.name}.{course_id}.{activity_id}.{user_id}.{name}"
 
-    def load_value(
+    def load_field(
         self, course_id: str, activity_id: str, user_id: str, name: str
-    ) -> ValueType:
-        """Get a declared value.
+    ) -> FieldType:
+        """Get a declared field.
 
         Returns the stored value, or the default if not set.
 
         Raises:
-            ValueValidationError: If the value is not declared in manifest.
+            FieldValidationError: If the field is not declared in manifest.
         """
-        # Check that value is declared (raises if not)
-        default = self.value_checker.get_default(name)
+        # Check that field is declared (raises if not)
+        default = self.field_checker.get_default(name)
 
-        key = self._value_key(name, course_id, activity_id, user_id)
+        key = self._field_key(name, course_id, activity_id, user_id)
         stored = self.kv_store.get(key)
         if stored is None:
             return default
 
         # Deserialize from JSON
-        result: ValueType = json.loads(stored)
+        result: FieldType = json.loads(stored)
         return result
 
-    def store_value(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def store_field(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         course_id: str,
         activity_id: str,
         user_id: str,
         name: str,
-        value: ValueType,
+        value: FieldType,
     ) -> None:
-        """Set a declared value.
+        """Set a declared field.
 
         Raises:
-            ValueValidationError: If the value is not declared or invalid.
+            FieldValidationError: If the field is not declared or invalid.
         """
         # Validate against manifest definition
-        self.value_checker.validate(name, value)
+        self.field_checker.validate(name, value)
 
-        key = self._value_key(name, course_id, activity_id, user_id)
+        key = self._field_key(name, course_id, activity_id, user_id)
         self.kv_store.set(key, json.dumps(value))
 
     def _scope_key_segments(self, scope: Scope, user_id: str) -> tuple[str, str, str]:
@@ -185,36 +185,36 @@ class ActivityContext:
         }
         return scope_map[scope]
 
-    def get_all_values(self, user_id: str) -> dict[str, ValueType]:
-        """Get all declared values for a user.
+    def get_all_fields(self, user_id: str) -> dict[str, FieldType]:
+        """Get all declared fields for a user.
 
         Args:
-            user_id: The user ID for loading user-scoped values.
+            user_id: The user ID for loading user-scoped fields.
 
         Returns:
-            A dict of value names to their current values.
+            A dict of field names to their current values.
         """
-        result: dict[str, ValueType] = {}
-        for name in self.value_checker.value_names:
-            scope = self.value_checker.get_scope(name)
+        result: dict[str, FieldType] = {}
+        for name in self.field_checker.field_names:
+            scope = self.field_checker.get_scope(name)
             course_id, activity_id, uid = self._scope_key_segments(scope, user_id)
-            result[name] = self.load_value(course_id, activity_id, uid, name)
+            result[name] = self.load_field(course_id, activity_id, uid, name)
         return result
 
-    def get_state(self) -> dict[str, ValueType]:
+    def get_state(self) -> dict[str, FieldType]:
         """Get the activity state to send to the client.
 
         If the sandbox exports a getState function, calls it and returns the
-        result. Otherwise falls back to returning all values.
+        result. Otherwise falls back to returning all fields.
         """
         if self.sandbox is not None:
             try:
                 result = self.call_sandbox_function("getState")
-                state: dict[str, ValueType] = json.loads(result)
+                state: dict[str, FieldType] = json.loads(result)
                 return state
             except RuntimeError:
                 pass
-        return self.get_all_values(self._user_id)
+        return self.get_all_fields(self._user_id)
 
     def clear_pending_events(self) -> list[dict[str, str]]:
         """Return and clear all pending events."""
@@ -229,8 +229,8 @@ class ActivityContext:
         return [
             self.get_permission,
             self.send_event,
-            self.get_value,
-            self.set_value,
+            self.get_field,
+            self.set_field,
             self.http_request,
             self.submit_grade,
         ]
@@ -244,7 +244,7 @@ class ActivityContext:
     def send_event(self, name: str, value: str) -> str:
         """Send an event back to the client.
 
-        Called by sandbox code to send events (e.g., value changes) to the frontend.
+        Called by sandbox code to send events (e.g., field changes) to the frontend.
 
         Raises:
             EventValidationError: If the event is not declared in manifest.
@@ -253,20 +253,20 @@ class ActivityContext:
         self._pending_events.append({"name": name, "value": value})
         return ""
 
-    def get_value(self, name: str) -> str:
-        """Get a value, resolving scope from manifest.
+    def get_field(self, name: str) -> str:
+        """Get a field, resolving scope from manifest.
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        scope = self.value_checker.get_scope(name)
+        scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
-        value = self.load_value(course_id, activity_id, user_id, name)
+        value = self.load_field(course_id, activity_id, user_id, name)
         return json.dumps(value)
 
-    def set_value(self, name: str, value: str) -> bool:
-        """Set a value, resolving scope from manifest. Takes JSON-encoded value."""
-        scope = self.value_checker.get_scope(name)
+    def set_field(self, name: str, value: str) -> bool:
+        """Set a field, resolving scope from manifest. Takes JSON-encoded value."""
+        scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
         try:
             decoded = json.loads(value)
@@ -277,7 +277,7 @@ class ActivityContext:
                 value,
             )
             raise
-        self.store_value(course_id, activity_id, user_id, name, decoded)
+        self.store_field(course_id, activity_id, user_id, name, decoded)
         return True
 
     def http_request(

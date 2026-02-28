@@ -76,12 +76,12 @@ class TypeSchema(BaseModel):
     ] = None
 
 
-class ValueDefinition(BaseModel):
+class FieldDefinition(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     type: Annotated[
-        Type, Field(description="Data type of the value. Uses JSON Schema type names.")
+        Type, Field(description="Data type of the field. Uses JSON Schema type names.")
     ]
     items: Annotated[
         TypeSchema | None,
@@ -94,7 +94,7 @@ class ValueDefinition(BaseModel):
     scope: Annotated[
         Scope,
         Field(
-            description="Scope of the value. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
+            description="Scope of the field. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
         ),
     ]
     default: Annotated[
@@ -126,9 +126,9 @@ class XplaActivityManifest(BaseModel):
         Capabilities | None,
         Field(description="Declared capabilities that the sandbox can use."),
     ] = None
-    values: Annotated[
-        dict[str, ValueDefinition] | None,
-        Field(description="Declared activity values with type and scope."),
+    fields: Annotated[
+        dict[str, FieldDefinition] | None,
+        Field(description="Declared activity fields with type and scope."),
     ] = None
     actions: Annotated[
         dict[str, TypeSchema] | None,

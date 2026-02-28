@@ -4,7 +4,7 @@ from typing import Any
 
 import jsonschema
 
-from server.activities.values import build_type_schema
+from server.activities.fields import build_type_schema
 from server.activities.manifest_types import TypeSchema
 
 __all__ = [

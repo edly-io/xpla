@@ -6,7 +6,7 @@ export function setup(activity) {
   const permission = activity.permission;
   let isAuthorView = permission === "edit";
 
-  // Parse stored config from values
+  // Parse stored config from fields
   function getConfig() {
     return {
       question: activity.state.question || "",
@@ -223,11 +223,11 @@ export function setup(activity) {
       if (feedbackEl) {
         feedbackEl.innerHTML = `<div class="feedback ${value.correct ? "correct" : "incorrect"}">${escapeHtml(value.feedback)}</div>`;
       }
-    } else if (name === "values.change.question") {
+    } else if (name === "fields.change.question") {
       activity.state.question = value;
-    } else if (name === "values.change.answers") {
+    } else if (name === "fields.change.answers") {
       activity.state.answers = value;
-    } else if (name === "values.change.correct_answers") {
+    } else if (name === "fields.change.correct_answers") {
       activity.state.correct_answers = value;
     }
   };
