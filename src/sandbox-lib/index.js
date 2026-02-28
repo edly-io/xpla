@@ -11,29 +11,38 @@ const {
 } = Host.getFunctions();
 
 export function sendEvent(name, value) {
-  const nameMem = Memory.fromString(name);
-  const valueMem = Memory.fromString(JSON.stringify(value));
-  send_event(nameMem.offset, valueMem.offset);
+  send_event(string2memoryOffset(name), data2memoryOffset(value));
 }
 
 // Get the current permission level ("view", "play", or "edit").
 export function getPermission() {
-  const resultOffset = get_permission();
-  return Memory.find(resultOffset).readString();
+  return memoryOffset2string(get_permission());
 }
 
 // Get a field (scope resolved from manifest).
 export function getField(name) {
-  const nameMem = Memory.fromString(name);
-  const resultOffset = get_field(nameMem.offset);
-  const result = Memory.find(resultOffset).readString();
-  return JSON.parse(result);
+  return memoryOffset2data(get_field(string2memoryOffset(name)));
 }
 
 // Set a field (scope resolved from manifest).
 export function setField(name, value) {
-  const nameMem = Memory.fromString(name);
-  const valueJSON = JSON.stringify(value);
-  const valueMem = Memory.fromString(valueJSON);
-  set_field(nameMem.offset, valueMem.offset);
+  set_field(string2memoryOffset(name), data2memoryOffset(value));
+}
+
+function string2memoryOffset(str) {
+  return Memory.fromString(str).offset;
+}
+
+function data2memoryOffset(data) {
+  const dataJSON = JSON.stringify(data);
+  const memory = Memory.fromString(dataJSON);
+  return memory.offset;
+}
+
+function memoryOffset2data(offset) {
+  return JSON.parse(memoryOffset2string(offset));
+}
+
+function memoryOffset2string(offset) {
+  return Memory.find(offset).readString();
 }
