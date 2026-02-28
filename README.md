@@ -22,11 +22,44 @@ Offline mode is supported, with two possible options:
 
 ## Limitations
 
+What follows is a list of limitations of the current implementation. In some cases we are actively working to address them.
+
 ### Unsafe client code
 
 The preferred mode for running xPLA on the client is using [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM). This prevents access to the xPLA from the rest of the DOM, but the reverse is not true: the xPLA can access the rest of the DOM and break it. To avoid this situation, platform administrators can decide to embed xPLA within iframes, which is the only safe mechanism to sandbox HTML (at the moment). But iframes come with their own set of limitations. See [Recommendations](#recommendations-1) in the Frontend API section below.
 
 Note that most LMS support a "raw HTML" activity that is usually completely unsandboxed and is free to break the DOM and run arbitrary client code. Thus we are not sure whether the lack of client-side isolation is an actual issue.
+
+### Activity properties stored as key-values
+
+Activities define a number of properties that may be scoped per user, activity instance, course or platform. At the moment, these properties as stored as key-values that must be defined in `manifest.json` (see below). This means that it's impossible (or actually: very difficult) to store relational data. In particular, the current implementation makes it impractical to implement a chat activity with a large number of chats: the `list` type would store all chats, and reading/writing chats would be prohibitive.
+
+Here are some ideas to address this limitation:
+
+1. Store a raw sqlite database as `bytes` as activity values: this is almost certainly overkill, and probably not very performant...
+2. Create a new `index` type that would somehow allow activities to query data by range: implementation would be left to the platform developers, which may require a lot of work. It is unclear how the existing `get/set_value` host functions would be reused with this type.
+3. Extend the existing `list` type to allow querying by range: for instance, `getUserValue("mylist[10:]")` would return all values after the 10th element. This is probably easier to implement for platform developers, but not very versatile.
+4. Expose host functions such as `get_indexed_value(key, from, to)`: this would be most convenient for activity developers, but then a whole bunch of new host functions would then be required to insert, append and delete data.
+
+More research is needed.
+
+### No versioning or migration mechanism
+
+Currently, activity types do not have an associated version. In particular, this means that when we modify the types of activity values, existing data must be migrated manually, at runtime, by the activity itself. We need a mechanism to facilitate upgrading activities to a new version and migrate existing data. We could draw inspiration from the [content upgrade](https://h5p.org/documentation/developers/content-upgrade) API in H5P.
+
+### WASM Performance
+
+Server-side WASM activity loading has not been battle-tested yet, and we do not know how it will behave under heavy load. In particular, is it practical to run the WASM module once for every event? There are frameworks, such as [WASM Cloud](https://wasmcloud.com) to address this. In any case, even if the performance is not state of the art, we are confident that the performance of WASM modules is better than, say, Python XBlocks.
+
+### File storage
+
+WASM modules are stored as files, which are typically difficult to distribute across cloud-native applications. Maybe we can solve this issue in Kubernetes with simple read-only persistent volumes?
+
+In addition, WASM modules built with Javascript take around 2 MB of space each. This might be an issue, or not: is it sustainable to require ~2 GB of disk space for 1000 activity types? The size of modules can be reduced by using [AssemblyScript](https://www.assemblyscript.org/), but we haven't tried this out just yet.
+
+### No import/export standard
+
+We have not yet defined a standard to import and export activity instances. We would need to export all activity values, with the exception of values that are scoped to users or the platform. Actually, it would be up to the platform to decide whether to export activity values that are scoped to the course, depending on whether we export a single instance or an entire course.
 
 ## Installation
 
