@@ -108,15 +108,6 @@ class TestActivityContextInit:
 class TestActivityContextProperties:
     """Tests for ActivityContext properties."""
 
-    def test_activity_dir_property(self, tmp_path: Path) -> None:
-        """Should return the activity directory path."""
-        manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
-
-        assert ctx.activity_dir == activity_dir
-
     def test_name_property(self, tmp_path: Path) -> None:
         """Should return the activity name from manifest."""
         manifest = create_manifest("quiz-activity")
@@ -125,26 +116,6 @@ class TestActivityContextProperties:
         ctx = ActivityContext(activity_dir)
 
         assert ctx.name == "quiz-activity"
-
-    def test_html_property_with_file(self, tmp_path: Path) -> None:
-        """Should return HTML content when activity.html exists."""
-        manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        html_content = "<html><body>Test</body></html>"
-        (activity_dir / "activity.html").write_text(html_content, encoding="utf8")
-
-        ctx = ActivityContext(activity_dir)
-
-        assert ctx.html == html_content
-
-    def test_html_property_without_file(self, tmp_path: Path) -> None:
-        """Should return empty string when activity.html doesn't exist."""
-        manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
-
-        assert ctx.html == ""
 
     def test_client_path_property(self, tmp_path: Path) -> None:
         """Should return client path from manifest."""
@@ -646,12 +617,12 @@ class TestGetPermission:
     """Tests for get_permission host function."""
 
     def test_default_permission(self, tmp_path: Path) -> None:
-        """Should default to 'view' permission."""
+        """Should default to 'play' permission."""
         manifest = create_manifest()
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert ctx.get_permission() == "view"
+        assert ctx.get_permission() == "play"
 
     def test_set_permission(self, tmp_path: Path) -> None:
         """Should return the permission that was set."""

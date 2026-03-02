@@ -31,13 +31,31 @@ class MissingSandboxError(Exception):
     """Raised when a sandbox function is called but no wasm file exists."""
 
 
+class AssetAccessError(Exception):
+    """Raised when attempting to access an activity asset that does not exist or without the right permissions"""
+
+
 class ActivityContext:
-    def __init__(self, activity_dir: Path) -> None:
+    # TODO actually set these parameters in a real-life scenario
+    DEFAULT_COURSE_ID = "democourse"
+    DEFAULT_ACTIVITY_ID = "activityid"
+    DEFAULT_PERMISSION = Permission.play
+    DEFAULT_USER_ID = "alice"
+
+    def __init__(
+        self,
+        activity_dir: Path,
+        # TODO make these arguments positional, and not optional
+        activity_id: str = DEFAULT_ACTIVITY_ID,
+        course_id: str = DEFAULT_COURSE_ID,
+        user_id: str = DEFAULT_USER_ID,
+        permission: Permission = DEFAULT_PERMISSION,
+    ) -> None:
         self._activity_dir = activity_dir
-        self._user_id: str = "alice"
-        self._course_id: str = "democourse"
-        self._activity_id: str = "activityid"
-        self._permission: Permission = Permission.view
+        self._user_id: str = user_id
+        self._permission: Permission = permission
+        self._course_id: str = course_id
+        self._activity_id: str = activity_id
 
         # Key-value store (used internally for field storage)
         self.kv_store = kv.get_default()
@@ -60,10 +78,6 @@ class ActivityContext:
             # Note: we know that this is a safe path thanks to path constraints in the manifests
             wasm_path = self._activity_dir / server_path
             self.sandbox = SandboxExecutor(wasm_path, self.host_functions())
-
-    @property
-    def activity_dir(self) -> Path:
-        return self._activity_dir
 
     @property
     def user_id(self) -> str:
@@ -102,13 +116,6 @@ class ActivityContext:
         return self.manifest.name
 
     @property
-    def html(self) -> str:
-        html_path = self.activity_dir / "activity.html"
-        if html_path.exists():
-            return open(html_path, encoding="utf8").read()
-        return ""
-
-    @property
     def client_path(self) -> str:
         """
         Path to client script, relative to activity directory.
@@ -116,6 +123,23 @@ class ActivityContext:
         Note that this is a safe path thanks to schema constraints.
         """
         return self.manifest.client
+
+    def get_asset_path(self, file_path: str) -> Path:
+        full_path = self._activity_dir / file_path
+        try:
+            full_path.resolve().relative_to(self._activity_dir.resolve())
+        except ValueError as e:
+            raise AssetAccessError("Incorrect path") from e
+
+        # Only serve files declared in manifest
+        if file_path not in (self.manifest.client, "manifest.json"):
+            if file_path not in [item.root for item in (self.manifest.static or [])]:
+                raise AssetAccessError("Undeclared asset")
+
+        if not full_path.exists() or not full_path.is_file():
+            raise AssetAccessError("Asset does not exist")
+
+        return full_path
 
     def on_action(self, action_name: str, action_value: Any) -> None:
         """
@@ -131,6 +155,7 @@ class ActivityContext:
                 self.call_sandbox_function("onAction", action_input)
             except RuntimeError as e:
                 # onAction not defined in sandbox - log warning and continue
+                # TODO how to capture errors related to sandbox code? Should we raise a 500?
                 logger.warning(
                     "Activity '%s' has no onAction handler: %s", self.activity_id, e
                 )

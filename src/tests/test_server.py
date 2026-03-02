@@ -70,10 +70,10 @@ class TestStaticFiles:
         assert response.status_code == 200
         assert "xpla" in response.text.lower() or "xPLA" in response.text
 
-    def test_undeclared_asset_returns_403(self, client: TestClient) -> None:
-        """Should return 403 for files not declared in static."""
+    def test_undeclared_asset_returns_404(self, client: TestClient) -> None:
+        """Should return 404 for files not declared in static."""
         response = client.get("/a/test-activity/secret.txt")
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_activity_not_found(self, client: TestClient) -> None:
         """Should return 404 for unknown activity."""
