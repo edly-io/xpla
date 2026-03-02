@@ -98,6 +98,9 @@ class FieldChecker:
         definition = self.get_definition(name)
         schema = build_type_schema(definition)
         try:
+            # TODO this validates the schema in addition to the value. For
+            # faster validation, we should use
+            # jsonschema.protocols.Validator.validate
             jsonschema.validate(value, schema)
         except jsonschema.ValidationError as e:
             raise FieldValidationError(
@@ -115,11 +118,3 @@ class FieldChecker:
             Scope.user_course,
             Scope.user_global,
         )
-
-    def user_field_names(self) -> list[str]:
-        """Return names of user-scoped fields."""
-        return [name for name in self.field_names if self.is_user_scoped(name)]
-
-    def shared_field_names(self) -> list[str]:
-        """Return names of non-user-scoped (shared) fields."""
-        return [name for name in self.field_names if not self.is_user_scoped(name)]

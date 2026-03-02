@@ -128,26 +128,6 @@ class TestFieldChecker:
         assert checker.get_scope("e") == Scope.global_
         assert checker.get_scope("f") == Scope.user_global
 
-    def test_user_field_names(self) -> None:
-        """Should return only user-scoped field names."""
-        fields = {
-            "score": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
-            "attempts": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
-            "question": FieldDefinition(type=Type.string, scope=Scope.activity),
-        }
-        checker = FieldChecker(fields)
-        assert sorted(checker.user_field_names()) == ["attempts", "score"]
-
-    def test_shared_field_names(self) -> None:
-        """Should return only shared (non-user-scoped) field names."""
-        fields = {
-            "score": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
-            "question": FieldDefinition(type=Type.string, scope=Scope.activity),
-            "answers": FieldDefinition(type=Type.string, scope=Scope.activity),
-        }
-        checker = FieldChecker(fields)
-        assert sorted(checker.shared_field_names()) == ["answers", "question"]
-
     def test_get_default_array(self) -> None:
         """Should return empty list as default for array type."""
         fields = {
