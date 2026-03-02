@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from server.constants import DIST_DIR
+from server.activities.fields import FieldType
 
 
 class KVStore:
@@ -14,7 +15,7 @@ class KVStore:
             storage_path: Path to the JSON file for persistence.
         """
         self._path = storage_path
-        self._data: dict[str, str] = {}
+        self._data: dict[str, FieldType] = {}
         self._load()
 
     def _load(self) -> None:
@@ -29,11 +30,11 @@ class KVStore:
         with self._path.open("w") as f:
             json.dump(self._data, f, indent=2)
 
-    def get(self, key: str) -> str | None:
+    def get(self, key: str) -> FieldType | None:
         """Get a value by key."""
         return self._data.get(key)
 
-    def set(self, key: str, value: str) -> None:
+    def set(self, key: str, value: FieldType) -> None:
         """Set a key-value pair."""
         self._data[key] = value
         self._save()

@@ -149,10 +149,7 @@ class ActivityContext:
         stored = self.kv_store.get(key)
         if stored is None:
             return default
-
-        # Deserialize from JSON
-        result: FieldType = json.loads(stored)
-        return result
+        return stored
 
     def store_field(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -171,7 +168,7 @@ class ActivityContext:
         self.field_checker.validate(name, value)
 
         key = self._field_key(name, course_id, activity_id, user_id)
-        self.kv_store.set(key, json.dumps(value))
+        self.kv_store.set(key, value)
 
     def _scope_key_segments(self, scope: Scope, user_id: str) -> tuple[str, str, str]:
         """Return (course_id, activity_id, user_id) key segments for a scope."""
