@@ -4,6 +4,7 @@ FastAPI application for the xPLA server.
 
 import json
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -60,17 +61,33 @@ class ActivityNotFound(Exception):
     """Raised when an activity cannot be found."""
 
 
-def load_activity(activity_id: str) -> ActivityContext:
+def load_activity(request: Request, activity_type: str) -> ActivityContext:
     """Load an activity by ID from the samples directory."""
-    if activity_id not in list_activities():
-        raise ActivityNotFound(f"Activity '{activity_id}' not found")
+    try:
+        activity_dir = find_activity_dir(activity_type)
+    except ActivityNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    activity_context = ActivityContext(activity_dir)
+    user_id, permission = get_simulation_params(request)
+    activity_context.user_id = user_id
+    activity_context.course_id = "democourse"
+    activity_context.activity_id = "activityid"
+    activity_context.permission = permission
+    return activity_context
 
-    activity_dir = constants.SAMPLES_DIR / activity_id
+
+def find_activity_dir(activity_type: str) -> Path:
+    """
+    Find the directory of a sample activity.
+    """
+    if activity_type not in list_activities():
+        raise ActivityNotFound(f"Activity '{activity_type}' not found")
+
+    activity_dir = constants.SAMPLES_DIR / activity_type
     manifest_path = activity_dir / "manifest.json"
     if not manifest_path.exists():
-        raise ActivityNotFound(f"Activity '{activity_id}' has no manifest.json")
-
-    return ActivityContext(activity_dir)
+        raise ActivityNotFound(f"Activity '{activity_type}' has no manifest.json")
+    return activity_dir
 
 
 def list_activities() -> list[str]:
@@ -85,19 +102,10 @@ async def home(request: Request) -> HTMLResponse:
     )
 
 
-@app.get("/a/{activity_id}")
-async def activity(request: Request, activity_id: str) -> HTMLResponse:
+@app.get("/a/{activity_type}")
+async def activity(request: Request, activity_type: str) -> HTMLResponse:
     """Serve an activity"""
-    try:
-        activity_context = load_activity(activity_id)
-    except ActivityNotFound as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-
-    user_id, permission = get_simulation_params(request)
-    activity_context.user_id = user_id
-    activity_context.course_id = "democourse"
-    activity_context.activity_id = "activityid"
-    activity_context.permission = permission
+    activity_context = load_activity(request, activity_type)
     activity_state = activity_context.get_state()
 
     return templates.TemplateResponse(
@@ -107,26 +115,17 @@ async def activity(request: Request, activity_id: str) -> HTMLResponse:
             "activity_context": activity_context,
             "state_json": json.dumps(activity_state),
             "simulated_users": SIMULATED_USERS,
-            "current_user": user_id,
+            "current_user": activity_context.user_id,
             "permission_levels": [p.value for p in Permission],
-            "current_permission": permission.value,
+            "current_permission": activity_context.permission.value,
         },
     )
 
 
-@app.get("/a/{activity_id}/embed")
-async def activity_embed(request: Request, activity_id: str) -> HTMLResponse:
+@app.get("/a/{activity_type}/embed")
+async def activity_embed(request: Request, activity_type: str) -> HTMLResponse:
     """Serve an activity in a standalone page for iframe embedding."""
-    try:
-        activity_context = load_activity(activity_id)
-    except ActivityNotFound as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-
-    user_id, permission = get_simulation_params(request)
-    activity_context.user_id = user_id
-    activity_context.course_id = "democourse"
-    activity_context.activity_id = "activityid"
-    activity_context.permission = permission
+    activity_context = load_activity(request, activity_type)
     activity_state = activity_context.get_state()
 
     return templates.TemplateResponse(
@@ -135,7 +134,7 @@ async def activity_embed(request: Request, activity_id: str) -> HTMLResponse:
         context={
             "activity_context": activity_context,
             "state_json": json.dumps(activity_state),
-            "current_permission": permission.value,
+            "current_permission": activity_context.permission.value,
         },
     )
 
@@ -147,13 +146,12 @@ def _is_allowed_asset(manifest: XplaActivityManifest, file_path: str) -> bool:
     return file_path in [item.root for item in (manifest.static or [])]
 
 
-@app.get("/a/{activity_id}/{file_path:path}")
-async def activity_asset(activity_id: str, file_path: str) -> FileResponse:
+@app.get("/a/{activity_type}/{file_path:path}")
+async def activity_asset(
+    request: Request, activity_type: str, file_path: str
+) -> FileResponse:
     """Serve static files from an activity directory."""
-    try:
-        activity_context = load_activity(activity_id)
-    except ActivityNotFound as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+    activity_context = load_activity(request, activity_type)
 
     # Security: ensure path doesn't escape activity directory
     full_path = activity_context.activity_dir / file_path
@@ -172,39 +170,18 @@ async def activity_asset(activity_id: str, file_path: str) -> FileResponse:
     return FileResponse(full_path)
 
 
-@app.post("/api/activity/{activity_id}/actions/{action_name}")
+@app.post("/api/activity/{activity_type}/actions/{action_name}")
 async def send_action(
-    activity_id: str, action_name: str, request: Request
+    request: Request, activity_type: str, action_name: str
 ) -> JSONResponse:
     """Send an action to the activity sandbox and receive response events."""
-    try:
-        context = load_activity(activity_id)
-    except ActivityNotFound as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-
-    user_id, permission = get_simulation_params(request)
-    context.user_id = user_id
-    context.course_id = "democourse"
-    context.activity_id = "activityid"
-    context.permission = permission
-
-    # Parse action payload from request body
+    context = load_activity(request, activity_type)
     action_value = await request.json()
 
-    # Validate action against manifest
     try:
-        context.action_checker.validate(action_name, action_value)
+        context.on_action(action_name, action_value)
     except ActionValidationError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-
-    # Call sandbox's onAction if available
-    if context.sandbox is not None:
-        action_input = {"name": action_name, "value": action_value}
-        try:
-            context.call_sandbox_function("onAction", action_input)
-        except RuntimeError as e:
-            # onAction not defined in sandbox - log warning and continue
-            logger.warning("Activity '%s' has no onAction handler: %s", activity_id, e)
 
     # Return events posted by sandbox
     events = context.clear_pending_events()

@@ -117,6 +117,24 @@ class ActivityContext:
         """
         return self.manifest.client
 
+    def on_action(self, action_name: str, action_value: Any) -> None:
+        """
+        Call the sandbox onAction callback.
+
+        Raise ActionValidationError if action is not valid.
+        """
+        self.action_checker.validate(action_name, action_value)
+        # Call sandbox's onAction if available
+        if self.sandbox is not None:
+            action_input = {"name": action_name, "value": action_value}
+            try:
+                self.call_sandbox_function("onAction", action_input)
+            except RuntimeError as e:
+                # onAction not defined in sandbox - log warning and continue
+                logger.warning(
+                    "Activity '%s' has no onAction handler: %s", self.activity_id, e
+                )
+
     def call_sandbox_function(
         self, function_name: str, input_data: Any = None
     ) -> bytes:
