@@ -48,7 +48,7 @@ class ActivityContext:
         # Manifest capabilities and fields (validated by Pydantic)
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
             self.manifest = XplaActivityManifest.model_validate_json(f.read())
-        self.checker = CapabilityChecker(self.manifest.capabilities)
+        self.capability_checker = CapabilityChecker(self.manifest.capabilities)
         self.field_checker = FieldChecker(self.manifest.fields)
         self.action_checker = ActionChecker(self.manifest.actions)
         self.event_checker = EventChecker(self.manifest.events)
@@ -299,7 +299,7 @@ class ActivityContext:
         Returns response body as string, or error message.
         """
         try:
-            self.checker.check_http_request(url)
+            self.capability_checker.check_http_request(url)
         except CapabilityError as e:
             return json.dumps({"error": str(e)})
 

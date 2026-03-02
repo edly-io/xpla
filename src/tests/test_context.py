@@ -77,9 +77,9 @@ class TestActivityContextInit:
 
         ctx = ActivityContext(activity_dir)
 
-        assert ctx.checker is not None
+        assert ctx.capability_checker is not None
         # Should not raise for http capability
-        ctx.checker.check_http_request("https://example.com")
+        ctx.capability_checker.check_http_request("https://example.com")
 
     def test_init_without_sandbox(self, tmp_path: Path) -> None:
         """Should set sandbox to None when no wasm file exists."""
