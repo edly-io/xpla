@@ -69,13 +69,6 @@
       "description": "Events the server sandbox can emit to the client.",
       "additionalProperties": { "$ref": "#/$defs/typeSchema" }
     },
-    "streams": {
-      "type": "object",
-      "description": "Declared data streams (append-only, ordered collections).",
-      "additionalProperties": {
-        "$ref": "#/$defs/streamDefinition"
-      }
-    },
     "static": {
       "type": "array",
       "items": {
@@ -112,22 +105,6 @@
         },
         "default": {
           "description": "Default value (must match declared type)."
-        }
-      }
-    },
-    "streamDefinition": {
-      "type": "object",
-      "required": ["items", "scope"],
-      "additionalProperties": false,
-      "properties": {
-        "items": {
-          "$ref": "#/$defs/typeSchema",
-          "description": "Schema for each entry in the stream."
-        },
-        "scope": {
-          "type": "string",
-          "enum": ["activity", "course", "platform", "user,activity", "user,course", "user,platform"],
-          "description": "Scope of the stream."
         }
       }
     },

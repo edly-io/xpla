@@ -8,7 +8,6 @@ const {
   get_field,
   set_field,
   get_permission,
-  stream_query,
 } = Host.getFunctions();
 
 export function sendEvent(name, value) {
@@ -28,42 +27,6 @@ export function getField(name) {
 // Set a field (scope resolved from manifest).
 export function setField(name, value) {
   set_field(string2memoryOffset(name), data2memoryOffset(value));
-}
-
-// Append a value to a stream. Returns the assigned integer ID.
-export function streamAppend(name, value) {
-  return memoryOffset2data(stream_query(
-    string2memoryOffset(name),
-    data2memoryOffset({ op: "append", value }),
-  ));
-}
-
-// Read entries from a stream. Options: { after, limit } or { last }.
-export function streamRange(name, { after, limit, last } = {}) {
-  const op = { op: "range" };
-  if (last !== undefined) op.last = last;
-  if (after !== undefined) op.after = after;
-  if (limit !== undefined) op.limit = limit;
-  return memoryOffset2data(stream_query(
-    string2memoryOffset(name),
-    data2memoryOffset(op),
-  ));
-}
-
-// Get the number of entries in a stream.
-export function streamLength(name) {
-  return memoryOffset2data(stream_query(
-    string2memoryOffset(name),
-    data2memoryOffset({ op: "length" }),
-  ));
-}
-
-// Delete an entry from a stream by ID. Returns boolean.
-export function streamDelete(name, id) {
-  return memoryOffset2data(stream_query(
-    string2memoryOffset(name),
-    data2memoryOffset({ op: "delete", id }),
-  ));
 }
 
 function string2memoryOffset(str) {
