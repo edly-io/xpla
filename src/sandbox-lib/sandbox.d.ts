@@ -27,6 +27,9 @@ declare module "extism:host" {
     get_field(name_ptr: I64): I64;
     set_field(name_ptr: I64, value_ptr: I64): I32;
 
+    // Stream operations
+    stream_query(name_ptr: I64, operation_ptr: I64): I64;
+
     // HTTP requests (require http capability)
     http_request(
       url_ptr: I64,

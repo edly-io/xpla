@@ -178,6 +178,7 @@ class TestHostFunctions:
             "set_field",
             "http_request",
             "submit_grade",
+            "stream_query",
         ]
 
 

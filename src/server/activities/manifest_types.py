@@ -101,6 +101,16 @@ class FieldDefinition(BaseModel):
     ] = None
 
 
+class StreamDefinition(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    items: Annotated[
+        TypeSchema, Field(description="Schema for each entry in the stream.")
+    ]
+    scope: Annotated[Scope, Field(description="Scope of the stream.")]
+
+
 class XplaActivityManifest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -136,6 +146,10 @@ class XplaActivityManifest(BaseModel):
     events: Annotated[
         dict[str, TypeSchema] | None,
         Field(description="Events the server sandbox can emit to the client."),
+    ] = None
+    streams: Annotated[
+        dict[str, StreamDefinition] | None,
+        Field(description="Declared data streams (append-only, ordered collections)."),
     ] = None
     static: Annotated[
         list[StaticItem] | None,

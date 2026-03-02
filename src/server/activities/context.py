@@ -21,6 +21,7 @@ from server.activities.events import EventChecker
 from server.activities.permission import Permission
 from server.activities.fields import FieldChecker, FieldType
 from server.activities.manifest_types import Scope, XplaActivityManifest
+from server.activities.streams import StreamChecker, StreamValidationError
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
@@ -70,6 +71,7 @@ class ActivityContext:
         self.field_checker = FieldChecker(self.manifest.fields)
         self.action_checker = ActionChecker(self.manifest.actions)
         self.event_checker = EventChecker(self.manifest.events)
+        self.stream_checker = StreamChecker(self.manifest.streams)
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
@@ -273,6 +275,7 @@ class ActivityContext:
             self.set_field,
             self.http_request,
             self.submit_grade,
+            self.stream_query,
         ]
 
     def get_permission(self) -> str:
@@ -365,3 +368,102 @@ class ActivityContext:
         # TODO actually submit grade
         logger.info("submitted score: %f", score)
         return True
+
+    def _stream_key(self, name: str) -> str:
+        """Generate the KV store key for a stream."""
+        scope = self.stream_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
+        return f"xpla.{self.name}.{course_id}.{activity_id}.{user_id}.stream.{name}"
+
+    def _load_stream(self, name: str) -> dict[str, Any]:
+        """Load a stream's data from KV store."""
+        key = self._stream_key(name)
+        stored = self.kv_store.get(key)
+        if stored is None:
+            return {"next_id": 1, "entries": []}
+        if not isinstance(stored, dict):
+            raise ValueError("Incorrect value stored as stream in KV store")
+        return stored
+
+    def _save_stream(self, name: str, data: dict[str, Any]) -> None:
+        """Save a stream's data to KV store."""
+        key = self._stream_key(name)
+        self.kv_store.set(key, data)
+
+    def _append_to_stream(self, name: str, value: Any) -> int:
+        """Append an entry to a stream. Returns the assigned ID."""
+        self.stream_checker.validate_item(name, value)
+        data = self._load_stream(name)
+        entry_id: int = data["next_id"]
+        entry = (
+            {"id": entry_id, **value}
+            if isinstance(value, dict)
+            else {"id": entry_id, "value": value}
+        )
+        data["entries"].append(entry)
+        data["next_id"] = entry_id + 1
+        self._save_stream(name, data)
+        return entry_id
+
+    def _query_stream_range(
+        self, name: str, after: int | None, limit: int | None, last: int | None
+    ) -> list[dict[str, Any]]:
+        """Query entries from a stream."""
+        data = self._load_stream(name)
+        entries: list[dict[str, Any]] = data["entries"]
+        if last is not None:
+            return entries[-last:] if last < len(entries) else list(entries)
+        if after is not None:
+            entries = [e for e in entries if e["id"] > after]
+        if limit is not None:
+            entries = entries[:limit]
+        return entries
+
+    def _stream_length(self, name: str) -> int:
+        """Get the number of entries in a stream."""
+        data = self._load_stream(name)
+        return len(data["entries"])
+
+    def _delete_from_stream(self, name: str, entry_id: int) -> bool:
+        """Delete an entry from a stream by ID."""
+        data = self._load_stream(name)
+        original_len = len(data["entries"])
+        data["entries"] = [e for e in data["entries"] if e["id"] != entry_id]
+        if len(data["entries"]) == original_len:
+            return False
+        self._save_stream(name, data)
+        return True
+
+    def stream_query(self, name: str, operation: str) -> str:
+        """Execute a stream operation.
+
+        Args:
+            name: Stream name (declared in manifest).
+            operation: JSON-encoded operation object.
+
+        Returns:
+            JSON-encoded result.
+        """
+        op_data: dict[str, Any] = json.loads(operation)
+        op = op_data["op"]
+        op_result: Any = None
+        if op == "append":
+            entry_id = self._append_to_stream(name, op_data["value"])
+            op_result = entry_id
+        elif op == "range":
+            entries = self._query_stream_range(
+                name,
+                after=op_data.get("after"),
+                limit=op_data.get("limit"),
+                last=op_data.get("last"),
+            )
+            op_result = entries
+        elif op == "length":
+            length = self._stream_length(name)
+            op_result = length
+        elif op == "delete":
+            deleted = self._delete_from_stream(name, op_data["id"])
+            op_result = deleted
+        else:
+            raise StreamValidationError(f"Unknown stream operation: {op}")
+        return json.dumps(op_result)
