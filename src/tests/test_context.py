@@ -176,6 +176,8 @@ class TestHostFunctions:
             "send_event",
             "get_field",
             "set_field",
+            "get_user_field",
+            "set_user_field",
             "http_request",
             "submit_grade",
         ]
@@ -530,7 +532,7 @@ class TestGetAllFields:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.get_all_fields("alice")
+        result = ctx.get_all_fields()
         assert "public" in result
         assert "secret" in result
 
@@ -552,12 +554,11 @@ class TestGetAllFields:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = "alice"
 
-        ctx.store_field(ctx.course_id, ctx.activity_id, user, "score", 42)
+        ctx.store_field(ctx.course_id, ctx.activity_id, ctx.user_id, "score", 42)
         ctx.store_field(ctx.course_id, ctx.activity_id, "", "question", "What is 2+2?")
 
-        result = ctx.get_all_fields(user)
+        result = ctx.get_all_fields()
         assert result == {"score": 42, "question": "What is 2+2?"}
 
     def test_includes_course_scoped_fields(self, tmp_path: Path) -> None:
@@ -578,12 +579,11 @@ class TestGetAllFields:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = "alice"
 
         ctx.store_field(ctx.course_id, "", "", "course_total", 100)
-        ctx.store_field(ctx.course_id, "", user, "course_score", 85)
+        ctx.store_field(ctx.course_id, "", ctx.user_id, "course_score", 85)
 
-        result = ctx.get_all_fields(user)
+        result = ctx.get_all_fields()
         assert result == {"course_total": 100, "course_score": 85}
 
     def test_includes_platform_scoped_fields(self, tmp_path: Path) -> None:
@@ -604,12 +604,11 @@ class TestGetAllFields:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        user = "alice"
 
         ctx.store_field("", "", "", "global_setting", "on")
-        ctx.store_field("", "", user, "global_pref", "dark")
+        ctx.store_field("", "", ctx.user_id, "global_pref", "dark")
 
-        result = ctx.get_all_fields(user)
+        result = ctx.get_all_fields()
         assert result == {"global_setting": "on", "global_pref": "dark"}
 
 
@@ -907,3 +906,65 @@ class TestClearPendingEvents:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
         assert not ctx.clear_pending_events()
+
+
+class TestUserScopedGetSetField:
+    """Tests for get_user_field/set_user_field host functions."""
+
+    def test_get_user_field(self, tmp_path: Path) -> None:
+        """Should read another user's field value."""
+        manifest = create_manifest(
+            fields={
+                "score": {"type": "integer", "scope": "user,activity", "default": 0}
+            }
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        ctx.user_id = "alice"
+
+        # Set a field for bob via set_user_field
+        ctx.set_user_field("bob", "score", "42")
+
+        # Alice can read bob's field
+        assert json.loads(ctx.get_user_field("bob", "score")) == 42
+        # Alice's own field is still the default
+        assert json.loads(ctx.get_field("score")) == 0
+
+    def test_set_user_field(self, tmp_path: Path) -> None:
+        """Should write another user's field value."""
+        manifest = create_manifest(
+            fields={
+                "score": {"type": "integer", "scope": "user,activity", "default": 0}
+            }
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+        ctx.user_id = "alice"
+
+        ctx.set_user_field("bob", "score", "99")
+
+        assert json.loads(ctx.get_user_field("bob", "score")) == 99
+        # Alice's field unchanged
+        assert json.loads(ctx.get_field("score")) == 0
+
+    def test_get_user_field_raises_for_non_user_scoped(self, tmp_path: Path) -> None:
+        """Should raise FieldValidationError for activity-scoped field."""
+        manifest = create_manifest(
+            fields={"question": {"type": "string", "scope": "activity", "default": ""}}
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(FieldValidationError, match="not user-scoped"):
+            ctx.get_user_field("bob", "question")
+
+    def test_set_user_field_raises_for_non_user_scoped(self, tmp_path: Path) -> None:
+        """Should raise FieldValidationError for activity-scoped field."""
+        manifest = create_manifest(
+            fields={"question": {"type": "string", "scope": "activity", "default": ""}}
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(FieldValidationError, match="not user-scoped"):
+            ctx.set_user_field("bob", "question", '"hello"')

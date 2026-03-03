@@ -19,7 +19,7 @@ from server.activities.actions import ActionChecker
 from server.activities.capabilities import CapabilityChecker, CapabilityError
 from server.activities.events import EventChecker
 from server.activities.permission import Permission
-from server.activities.fields import FieldChecker, FieldType
+from server.activities.fields import FieldChecker, FieldType, FieldValidationError
 from server.activities.manifest_types import Scope, XplaActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
@@ -213,19 +213,19 @@ class ActivityContext:
         key = self._field_key(name, course_id, activity_id, user_id)
         self.kv_store.set(key, value)
 
-    def _scope_key_segments(self, scope: Scope, user_id: str) -> tuple[str, str, str]:
+    def _scope_key_segments(self, scope: Scope) -> tuple[str, str, str]:
         """Return (course_id, activity_id, user_id) key segments for a scope."""
         scope_map: dict[Scope, tuple[str, str, str]] = {
             Scope.activity: (self._course_id, self._activity_id, ""),
-            Scope.user_activity: (self._course_id, self._activity_id, user_id),
+            Scope.user_activity: (self._course_id, self._activity_id, self._user_id),
             Scope.course: (self._course_id, "", ""),
-            Scope.user_course: (self._course_id, "", user_id),
+            Scope.user_course: (self._course_id, "", self._user_id),
             Scope.platform: ("", "", ""),
-            Scope.user_platform: ("", "", user_id),
+            Scope.user_platform: ("", "", self._user_id),
         }
         return scope_map[scope]
 
-    def get_all_fields(self, user_id: str) -> dict[str, FieldType]:
+    def get_all_fields(self) -> dict[str, FieldType]:
         """Get all declared fields for a user.
 
         Args:
@@ -237,7 +237,7 @@ class ActivityContext:
         result: dict[str, FieldType] = {}
         for name in self.field_checker.field_names:
             scope = self.field_checker.get_scope(name)
-            course_id, activity_id, uid = self._scope_key_segments(scope, user_id)
+            course_id, activity_id, uid = self._scope_key_segments(scope)
             result[name] = self.load_field(course_id, activity_id, uid, name)
         return result
 
@@ -254,7 +254,7 @@ class ActivityContext:
                 return state
             except RuntimeError:
                 pass
-        return self.get_all_fields(self._user_id)
+        return self.get_all_fields()
 
     def clear_pending_events(self) -> list[dict[str, str]]:
         """Return and clear all pending events."""
@@ -271,6 +271,8 @@ class ActivityContext:
             self.send_event,
             self.get_field,
             self.set_field,
+            self.get_user_field,
+            self.set_user_field,
             self.http_request,
             self.submit_grade,
         ]
@@ -300,14 +302,14 @@ class ActivityContext:
         Returns the default value if not set.
         """
         scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
+        course_id, activity_id, user_id = self._scope_key_segments(scope)
         value = self.load_field(course_id, activity_id, user_id, name)
         return json.dumps(value)
 
     def set_field(self, name: str, value: str) -> bool:
         """Set a field, resolving scope from manifest. Takes JSON-encoded value."""
         scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(scope, self._user_id)
+        course_id, activity_id, user_id = self._scope_key_segments(scope)
         try:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
@@ -317,6 +319,52 @@ class ActivityContext:
                 value,
             )
             raise
+        self.store_field(course_id, activity_id, user_id, name, decoded)
+        return True
+
+    def _require_user_scoped(self, name: str) -> None:
+        """Raise FieldValidationError if the field is not user-scoped."""
+        if not self.field_checker.is_user_scoped(name):
+            raise FieldValidationError(
+                f"Field '{name}' is not user-scoped. Use get_field/set_field instead."
+            )
+
+    def get_user_field(self, user_id: str, name: str) -> str:
+        """Get a field for a specific user, resolving scope from manifest.
+
+        Like get_field, but uses the provided user_id instead of the
+        current request user. Only works for user-scoped fields.
+
+        Raises:
+            FieldValidationError: If the field is not user-scoped.
+        """
+        self._require_user_scoped(name)
+        scope = self.field_checker.get_scope(name)
+        course_id, activity_id, _ = self._scope_key_segments(scope)
+        value = self.load_field(course_id, activity_id, user_id, name)
+        return json.dumps(value)
+
+    def set_user_field(self, user_id: str, name: str, value: str) -> bool:
+        """Set a field for a specific user, resolving scope from manifest.
+
+        Like set_field, but uses the provided user_id instead of the
+        current request user. Only works for user-scoped fields.
+
+        Raises:
+            FieldValidationError: If the field is not user-scoped.
+        """
+        self._require_user_scoped(name)
+        scope = self.field_checker.get_scope(name)
+        try:
+            decoded = json.loads(value)
+        except json.decoder.JSONDecodeError:
+            logger.error(
+                "Failed to decode name='%s' value='%s'",
+                name,
+                value,
+            )
+            raise
+        course_id, activity_id, _ = self._scope_key_segments(scope)
         self.store_field(course_id, activity_id, user_id, name, decoded)
         return True
 

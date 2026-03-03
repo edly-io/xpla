@@ -278,6 +278,7 @@ import {
   sendEvent,
   getPermission,
   getField, setField,
+  getUserField, setUserField,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -292,6 +293,10 @@ setField("correct_answers", score + 1);
 
 const question = getField("question");
 setField("question", "What is 2+2?");
+
+// Get/set user-scoped fields for a specific user
+const studentScore = getUserField("student123", "score");
+setUserField("student123", "score", studentScore + 1);
 ```
 
 ##### Exported functions
@@ -374,6 +379,7 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
 - `get_field(name: str)` / `set_field(name: str, value: str)`: scope resolved from manifest
+- `get_user_field(user_id: str, name: str)` / `set_user_field(user_id: str, name: str, value: str)`: like `get_field`/`set_field`, but for a specific user (user-scoped fields only)
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 - `submit_grade(score: float)`
 

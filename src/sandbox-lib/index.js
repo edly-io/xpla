@@ -7,6 +7,8 @@ const {
   send_event,
   get_field,
   set_field,
+  get_user_field,
+  set_user_field,
   get_permission,
 } = Host.getFunctions();
 
@@ -27,6 +29,16 @@ export function getField(name) {
 // Set a field (scope resolved from manifest).
 export function setField(name, value) {
   set_field(string2memoryOffset(name), data2memoryOffset(value));
+}
+
+// Get a user-scoped field for a specific user.
+export function getUserField(userId, name) {
+  return memoryOffset2data(get_user_field(string2memoryOffset(userId), string2memoryOffset(name)));
+}
+
+// Set a user-scoped field for a specific user.
+export function setUserField(userId, name, value) {
+  set_user_field(string2memoryOffset(userId), string2memoryOffset(name), data2memoryOffset(value));
 }
 
 function string2memoryOffset(str) {
