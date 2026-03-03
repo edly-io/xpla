@@ -6,7 +6,7 @@
 <ul>
     {% for activity in activities%}
     <li>
-        <a href="{{ url_for('activity', activity_id=activity ) }}">{{ activity }}</a>
+        <a href="{{ url_for('activity', activity_type=activity ) }}">{{ activity }}</a>
     </li>
     {% endfor %}
 </ul>
