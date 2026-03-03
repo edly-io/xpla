@@ -655,7 +655,7 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
 
         assert json.loads(ctx.get_field("question", {})) == ""
-        ctx.set_field("question", '"What is 2+2?"', {})
+        ctx.set_field("question", "What is 2+2?", {})
         assert json.loads(ctx.get_field("question", {})) == "What is 2+2?"
 
     def test_user_activity_scope(self, tmp_path: Path) -> None:
@@ -670,7 +670,7 @@ class TestScopeAwareGetSetField:
         ctx.user_id = "alice"
 
         assert json.loads(ctx.get_field("score", {})) == 0
-        ctx.set_field("score", "42", {})
+        ctx.set_field("score", 42, {})
         assert json.loads(ctx.get_field("score", {})) == 42
 
     def test_course_scope(self, tmp_path: Path) -> None:
@@ -682,7 +682,7 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
 
         assert json.loads(ctx.get_field("total", {})) == 0
-        ctx.set_field("total", "99", {})
+        ctx.set_field("total", 99, {})
         assert json.loads(ctx.get_field("total", {})) == 99
 
     def test_user_course_scope(self, tmp_path: Path) -> None:
@@ -695,7 +695,7 @@ class TestScopeAwareGetSetField:
         ctx.user_id = "alice"
 
         assert json.loads(ctx.get_field("grade", {})) == 0
-        ctx.set_field("grade", "85", {})
+        ctx.set_field("grade", 85, {})
         assert json.loads(ctx.get_field("grade", {})) == 85
 
     def test_global_scope(self, tmp_path: Path) -> None:
@@ -707,7 +707,7 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
 
         assert json.loads(ctx.get_field("setting", {})) == ""
-        ctx.set_field("setting", '"dark"', {})
+        ctx.set_field("setting", "dark", {})
         assert json.loads(ctx.get_field("setting", {})) == "dark"
 
     def test_user_global_scope(self, tmp_path: Path) -> None:
@@ -720,7 +720,7 @@ class TestScopeAwareGetSetField:
         ctx.user_id = "alice"
 
         assert json.loads(ctx.get_field("pref", {})) == ""
-        ctx.set_field("pref", '"en"', {})
+        ctx.set_field("pref", "en", {})
         assert json.loads(ctx.get_field("pref", {})) == "en"
 
     def test_different_scopes_isolated(self, tmp_path: Path) -> None:
@@ -738,8 +738,8 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.set_field("count_activity", "10", {})
-        ctx.set_field("count_course", "20", {})
+        ctx.set_field("count_activity", 10, {})
+        ctx.set_field("count_course", 20, {})
 
         assert json.loads(ctx.get_field("count_activity", {})) == 10
         assert json.loads(ctx.get_field("count_course", {})) == 20
@@ -921,7 +921,7 @@ class TestFieldScopeOverrides:
         ctx.user_id = "alice"
 
         # Set a field for bob via scope override
-        ctx.set_field("score", "42", {"user_id": "bob"})
+        ctx.set_field("score", 42, {"user_id": "bob"})
 
         # Read bob's field via scope override
         assert json.loads(ctx.get_field("score", {"user_id": "bob"})) == 42
@@ -939,7 +939,7 @@ class TestFieldScopeOverrides:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        ctx.set_field("score", "99", {"user_id": "bob"})
+        ctx.set_field("score", 99, {"user_id": "bob"})
 
         assert json.loads(ctx.get_field("score", {"user_id": "bob"})) == 99
         # Alice's field unchanged

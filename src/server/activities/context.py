@@ -361,7 +361,10 @@ class ActivityContext:
         return json.dumps(value)
 
     def set_field(
-        self, name: str, value: str, scope: Annotated[dict[str, str], extism.Json]
+        self,
+        name: str,
+        value: Annotated[Any, extism.Json],
+        scope: Annotated[dict[str, str], extism.Json],
     ) -> bool:
         """Set a field, resolving scope from manifest. Takes JSON-encoded value.
 
@@ -372,16 +375,7 @@ class ActivityContext:
         """
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
-        try:
-            decoded = json.loads(value)
-        except json.decoder.JSONDecodeError:
-            logger.error(
-                "Failed to decode name='%s' value='%s'",
-                name,
-                value,
-            )
-            raise
-        self.store_field(course_id, activity_id, user_id, name, decoded)
+        self.store_field(course_id, activity_id, user_id, name, value)
         return True
 
     def http_request(
