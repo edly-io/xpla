@@ -100,8 +100,8 @@
         },
         "scope": {
           "type": "string",
-          "enum": ["activity", "course", "platform", "user,activity", "user,course", "user,platform"],
-          "description": "Scope of the field. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
+          "enum": ["activity", "course", "global", "user,activity", "user,course", "user,global"],
+          "description": "Scope of the field. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'global' scopes are for the whole platform."
         },
         "default": {
           "description": "Default value (must match declared type)."

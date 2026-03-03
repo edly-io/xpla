@@ -99,10 +99,8 @@ class TestFieldChecker:
             "question": FieldDefinition(type=Type.string, scope=Scope.activity),
             "course_score": FieldDefinition(type=Type.integer, scope=Scope.user_course),
             "course_data": FieldDefinition(type=Type.string, scope=Scope.course),
-            "global_score": FieldDefinition(
-                type=Type.integer, scope=Scope.user_platform
-            ),
-            "global_data": FieldDefinition(type=Type.string, scope=Scope.platform),
+            "global_score": FieldDefinition(type=Type.integer, scope=Scope.user_global),
+            "global_data": FieldDefinition(type=Type.string, scope=Scope.global_),
         }
         checker = FieldChecker(fields)
         assert checker.is_user_scoped("score") is True
@@ -119,16 +117,16 @@ class TestFieldChecker:
             "b": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
             "c": FieldDefinition(type=Type.integer, scope=Scope.course),
             "d": FieldDefinition(type=Type.integer, scope=Scope.user_course),
-            "e": FieldDefinition(type=Type.integer, scope=Scope.platform),
-            "f": FieldDefinition(type=Type.integer, scope=Scope.user_platform),
+            "e": FieldDefinition(type=Type.integer, scope=Scope.global_),
+            "f": FieldDefinition(type=Type.integer, scope=Scope.user_global),
         }
         checker = FieldChecker(fields)
         assert checker.get_scope("a") == Scope.activity
         assert checker.get_scope("b") == Scope.user_activity
         assert checker.get_scope("c") == Scope.course
         assert checker.get_scope("d") == Scope.user_course
-        assert checker.get_scope("e") == Scope.platform
-        assert checker.get_scope("f") == Scope.user_platform
+        assert checker.get_scope("e") == Scope.global_
+        assert checker.get_scope("f") == Scope.user_global
 
     def test_user_field_names(self) -> None:
         """Should return only user-scoped field names."""

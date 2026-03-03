@@ -219,8 +219,8 @@ class ActivityContext:
         Scope.user_activity: {"course_id", "instance_id", "user_id"},
         Scope.course: {"course_id"},
         Scope.user_course: {"course_id", "user_id"},
-        Scope.platform: set(),
-        Scope.user_platform: {"user_id"},
+        Scope.global_: set(),
+        Scope.user_global: {"user_id"},
     }
 
     def _scope_key_segments(
@@ -266,8 +266,8 @@ class ActivityContext:
                 "",
                 overrides.get("user_id", self._user_id),
             ),
-            Scope.platform: ("", "", ""),
-            Scope.user_platform: (
+            Scope.global_: ("", "", ""),
+            Scope.user_global: (
                 "",
                 "",
                 overrides.get("user_id", self._user_id),

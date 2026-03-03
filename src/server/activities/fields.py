@@ -113,7 +113,7 @@ class FieldChecker:
         return self.get_scope(name) in (
             Scope.user_activity,
             Scope.user_course,
-            Scope.user_platform,
+            Scope.user_global,
         )
 
     def user_field_names(self) -> list[str]:

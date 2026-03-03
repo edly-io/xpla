@@ -56,10 +56,10 @@ class Type(Enum):
 class Scope(Enum):
     activity = "activity"
     course = "course"
-    platform = "platform"
+    global_ = "global"
     user_activity = "user,activity"
     user_course = "user,course"
-    user_platform = "user,platform"
+    user_global = "user,global"
 
 
 class TypeSchema(BaseModel):
@@ -93,7 +93,7 @@ class FieldDefinition(BaseModel):
     scope: Annotated[
         Scope,
         Field(
-            description="Scope of the field. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'platform' scopes are global."
+            description="Scope of the field. Scopes without 'user' are shared across users. 'activity' scopes are per-activity-instance, 'course' scopes are per-course, 'global' scopes are for the whole platform."
         ),
     ]
     default: Annotated[

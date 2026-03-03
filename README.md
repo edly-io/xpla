@@ -180,8 +180,8 @@ Each field must have a `type` and `scope`. An optional `default` can be provided
 | `"user,activity"` | Per-user, scoped to this activity instance. | A student's score. |
 | `"course"` | Shared across users, scoped to the course. | Course-wide leaderboard. |
 | `"user,course"` | Per-user, scoped to the course. | Cumulative course grade. |
-| `"platform"` | Shared across users, global to the platform. | Internal API key. |
-| `"user,platform"` | Per-user, global to the platform. | User language preference. |
+| `"global"` | Shared across users, global to the platform. | Internal API key. |
+| `"user,global"` | Per-user, global to the platform. | User language preference. |
 
 ##### Permissions
 

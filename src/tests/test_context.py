@@ -584,18 +584,18 @@ class TestGetAllFields:
         result = ctx.get_all_fields()
         assert result == {"course_total": 100, "course_score": 85}
 
-    def test_includes_platform_scoped_fields(self, tmp_path: Path) -> None:
-        """Should include platform-scoped and user,platform-scoped fields."""
+    def test_includes_global_scoped_fields(self, tmp_path: Path) -> None:
+        """Should include global-scoped and user,global-scoped fields."""
         manifest = create_manifest(
             fields={
                 "global_setting": {
                     "type": "string",
-                    "scope": "platform",
+                    "scope": "global",
                     "default": "",
                 },
                 "global_pref": {
                     "type": "string",
-                    "scope": "user,platform",
+                    "scope": "user,global",
                     "default": "",
                 },
             }
@@ -698,10 +698,10 @@ class TestScopeAwareGetSetField:
         ctx.set_field("grade", "85", "{}")
         assert json.loads(ctx.get_field("grade", "{}")) == 85
 
-    def test_platform_scope(self, tmp_path: Path) -> None:
-        """Should get/set platform-scoped fields."""
+    def test_global_scope(self, tmp_path: Path) -> None:
+        """Should get/set global-scoped fields."""
         manifest = create_manifest(
-            fields={"setting": {"type": "string", "scope": "platform", "default": ""}}
+            fields={"setting": {"type": "string", "scope": "global", "default": ""}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -710,10 +710,10 @@ class TestScopeAwareGetSetField:
         ctx.set_field("setting", '"dark"', "{}")
         assert json.loads(ctx.get_field("setting", "{}")) == "dark"
 
-    def test_user_platform_scope(self, tmp_path: Path) -> None:
-        """Should get/set user,platform-scoped fields."""
+    def test_user_global_scope(self, tmp_path: Path) -> None:
+        """Should get/set user,global-scoped fields."""
         manifest = create_manifest(
-            fields={"pref": {"type": "string", "scope": "user,platform", "default": ""}}
+            fields={"pref": {"type": "string", "scope": "user,global", "default": ""}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
