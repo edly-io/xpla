@@ -55,6 +55,16 @@ def fixtures_client(samples_dir: Path) -> TestClient:  # pylint: disable=unused-
     return TestClient(app)
 
 
+class TestPages:
+    """Load app pages."""
+
+    def test_home(self, client: TestClient) -> None:
+        """GET / should return 200."""
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "test-activity" in response.text
+
+
 class TestStaticFiles:
     """Tests for static file serving."""
 
