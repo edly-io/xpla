@@ -345,7 +345,7 @@ class ActivityContext:
 
     def get_field(
         self, name: str, scope: Annotated[dict[str, str], extism.Json]
-    ) -> str:
+    ) -> Annotated[FieldType, extism.Json]:
         """Get a field, resolving scope from manifest.
 
         Args:
@@ -358,12 +358,12 @@ class ActivityContext:
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
         value = self.load_field(course_id, activity_id, user_id, name)
-        return json.dumps(value)
+        return value
 
     def set_field(
         self,
         name: str,
-        value: Annotated[Any, extism.Json],
+        value: Annotated[FieldType, extism.Json],
         scope: Annotated[dict[str, str], extism.Json],
     ) -> bool:
         """Set a field, resolving scope from manifest. Takes JSON-encoded value.
