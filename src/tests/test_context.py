@@ -654,9 +654,9 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_field("question", "{}")) == ""
-        ctx.set_field("question", '"What is 2+2?"', "{}")
-        assert json.loads(ctx.get_field("question", "{}")) == "What is 2+2?"
+        assert json.loads(ctx.get_field("question", {})) == ""
+        ctx.set_field("question", '"What is 2+2?"', {})
+        assert json.loads(ctx.get_field("question", {})) == "What is 2+2?"
 
     def test_user_activity_scope(self, tmp_path: Path) -> None:
         """Should get/set user,activity-scoped fields."""
@@ -669,9 +669,9 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_field("score", "{}")) == 0
-        ctx.set_field("score", "42", "{}")
-        assert json.loads(ctx.get_field("score", "{}")) == 42
+        assert json.loads(ctx.get_field("score", {})) == 0
+        ctx.set_field("score", "42", {})
+        assert json.loads(ctx.get_field("score", {})) == 42
 
     def test_course_scope(self, tmp_path: Path) -> None:
         """Should get/set course-scoped fields."""
@@ -681,9 +681,9 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_field("total", "{}")) == 0
-        ctx.set_field("total", "99", "{}")
-        assert json.loads(ctx.get_field("total", "{}")) == 99
+        assert json.loads(ctx.get_field("total", {})) == 0
+        ctx.set_field("total", "99", {})
+        assert json.loads(ctx.get_field("total", {})) == 99
 
     def test_user_course_scope(self, tmp_path: Path) -> None:
         """Should get/set user,course-scoped fields."""
@@ -694,9 +694,9 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_field("grade", "{}")) == 0
-        ctx.set_field("grade", "85", "{}")
-        assert json.loads(ctx.get_field("grade", "{}")) == 85
+        assert json.loads(ctx.get_field("grade", {})) == 0
+        ctx.set_field("grade", "85", {})
+        assert json.loads(ctx.get_field("grade", {})) == 85
 
     def test_global_scope(self, tmp_path: Path) -> None:
         """Should get/set global-scoped fields."""
@@ -706,9 +706,9 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_field("setting", "{}")) == ""
-        ctx.set_field("setting", '"dark"', "{}")
-        assert json.loads(ctx.get_field("setting", "{}")) == "dark"
+        assert json.loads(ctx.get_field("setting", {})) == ""
+        ctx.set_field("setting", '"dark"', {})
+        assert json.loads(ctx.get_field("setting", {})) == "dark"
 
     def test_user_global_scope(self, tmp_path: Path) -> None:
         """Should get/set user,global-scoped fields."""
@@ -719,9 +719,9 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_field("pref", "{}")) == ""
-        ctx.set_field("pref", '"en"', "{}")
-        assert json.loads(ctx.get_field("pref", "{}")) == "en"
+        assert json.loads(ctx.get_field("pref", {})) == ""
+        ctx.set_field("pref", '"en"', {})
+        assert json.loads(ctx.get_field("pref", {})) == "en"
 
     def test_different_scopes_isolated(self, tmp_path: Path) -> None:
         """Fields with different scopes should not collide."""
@@ -738,11 +738,11 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.set_field("count_activity", "10", "{}")
-        ctx.set_field("count_course", "20", "{}")
+        ctx.set_field("count_activity", "10", {})
+        ctx.set_field("count_course", "20", {})
 
-        assert json.loads(ctx.get_field("count_activity", "{}")) == 10
-        assert json.loads(ctx.get_field("count_course", "{}")) == 20
+        assert json.loads(ctx.get_field("count_activity", {})) == 10
+        assert json.loads(ctx.get_field("count_course", {})) == 20
 
 
 class TestGetState:
@@ -921,12 +921,12 @@ class TestFieldScopeOverrides:
         ctx.user_id = "alice"
 
         # Set a field for bob via scope override
-        ctx.set_field("score", "42", '{"user_id": "bob"}')
+        ctx.set_field("score", "42", {"user_id": "bob"})
 
         # Read bob's field via scope override
-        assert json.loads(ctx.get_field("score", '{"user_id": "bob"}')) == 42
+        assert json.loads(ctx.get_field("score", {"user_id": "bob"})) == 42
         # Alice's own field is still the default
-        assert json.loads(ctx.get_field("score", "{}")) == 0
+        assert json.loads(ctx.get_field("score", {})) == 0
 
     def test_set_field_with_user_override(self, tmp_path: Path) -> None:
         """Should write another user's user,activity field via scope override."""
@@ -939,11 +939,11 @@ class TestFieldScopeOverrides:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        ctx.set_field("score", "99", '{"user_id": "bob"}')
+        ctx.set_field("score", "99", {"user_id": "bob"})
 
-        assert json.loads(ctx.get_field("score", '{"user_id": "bob"}')) == 99
+        assert json.loads(ctx.get_field("score", {"user_id": "bob"})) == 99
         # Alice's field unchanged
-        assert json.loads(ctx.get_field("score", "{}")) == 0
+        assert json.loads(ctx.get_field("score", {})) == 0
 
     def test_scope_override_invalid_key_raises(self, tmp_path: Path) -> None:
         """Should raise FieldValidationError for invalid override key on course-scoped field."""
@@ -954,7 +954,7 @@ class TestFieldScopeOverrides:
         ctx = ActivityContext(activity_dir)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
-            ctx.get_field("total", '{"instance_id": "other"}')
+            ctx.get_field("total", {"instance_id": "other"})
 
     def test_scope_override_user_id_on_non_user_scoped_raises(
         self, tmp_path: Path
@@ -967,4 +967,4 @@ class TestFieldScopeOverrides:
         ctx = ActivityContext(activity_dir)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
-            ctx.get_field("question", '{"user_id": "bob"}')
+            ctx.get_field("question", {"user_id": "bob"})

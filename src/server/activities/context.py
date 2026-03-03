@@ -13,7 +13,7 @@ from typing import Annotated, Any
 import urllib.error
 import urllib.request
 
-from extism import Json
+import extism
 
 from server.activities.actions import ActionChecker
 from server.activities.capabilities import CapabilityChecker, CapabilityError
@@ -343,7 +343,9 @@ class ActivityContext:
         self._pending_events.append({"name": name, "value": value})
         return ""
 
-    def get_field(self, name: str, scope: str) -> str:
+    def get_field(
+        self, name: str, scope: Annotated[dict[str, str], extism.Json]
+    ) -> str:
         """Get a field, resolving scope from manifest.
 
         Args:
@@ -353,15 +355,14 @@ class ActivityContext:
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        overrides: dict[str, str] = json.loads(scope)
         field_scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(
-            field_scope, overrides
-        )
+        course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
         value = self.load_field(course_id, activity_id, user_id, name)
         return json.dumps(value)
 
-    def set_field(self, name: str, value: str, scope: str) -> bool:
+    def set_field(
+        self, name: str, value: str, scope: Annotated[dict[str, str], extism.Json]
+    ) -> bool:
         """Set a field, resolving scope from manifest. Takes JSON-encoded value.
 
         Args:
@@ -369,11 +370,8 @@ class ActivityContext:
             value: JSON-encoded value.
             scope: JSON-encoded dict of scope overrides.
         """
-        overrides: dict[str, str] = json.loads(scope)
         field_scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(
-            field_scope, overrides
-        )
+        course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
         try:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
@@ -391,7 +389,7 @@ class ActivityContext:
         url: str,
         method: str,
         body: bytes,
-        headers: Annotated[tuple[tuple[str, str], ...], Json],
+        headers: Annotated[tuple[tuple[str, str], ...], extism.Json],
     ) -> str:
         """Make an HTTP request.
 
