@@ -278,6 +278,7 @@ import {
   sendEvent,
   getPermission,
   getField, setField,
+  getObjectField, setObjectField,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -296,6 +297,10 @@ setField("question", "What is 2+2?");
 // Get/set fields for a different user via scope overrides
 const studentScore = getField("score", { user_id: "student123" });
 setField("score", studentScore + 1, { user_id: "student123" });
+
+// Get/set individual keys in object fields
+const theme = getObjectField("prefs", "theme", "light");
+setObjectField("prefs", "theme", "dark");
 ```
 
 ##### Exported functions
@@ -378,6 +383,7 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
 - `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior
+- `get_object_field(name: str, key: str, default: any, scope: str)` / `set_object_field(name: str, key: str, value: any, scope: str)`: key-level access to object-typed fields. Raises `FieldValidationError` if the field is not of type `object`
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 - `submit_grade(score: float)`
 

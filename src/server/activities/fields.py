@@ -1,5 +1,6 @@
 """Field validation."""
 
+import copy
 from typing import Any
 
 import jsonschema
@@ -85,9 +86,9 @@ class FieldChecker:
         """Get the default value for a declared field."""
         definition = self.get_definition(name)
         if definition.default is not None:
-            result: FieldType = definition.default
-            return result
-        return TYPE_DEFAULTS[definition.type]
+            default: FieldType = copy.deepcopy(definition.default)
+            return default
+        return copy.deepcopy(TYPE_DEFAULTS[definition.type])
 
     def validate(self, name: str, value: FieldType) -> None:
         """Validate a field value against its manifest definition using JSON Schema.
@@ -106,6 +107,26 @@ class FieldChecker:
             raise FieldValidationError(
                 f"Field '{name}' failed validation: {e.message}"
             ) from e
+
+    def validate_property(self, name: str, key: str, value: FieldType) -> None:
+        """Validate a single property value against its type schema, if declared."""
+        definition = self.get_definition(name)
+        if definition.properties is not None and key in definition.properties:
+            prop_schema = build_type_schema(definition.properties[key])
+            try:
+                jsonschema.validate(value, prop_schema)
+            except jsonschema.ValidationError as e:
+                raise FieldValidationError(
+                    f"Field '{name}', key '{key}' failed validation: {e.message}"
+                ) from e
+
+    def require_object_type(self, name: str) -> None:
+        """Raise if the field is not of type 'object'."""
+        definition = self.get_definition(name)
+        if definition.type != Type.object:
+            raise FieldValidationError(
+                f"Field '{name}' is of type '{definition.type.value}', expected 'object'"
+            )
 
     def get_scope(self, name: str) -> Scope:
         """Get the scope of a declared field."""

@@ -184,6 +184,56 @@ class TestFieldChecker:
         with pytest.raises(FieldValidationError, match="failed validation"):
             checker.validate("tags", "not an array")
 
+    def test_require_object_type_passes_for_object(self) -> None:
+        """Should not raise for object-typed fields."""
+        fields = {"data": FieldDefinition(type=Type.object, scope=Scope.activity)}
+        checker = FieldChecker(fields)
+        checker.require_object_type("data")  # Should not raise
+
+    def test_require_object_type_raises_for_non_object(self) -> None:
+        """Should raise FieldValidationError for non-object fields."""
+        fields = {"count": FieldDefinition(type=Type.integer, scope=Scope.activity)}
+        checker = FieldChecker(fields)
+        with pytest.raises(FieldValidationError, match="expected 'object'"):
+            checker.require_object_type("count")
+
+    def test_validate_property_passes_for_valid_value(self) -> None:
+        """Should pass when value matches the property's type schema."""
+        fields = {
+            "config": FieldDefinition(
+                type=Type.object,
+                properties={"name": TypeSchema(type=Type.string)},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        checker.validate_property("config", "name", "hello")  # Should not raise
+
+    def test_validate_property_raises_for_invalid_value(self) -> None:
+        """Should raise when value does not match the property's type schema."""
+        fields = {
+            "config": FieldDefinition(
+                type=Type.object,
+                properties={"name": TypeSchema(type=Type.string)},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        with pytest.raises(FieldValidationError, match="key 'name' failed validation"):
+            checker.validate_property("config", "name", 123)
+
+    def test_validate_property_skips_undeclared_key(self) -> None:
+        """Should not raise when key is not in declared properties."""
+        fields = {
+            "config": FieldDefinition(
+                type=Type.object,
+                properties={"name": TypeSchema(type=Type.string)},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        checker.validate_property("config", "unknown", 123)  # Should not raise
+
     def test_validate_object(self) -> None:
         """Should validate object values."""
         fields = {

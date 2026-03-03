@@ -321,6 +321,8 @@ class ActivityContext:
             self.send_event,
             self.get_field,
             self.set_field,
+            self.get_object_field,
+            self.set_object_field,
             self.http_request,
             self.submit_grade,
         ]
@@ -376,6 +378,53 @@ class ActivityContext:
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
         self.store_field(course_id, activity_id, user_id, name, value)
+        return True
+
+    def get_object_field(
+        self,
+        name: str,
+        key: str,
+        default: Annotated[FieldType | None, extism.Json],
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> Annotated[FieldType | None, extism.Json]:
+        """Get a single key from an object field.
+
+        Args:
+            name: Field name (must be of type 'object').
+            key: Key to look up in the object.
+            default: Value to return if the key is missing.
+            scope: JSON-encoded dict of scope overrides.
+        """
+        self.field_checker.require_object_type(name)
+        field_scope = self.field_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
+        obj = self.load_field(course_id, activity_id, user_id, name)
+        assert isinstance(obj, dict)
+        return obj.get(key, default)
+
+    def set_object_field(
+        self,
+        name: str,
+        key: str,
+        value: Annotated[FieldType, extism.Json],
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> bool:
+        """Set a single key in an object field.
+
+        Args:
+            name: Field name (must be of type 'object').
+            key: Key to set in the object.
+            value: JSON-encoded value to store.
+            scope: JSON-encoded dict of scope overrides.
+        """
+        self.field_checker.require_object_type(name)
+        field_scope = self.field_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
+        obj = self.load_field(course_id, activity_id, user_id, name)
+        assert isinstance(obj, dict)
+        self.field_checker.validate_property(name, key, value)
+        obj[key] = value
+        self.store_field(course_id, activity_id, user_id, name, obj)
         return True
 
     def http_request(
