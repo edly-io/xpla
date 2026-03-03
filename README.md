@@ -278,7 +278,6 @@ import {
   sendEvent,
   getPermission,
   getField, setField,
-  getUserField, setUserField,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -294,9 +293,9 @@ setField("correct_answers", score + 1);
 const question = getField("question");
 setField("question", "What is 2+2?");
 
-// Get/set user-scoped fields for a specific user
-const studentScore = getUserField("student123", "score");
-setUserField("student123", "score", studentScore + 1);
+// Get/set fields for a different user via scope overrides
+const studentScore = getField("score", { user_id: "student123" });
+setField("score", studentScore + 1, { user_id: "student123" });
 ```
 
 ##### Exported functions
@@ -378,8 +377,7 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
-- `get_field(name: str)` / `set_field(name: str, value: str)`: scope resolved from manifest
-- `get_user_field(user_id: str, name: str)` / `set_user_field(user_id: str, name: str, value: str)`: like `get_field`/`set_field`, but for a specific user (user-scoped fields only)
+- `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 - `submit_grade(score: float)`
 
@@ -428,8 +426,8 @@ When `sendAction` receives a response from the backend, the runtime calls `activ
 
 In native/iframe mode, the element sends `postMessage` events to the parent window:
 
-- `{ type: "xpla:ready" }` — sent after setup completes.
-- `{ type: "xpla:resize", height: <number> }` — sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
+- `{ type: "xpla:ready" }`: sent after setup completes.
+- `{ type: "xpla:resize", height: <number> }`: sent whenever the wrapper div resizes (via `ResizeObserver`), so the parent can auto-size the iframe.
 
 Each activity has a standalone embed page at `/a/{name}/embed` that uses `<xpl-activity embed="native" ...>`. To embed an activity in an iframe:
 

@@ -213,15 +213,65 @@ class ActivityContext:
         key = self._field_key(name, course_id, activity_id, user_id)
         self.kv_store.set(key, value)
 
-    def _scope_key_segments(self, scope: Scope) -> tuple[str, str, str]:
-        """Return (course_id, activity_id, user_id) key segments for a scope."""
+    # Valid override keys for each scope
+    _VALID_SCOPE_KEYS: dict[Scope, set[str]] = {
+        Scope.activity: {"course_id", "instance_id"},
+        Scope.user_activity: {"course_id", "instance_id", "user_id"},
+        Scope.course: {"course_id"},
+        Scope.user_course: {"course_id", "user_id"},
+        Scope.platform: set(),
+        Scope.user_platform: {"user_id"},
+    }
+
+    def _scope_key_segments(
+        self, scope: Scope, overrides: dict[str, str] | None = None
+    ) -> tuple[str, str, str]:
+        """Return (course_id, activity_id, user_id) key segments for a scope.
+
+        Args:
+            scope: The field scope.
+            overrides: Optional dict of dimension overrides (e.g. {"user_id": "bob"}).
+
+        Raises:
+            FieldValidationError: If an override key is not valid for the scope.
+        """
+        if overrides:
+            valid_keys = self._VALID_SCOPE_KEYS[scope]
+            invalid = set(overrides.keys()) - valid_keys
+            if invalid:
+                raise FieldValidationError(
+                    f"Invalid scope override keys {invalid} for scope '{scope.value}'. "
+                    f"Valid keys: {valid_keys}"
+                )
+
+        overrides = overrides or {}
         scope_map: dict[Scope, tuple[str, str, str]] = {
-            Scope.activity: (self._course_id, self._activity_id, ""),
-            Scope.user_activity: (self._course_id, self._activity_id, self._user_id),
-            Scope.course: (self._course_id, "", ""),
-            Scope.user_course: (self._course_id, "", self._user_id),
+            Scope.activity: (
+                overrides.get("course_id", self._course_id),
+                overrides.get("instance_id", self._activity_id),
+                "",
+            ),
+            Scope.user_activity: (
+                overrides.get("course_id", self._course_id),
+                overrides.get("instance_id", self._activity_id),
+                overrides.get("user_id", self._user_id),
+            ),
+            Scope.course: (
+                overrides.get("course_id", self._course_id),
+                "",
+                "",
+            ),
+            Scope.user_course: (
+                overrides.get("course_id", self._course_id),
+                "",
+                overrides.get("user_id", self._user_id),
+            ),
             Scope.platform: ("", "", ""),
-            Scope.user_platform: ("", "", self._user_id),
+            Scope.user_platform: (
+                "",
+                "",
+                overrides.get("user_id", self._user_id),
+            ),
         }
         return scope_map[scope]
 
@@ -271,8 +321,6 @@ class ActivityContext:
             self.send_event,
             self.get_field,
             self.set_field,
-            self.get_user_field,
-            self.set_user_field,
             self.http_request,
             self.submit_grade,
         ]
@@ -295,21 +343,37 @@ class ActivityContext:
         self._pending_events.append({"name": name, "value": value})
         return ""
 
-    def get_field(self, name: str) -> str:
+    def get_field(self, name: str, scope: str) -> str:
         """Get a field, resolving scope from manifest.
+
+        Args:
+            name: Field name.
+            scope: JSON-encoded dict of scope overrides (e.g. '{"user_id": "bob"}').
 
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
-        scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(scope)
+        overrides: dict[str, str] = json.loads(scope)
+        field_scope = self.field_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(
+            field_scope, overrides
+        )
         value = self.load_field(course_id, activity_id, user_id, name)
         return json.dumps(value)
 
-    def set_field(self, name: str, value: str) -> bool:
-        """Set a field, resolving scope from manifest. Takes JSON-encoded value."""
-        scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(scope)
+    def set_field(self, name: str, value: str, scope: str) -> bool:
+        """Set a field, resolving scope from manifest. Takes JSON-encoded value.
+
+        Args:
+            name: Field name.
+            value: JSON-encoded value.
+            scope: JSON-encoded dict of scope overrides.
+        """
+        overrides: dict[str, str] = json.loads(scope)
+        field_scope = self.field_checker.get_scope(name)
+        course_id, activity_id, user_id = self._scope_key_segments(
+            field_scope, overrides
+        )
         try:
             decoded = json.loads(value)
         except json.decoder.JSONDecodeError:
@@ -319,52 +383,6 @@ class ActivityContext:
                 value,
             )
             raise
-        self.store_field(course_id, activity_id, user_id, name, decoded)
-        return True
-
-    def _require_user_scoped(self, name: str) -> None:
-        """Raise FieldValidationError if the field is not user-scoped."""
-        if not self.field_checker.is_user_scoped(name):
-            raise FieldValidationError(
-                f"Field '{name}' is not user-scoped. Use get_field/set_field instead."
-            )
-
-    def get_user_field(self, user_id: str, name: str) -> str:
-        """Get a field for a specific user, resolving scope from manifest.
-
-        Like get_field, but uses the provided user_id instead of the
-        current request user. Only works for user-scoped fields.
-
-        Raises:
-            FieldValidationError: If the field is not user-scoped.
-        """
-        self._require_user_scoped(name)
-        scope = self.field_checker.get_scope(name)
-        course_id, activity_id, _ = self._scope_key_segments(scope)
-        value = self.load_field(course_id, activity_id, user_id, name)
-        return json.dumps(value)
-
-    def set_user_field(self, user_id: str, name: str, value: str) -> bool:
-        """Set a field for a specific user, resolving scope from manifest.
-
-        Like set_field, but uses the provided user_id instead of the
-        current request user. Only works for user-scoped fields.
-
-        Raises:
-            FieldValidationError: If the field is not user-scoped.
-        """
-        self._require_user_scoped(name)
-        scope = self.field_checker.get_scope(name)
-        try:
-            decoded = json.loads(value)
-        except json.decoder.JSONDecodeError:
-            logger.error(
-                "Failed to decode name='%s' value='%s'",
-                name,
-                value,
-            )
-            raise
-        course_id, activity_id, _ = self._scope_key_segments(scope)
         self.store_field(course_id, activity_id, user_id, name, decoded)
         return True
 

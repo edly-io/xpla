@@ -176,8 +176,6 @@ class TestHostFunctions:
             "send_event",
             "get_field",
             "set_field",
-            "get_user_field",
-            "set_user_field",
             "http_request",
             "submit_grade",
         ]
@@ -656,9 +654,9 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_field("question")) == ""
-        ctx.set_field("question", '"What is 2+2?"')
-        assert json.loads(ctx.get_field("question")) == "What is 2+2?"
+        assert json.loads(ctx.get_field("question", "{}")) == ""
+        ctx.set_field("question", '"What is 2+2?"', "{}")
+        assert json.loads(ctx.get_field("question", "{}")) == "What is 2+2?"
 
     def test_user_activity_scope(self, tmp_path: Path) -> None:
         """Should get/set user,activity-scoped fields."""
@@ -671,9 +669,9 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_field("score")) == 0
-        ctx.set_field("score", "42")
-        assert json.loads(ctx.get_field("score")) == 42
+        assert json.loads(ctx.get_field("score", "{}")) == 0
+        ctx.set_field("score", "42", "{}")
+        assert json.loads(ctx.get_field("score", "{}")) == 42
 
     def test_course_scope(self, tmp_path: Path) -> None:
         """Should get/set course-scoped fields."""
@@ -683,9 +681,9 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_field("total")) == 0
-        ctx.set_field("total", "99")
-        assert json.loads(ctx.get_field("total")) == 99
+        assert json.loads(ctx.get_field("total", "{}")) == 0
+        ctx.set_field("total", "99", "{}")
+        assert json.loads(ctx.get_field("total", "{}")) == 99
 
     def test_user_course_scope(self, tmp_path: Path) -> None:
         """Should get/set user,course-scoped fields."""
@@ -696,9 +694,9 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_field("grade")) == 0
-        ctx.set_field("grade", "85")
-        assert json.loads(ctx.get_field("grade")) == 85
+        assert json.loads(ctx.get_field("grade", "{}")) == 0
+        ctx.set_field("grade", "85", "{}")
+        assert json.loads(ctx.get_field("grade", "{}")) == 85
 
     def test_platform_scope(self, tmp_path: Path) -> None:
         """Should get/set platform-scoped fields."""
@@ -708,9 +706,9 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        assert json.loads(ctx.get_field("setting")) == ""
-        ctx.set_field("setting", '"dark"')
-        assert json.loads(ctx.get_field("setting")) == "dark"
+        assert json.loads(ctx.get_field("setting", "{}")) == ""
+        ctx.set_field("setting", '"dark"', "{}")
+        assert json.loads(ctx.get_field("setting", "{}")) == "dark"
 
     def test_user_platform_scope(self, tmp_path: Path) -> None:
         """Should get/set user,platform-scoped fields."""
@@ -721,9 +719,9 @@ class TestScopeAwareGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        assert json.loads(ctx.get_field("pref")) == ""
-        ctx.set_field("pref", '"en"')
-        assert json.loads(ctx.get_field("pref")) == "en"
+        assert json.loads(ctx.get_field("pref", "{}")) == ""
+        ctx.set_field("pref", '"en"', "{}")
+        assert json.loads(ctx.get_field("pref", "{}")) == "en"
 
     def test_different_scopes_isolated(self, tmp_path: Path) -> None:
         """Fields with different scopes should not collide."""
@@ -740,11 +738,11 @@ class TestScopeAwareGetSetField:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.set_field("count_activity", "10")
-        ctx.set_field("count_course", "20")
+        ctx.set_field("count_activity", "10", "{}")
+        ctx.set_field("count_course", "20", "{}")
 
-        assert json.loads(ctx.get_field("count_activity")) == 10
-        assert json.loads(ctx.get_field("count_course")) == 20
+        assert json.loads(ctx.get_field("count_activity", "{}")) == 10
+        assert json.loads(ctx.get_field("count_course", "{}")) == 20
 
 
 class TestGetState:
@@ -908,11 +906,11 @@ class TestClearPendingEvents:
         assert not ctx.clear_pending_events()
 
 
-class TestUserScopedGetSetField:
-    """Tests for get_user_field/set_user_field host functions."""
+class TestFieldScopeOverrides:
+    """Tests for get_field/set_field with scope overrides."""
 
-    def test_get_user_field(self, tmp_path: Path) -> None:
-        """Should read another user's field value."""
+    def test_get_field_with_user_override(self, tmp_path: Path) -> None:
+        """Should read another user's user,activity field via scope override."""
         manifest = create_manifest(
             fields={
                 "score": {"type": "integer", "scope": "user,activity", "default": 0}
@@ -922,16 +920,16 @@ class TestUserScopedGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        # Set a field for bob via set_user_field
-        ctx.set_user_field("bob", "score", "42")
+        # Set a field for bob via scope override
+        ctx.set_field("score", "42", '{"user_id": "bob"}')
 
-        # Alice can read bob's field
-        assert json.loads(ctx.get_user_field("bob", "score")) == 42
+        # Read bob's field via scope override
+        assert json.loads(ctx.get_field("score", '{"user_id": "bob"}')) == 42
         # Alice's own field is still the default
-        assert json.loads(ctx.get_field("score")) == 0
+        assert json.loads(ctx.get_field("score", "{}")) == 0
 
-    def test_set_user_field(self, tmp_path: Path) -> None:
-        """Should write another user's field value."""
+    def test_set_field_with_user_override(self, tmp_path: Path) -> None:
+        """Should write another user's user,activity field via scope override."""
         manifest = create_manifest(
             fields={
                 "score": {"type": "integer", "scope": "user,activity", "default": 0}
@@ -941,30 +939,32 @@ class TestUserScopedGetSetField:
         ctx = ActivityContext(activity_dir)
         ctx.user_id = "alice"
 
-        ctx.set_user_field("bob", "score", "99")
+        ctx.set_field("score", "99", '{"user_id": "bob"}')
 
-        assert json.loads(ctx.get_user_field("bob", "score")) == 99
+        assert json.loads(ctx.get_field("score", '{"user_id": "bob"}')) == 99
         # Alice's field unchanged
-        assert json.loads(ctx.get_field("score")) == 0
+        assert json.loads(ctx.get_field("score", "{}")) == 0
 
-    def test_get_user_field_raises_for_non_user_scoped(self, tmp_path: Path) -> None:
-        """Should raise FieldValidationError for activity-scoped field."""
+    def test_scope_override_invalid_key_raises(self, tmp_path: Path) -> None:
+        """Should raise FieldValidationError for invalid override key on course-scoped field."""
+        manifest = create_manifest(
+            fields={"total": {"type": "integer", "scope": "course", "default": 0}}
+        )
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        with pytest.raises(FieldValidationError, match="Invalid scope override"):
+            ctx.get_field("total", '{"instance_id": "other"}')
+
+    def test_scope_override_user_id_on_non_user_scoped_raises(
+        self, tmp_path: Path
+    ) -> None:
+        """Should raise FieldValidationError when passing user_id on activity-scoped field."""
         manifest = create_manifest(
             fields={"question": {"type": "string", "scope": "activity", "default": ""}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        with pytest.raises(FieldValidationError, match="not user-scoped"):
-            ctx.get_user_field("bob", "question")
-
-    def test_set_user_field_raises_for_non_user_scoped(self, tmp_path: Path) -> None:
-        """Should raise FieldValidationError for activity-scoped field."""
-        manifest = create_manifest(
-            fields={"question": {"type": "string", "scope": "activity", "default": ""}}
-        )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        with pytest.raises(FieldValidationError, match="not user-scoped"):
-            ctx.set_user_field("bob", "question", '"hello"')
+        with pytest.raises(FieldValidationError, match="Invalid scope override"):
+            ctx.get_field("question", '{"user_id": "bob"}')
