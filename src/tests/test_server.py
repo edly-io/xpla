@@ -116,7 +116,7 @@ class TestActionEndpoint:
             "client": "client.js",
             "capabilities": {},
             "actions": {
-                "known.action": {"type": "object"},
+                "known.action": {"type": "object", "properties": {}},
             },
         }
         (activity_path / "manifest.json").write_text(json.dumps(manifest))

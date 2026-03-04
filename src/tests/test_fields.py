@@ -1,11 +1,16 @@
 import pytest
+from pydantic import ValidationError
+
 from server.activities.fields import FieldChecker, FieldValidationError
 from server.activities.manifest_types import (
     Scope,
-    Type,
-    TypeSchema,
     FieldDefinition,
 )
+
+
+def field(**kwargs: object) -> FieldDefinition:
+    """Helper to build a FieldDefinition from keyword args."""
+    return FieldDefinition.model_validate(kwargs)
 
 
 class TestFieldChecker:
@@ -19,53 +24,41 @@ class TestFieldChecker:
     def test_with_fields(self) -> None:
         """Should parse all field definitions."""
         fields = {
-            "score": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
-            "attempts": FieldDefinition(
-                type=Type.integer, scope=Scope.user_activity, default=0
-            ),
+            "score": field(type="integer", scope=Scope.user_activity),
+            "attempts": field(type="integer", scope=Scope.user_activity, default=0),
         }
         checker = FieldChecker(fields)
         assert sorted(checker.field_names) == ["attempts", "score"]
 
     def test_get_definition_exists(self) -> None:
         """Should return definition for declared field."""
-        fields = {
-            "score": FieldDefinition(
-                type=Type.integer,
-                scope=Scope.user_activity,
-                default=10,
-            )
-        }
+        fields = {"score": field(type="integer", scope=Scope.user_activity, default=10)}
         checker = FieldChecker(fields)
         definition = checker.get_definition("score")
-        assert definition.type == Type.integer
+        assert definition.type == "integer"
         assert definition.scope == Scope.user_activity
         assert definition.default == 10
 
     def test_get_definition_not_declared(self) -> None:
         """Should raise for undeclared field."""
-        fields = {"score": FieldDefinition(type=Type.integer, scope=Scope.activity)}
+        fields = {"score": field(type="integer", scope=Scope.activity)}
         checker = FieldChecker(fields)
         with pytest.raises(FieldValidationError, match="not declared"):
             checker.get_definition("unknown")
 
     def test_get_default_with_default(self) -> None:
         """Should return default value when defined."""
-        fields = {
-            "score": FieldDefinition(
-                type=Type.integer, scope=Scope.activity, default=100
-            )
-        }
+        fields = {"score": field(type="integer", scope=Scope.activity, default=100)}
         checker = FieldChecker(fields)
         assert checker.get_default("score") == 100
 
     def test_get_default_without_default(self) -> None:
         """Should return type-specific default when no explicit default defined."""
         fields = {
-            "count": FieldDefinition(type=Type.integer, scope=Scope.activity),
-            "ratio": FieldDefinition(type=Type.number, scope=Scope.activity),
-            "name": FieldDefinition(type=Type.string, scope=Scope.activity),
-            "enabled": FieldDefinition(type=Type.boolean, scope=Scope.activity),
+            "count": field(type="integer", scope=Scope.activity),
+            "ratio": field(type="number", scope=Scope.activity),
+            "name": field(type="string", scope=Scope.activity),
+            "enabled": field(type="boolean", scope=Scope.activity),
         }
         checker = FieldChecker(fields)
         assert checker.get_default("count") == 0
@@ -75,19 +68,13 @@ class TestFieldChecker:
 
     def test_validate_passes(self) -> None:
         """Should pass validation for valid value."""
-        fields = {
-            "score": FieldDefinition(
-                type=Type.integer,
-                scope=Scope.user_activity,
-                default=0,
-            )
-        }
+        fields = {"score": field(type="integer", scope=Scope.user_activity, default=0)}
         checker = FieldChecker(fields)
         checker.validate("score", 50)  # Should not raise
 
     def test_validate_fails_type(self) -> None:
         """Should fail validation for wrong type."""
-        fields = {"score": FieldDefinition(type=Type.integer, scope=Scope.activity)}
+        fields = {"score": field(type="integer", scope=Scope.activity)}
         checker = FieldChecker(fields)
         with pytest.raises(FieldValidationError, match="failed validation"):
             checker.validate("score", "not an int")
@@ -95,12 +82,12 @@ class TestFieldChecker:
     def test_is_user_scoped(self) -> None:
         """Should correctly identify user-scoped fields."""
         fields = {
-            "score": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
-            "question": FieldDefinition(type=Type.string, scope=Scope.activity),
-            "course_score": FieldDefinition(type=Type.integer, scope=Scope.user_course),
-            "course_data": FieldDefinition(type=Type.string, scope=Scope.course),
-            "global_score": FieldDefinition(type=Type.integer, scope=Scope.user_global),
-            "global_data": FieldDefinition(type=Type.string, scope=Scope.global_),
+            "score": field(type="integer", scope=Scope.user_activity),
+            "question": field(type="string", scope=Scope.activity),
+            "course_score": field(type="integer", scope=Scope.user_course),
+            "course_data": field(type="string", scope=Scope.course),
+            "global_score": field(type="integer", scope=Scope.user_global),
+            "global_data": field(type="string", scope=Scope.global_),
         }
         checker = FieldChecker(fields)
         assert checker.is_user_scoped("score") is True
@@ -113,12 +100,12 @@ class TestFieldChecker:
     def test_get_scope(self) -> None:
         """Should return the scope of a declared field."""
         fields = {
-            "a": FieldDefinition(type=Type.integer, scope=Scope.activity),
-            "b": FieldDefinition(type=Type.integer, scope=Scope.user_activity),
-            "c": FieldDefinition(type=Type.integer, scope=Scope.course),
-            "d": FieldDefinition(type=Type.integer, scope=Scope.user_course),
-            "e": FieldDefinition(type=Type.integer, scope=Scope.global_),
-            "f": FieldDefinition(type=Type.integer, scope=Scope.user_global),
+            "a": field(type="integer", scope=Scope.activity),
+            "b": field(type="integer", scope=Scope.user_activity),
+            "c": field(type="integer", scope=Scope.course),
+            "d": field(type="integer", scope=Scope.user_course),
+            "e": field(type="integer", scope=Scope.global_),
+            "f": field(type="integer", scope=Scope.user_global),
         }
         checker = FieldChecker(fields)
         assert checker.get_scope("a") == Scope.activity
@@ -131,29 +118,27 @@ class TestFieldChecker:
     def test_get_default_array(self) -> None:
         """Should return empty list as default for array type."""
         fields = {
-            "items": FieldDefinition(
-                type=Type.array,
-                items=TypeSchema(type=Type.string),
-                scope=Scope.activity,
-            )
+            "items": field(type="array", items={"type": "string"}, scope=Scope.activity)
         }
         checker = FieldChecker(fields)
         assert checker.get_default("items") == []
 
     def test_get_default_object(self) -> None:
         """Should return empty dict as default for object type."""
-        fields = {"data": FieldDefinition(type=Type.object, scope=Scope.activity)}
+        fields = {
+            "data": field(
+                type="object",
+                properties={"x": {"type": "integer"}},
+                scope=Scope.activity,
+            )
+        }
         checker = FieldChecker(fields)
         assert checker.get_default("data") == {}
 
     def test_validate_array(self) -> None:
         """Should validate array values."""
         fields = {
-            "tags": FieldDefinition(
-                type=Type.array,
-                items=TypeSchema(type=Type.string),
-                scope=Scope.activity,
-            )
+            "tags": field(type="array", items={"type": "string"}, scope=Scope.activity)
         }
         checker = FieldChecker(fields)
         checker.validate("tags", ["a", "b", "c"])  # Should not raise
@@ -161,11 +146,7 @@ class TestFieldChecker:
     def test_validate_array_rejects_wrong_items(self) -> None:
         """Should reject array with wrong item types."""
         fields = {
-            "tags": FieldDefinition(
-                type=Type.array,
-                items=TypeSchema(type=Type.string),
-                scope=Scope.activity,
-            )
+            "tags": field(type="array", items={"type": "string"}, scope=Scope.activity)
         }
         checker = FieldChecker(fields)
         with pytest.raises(FieldValidationError, match="failed validation"):
@@ -174,11 +155,7 @@ class TestFieldChecker:
     def test_validate_array_rejects_non_array(self) -> None:
         """Should reject non-array value for array type."""
         fields = {
-            "tags": FieldDefinition(
-                type=Type.array,
-                items=TypeSchema(type=Type.string),
-                scope=Scope.activity,
-            )
+            "tags": field(type="array", items={"type": "string"}, scope=Scope.activity)
         }
         checker = FieldChecker(fields)
         with pytest.raises(FieldValidationError, match="failed validation"):
@@ -186,13 +163,19 @@ class TestFieldChecker:
 
     def test_require_object_type_passes_for_object(self) -> None:
         """Should not raise for object-typed fields."""
-        fields = {"data": FieldDefinition(type=Type.object, scope=Scope.activity)}
+        fields = {
+            "data": field(
+                type="object",
+                properties={"x": {"type": "integer"}},
+                scope=Scope.activity,
+            )
+        }
         checker = FieldChecker(fields)
         checker.require_object_type("data")  # Should not raise
 
     def test_require_object_type_raises_for_non_object(self) -> None:
         """Should raise FieldValidationError for non-object fields."""
-        fields = {"count": FieldDefinition(type=Type.integer, scope=Scope.activity)}
+        fields = {"count": field(type="integer", scope=Scope.activity)}
         checker = FieldChecker(fields)
         with pytest.raises(FieldValidationError, match="expected 'object'"):
             checker.require_object_type("count")
@@ -200,9 +183,9 @@ class TestFieldChecker:
     def test_validate_property_passes_for_valid_value(self) -> None:
         """Should pass when value matches the property's type schema."""
         fields = {
-            "config": FieldDefinition(
-                type=Type.object,
-                properties={"name": TypeSchema(type=Type.string)},
+            "config": field(
+                type="object",
+                properties={"name": {"type": "string"}},
                 scope=Scope.activity,
             )
         }
@@ -212,9 +195,9 @@ class TestFieldChecker:
     def test_validate_property_raises_for_invalid_value(self) -> None:
         """Should raise when value does not match the property's type schema."""
         fields = {
-            "config": FieldDefinition(
-                type=Type.object,
-                properties={"name": TypeSchema(type=Type.string)},
+            "config": field(
+                type="object",
+                properties={"name": {"type": "string"}},
                 scope=Scope.activity,
             )
         }
@@ -225,9 +208,9 @@ class TestFieldChecker:
     def test_validate_property_skips_undeclared_key(self) -> None:
         """Should not raise when key is not in declared properties."""
         fields = {
-            "config": FieldDefinition(
-                type=Type.object,
-                properties={"name": TypeSchema(type=Type.string)},
+            "config": field(
+                type="object",
+                properties={"name": {"type": "string"}},
                 scope=Scope.activity,
             )
         }
@@ -237,11 +220,21 @@ class TestFieldChecker:
     def test_validate_object(self) -> None:
         """Should validate object values."""
         fields = {
-            "config": FieldDefinition(
-                type=Type.object,
-                properties={"name": TypeSchema(type=Type.string)},
+            "config": field(
+                type="object",
+                properties={"name": {"type": "string"}},
                 scope=Scope.activity,
             )
         }
         checker = FieldChecker(fields)
         checker.validate("config", {"name": "test"})  # Should not raise
+
+    def test_array_field_rejects_properties(self) -> None:
+        """Should reject an array field that has 'properties' (object-only attribute)."""
+        with pytest.raises(ValidationError):
+            field(
+                type="array",
+                scope="activity",
+                items={"type": "integer"},
+                properties={"x": {"type": "integer"}},
+            )

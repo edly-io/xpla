@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
@@ -44,15 +44,6 @@ class StaticItem(RootModel[str]):
     root: Annotated[str, Field(pattern="^(?!/)(?!.*\\.\\.).+$")]
 
 
-class Type(Enum):
-    integer = "integer"
-    number = "number"
-    string = "string"
-    boolean = "boolean"
-    array = "array"
-    object = "object"
-
-
 class Scope(Enum):
     activity = "activity"
     course = "course"
@@ -62,34 +53,7 @@ class Scope(Enum):
     user_global = "user,global"
 
 
-class TypeSchema(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Annotated[Type, Field(description="Data type.")]
-    items: Annotated[
-        TypeSchema | None, Field(description="Schema for array items.")
-    ] = None
-    properties: Annotated[
-        dict[str, TypeSchema] | None, Field(description="Schema for object properties.")
-    ] = None
-
-
-class FieldDefinition(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Annotated[
-        Type, Field(description="Data type of the field. Uses JSON Schema type names.")
-    ]
-    items: Annotated[
-        TypeSchema | None,
-        Field(description="Schema for array items. Required when type is 'array'."),
-    ] = None
-    properties: Annotated[
-        dict[str, TypeSchema] | None,
-        Field(description="Schema for object properties. Used when type is 'object'."),
-    ] = None
+class FieldBase(BaseModel):
     scope: Annotated[
         Scope,
         Field(
@@ -99,6 +63,46 @@ class FieldDefinition(BaseModel):
     default: Annotated[
         Any | None, Field(description="Default value (must match declared type).")
     ] = None
+
+
+class IntegerType(BaseModel):
+    type: Literal["integer"]
+
+
+class NumberType(BaseModel):
+    type: Literal["number"]
+
+
+class StringType(BaseModel):
+    type: Literal["string"]
+
+
+class BooleanType(BaseModel):
+    type: Literal["boolean"]
+
+
+class IntegerField(IntegerType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
+class NumberField(NumberType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
+class StringField(StringType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
+class BooleanField(BooleanType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
 
 class XplaActivityManifest(BaseModel):
@@ -145,4 +149,58 @@ class XplaActivityManifest(BaseModel):
     ] = None
 
 
-TypeSchema.model_rebuild()
+class ArrayType(BaseModel):
+    type: Literal["array"]
+    items: TypeSchema
+
+
+class ObjectType(BaseModel):
+    type: Literal["object"]
+    properties: dict[str, TypeSchema]
+
+
+class ArrayField(ArrayType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
+class ObjectField(ObjectType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
+class TypeSchema(
+    RootModel[
+        IntegerType | NumberType | StringType | BooleanType | ArrayType | ObjectType
+    ]
+):
+    root: IntegerType | NumberType | StringType | BooleanType | ArrayType | ObjectType
+
+
+class FieldDefinition(
+    RootModel[
+        IntegerField
+        | NumberField
+        | StringField
+        | BooleanField
+        | ArrayField
+        | ObjectField
+    ]
+):
+    root: (
+        IntegerField
+        | NumberField
+        | StringField
+        | BooleanField
+        | ArrayField
+        | ObjectField
+    )
+
+
+XplaActivityManifest.model_rebuild()
+ArrayType.model_rebuild()
+ObjectType.model_rebuild()
+ArrayField.model_rebuild()
+ObjectField.model_rebuild()

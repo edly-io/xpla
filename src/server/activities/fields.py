@@ -6,10 +6,21 @@ from typing import Any
 import jsonschema
 
 from server.activities.manifest_types import (
-    Scope,
-    Type,
-    TypeSchema,
+    ArrayField,
+    ArrayType,
+    BooleanField,
     FieldDefinition,
+    IntegerField,
+    NumberField,
+    ObjectField,
+    ObjectType,
+    Scope,
+    StringField,
+)
+
+# Union of all concrete field definition types (the inner type of FieldDefinition)
+FieldVariant = (
+    IntegerField | NumberField | StringField | BooleanField | ArrayField | ObjectField
 )
 
 __all__ = [
@@ -21,37 +32,29 @@ __all__ = [
 # Type alias for field data that can be stored
 FieldType = int | float | str | bool | list[Any] | dict[str, Any]
 
-# Default values for each type (used when no explicit default is provided)
-TYPE_DEFAULTS: dict[Type, FieldType] = {
-    Type.integer: 0,
-    Type.number: 0.0,
-    Type.string: "",
-    Type.boolean: False,
-    Type.array: [],
-    Type.object: {},
-}
-
-# Map from our type names to JSON Schema type names
-_JSON_SCHEMA_TYPE: dict[Type, str] = {
-    Type.integer: "integer",
-    Type.number: "number",
-    Type.string: "string",
-    Type.boolean: "boolean",
-    Type.array: "array",
-    Type.object: "object",
+# Default values by type name
+_TYPE_DEFAULTS: dict[str, FieldType] = {
+    "integer": 0,
+    "number": 0.0,
+    "string": "",
+    "boolean": False,
+    "array": [],
+    "object": {},
 }
 
 
-def build_type_schema(definition: FieldDefinition | TypeSchema) -> dict[str, Any]:
-    """Build a JSON Schema fragment from a field/type definition."""
-    schema: dict[str, Any] = {"type": _JSON_SCHEMA_TYPE[definition.type]}
-    if definition.type == Type.array and definition.items is not None:
-        schema["items"] = build_type_schema(definition.items)
-    if definition.type == Type.object and definition.properties is not None:
-        schema["properties"] = {
-            k: build_type_schema(v) for k, v in definition.properties.items()
+def build_type_schema(definition: Any) -> dict[str, Any]:
+    """Build a JSON Schema fragment from a type definition."""
+    if isinstance(definition, (ArrayType, ArrayField)):
+        return {"type": "array", "items": build_type_schema(definition.items.root)}
+    if isinstance(definition, (ObjectType, ObjectField)):
+        return {
+            "type": "object",
+            "properties": {
+                k: build_type_schema(v.root) for k, v in definition.properties.items()
+            },
         }
-    return schema
+    return {"type": definition.type}
 
 
 class FieldValidationError(Exception):
@@ -62,14 +65,16 @@ class FieldChecker:
     """Validates fields against their manifest definitions."""
 
     def __init__(self, fields: dict[str, FieldDefinition] | None) -> None:
-        self._definitions = fields or {}
+        self._definitions: dict[str, FieldVariant] = {
+            k: v.root for k, v in (fields or {}).items()
+        }
 
     @property
     def field_names(self) -> list[str]:
         """Return the list of declared field names."""
         return list(self._definitions.keys())
 
-    def get_definition(self, name: str) -> FieldDefinition:
+    def get_definition(self, name: str) -> FieldVariant:
         """Get the definition for a field.
 
         Raises:
@@ -88,7 +93,7 @@ class FieldChecker:
         if definition.default is not None:
             default: FieldType = copy.deepcopy(definition.default)
             return default
-        return copy.deepcopy(TYPE_DEFAULTS[definition.type])
+        return copy.deepcopy(_TYPE_DEFAULTS[definition.type])
 
     def validate(self, name: str, value: FieldType) -> None:
         """Validate a field value against its manifest definition using JSON Schema.
@@ -111,8 +116,8 @@ class FieldChecker:
     def validate_property(self, name: str, key: str, value: FieldType) -> None:
         """Validate a single property value against its type schema, if declared."""
         definition = self.get_definition(name)
-        if definition.properties is not None and key in definition.properties:
-            prop_schema = build_type_schema(definition.properties[key])
+        if isinstance(definition, ObjectField) and key in definition.properties:
+            prop_schema = build_type_schema(definition.properties[key].root)
             try:
                 jsonschema.validate(value, prop_schema)
             except jsonschema.ValidationError as e:
@@ -123,9 +128,9 @@ class FieldChecker:
     def require_object_type(self, name: str) -> None:
         """Raise if the field is not of type 'object'."""
         definition = self.get_definition(name)
-        if definition.type != Type.object:
+        if not isinstance(definition, ObjectField):
             raise FieldValidationError(
-                f"Field '{name}' is of type '{definition.type.value}', expected 'object'"
+                f"Field '{name}' is of type '{definition.type}', expected 'object'"
             )
 
     def get_scope(self, name: str) -> Scope:

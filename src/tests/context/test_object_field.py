@@ -57,7 +57,7 @@ class TestObjectFieldFunctions:
     def test_get_object_field_missing_key_returns_default(self, tmp_path: Path) -> None:
         """Should return the default value when key is not in object."""
         manifest = create_manifest(
-            fields={"data": {"type": "object", "scope": "activity"}}
+            fields={"data": {"type": "object", "scope": "activity", "properties": {}}}
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -111,6 +111,7 @@ class TestObjectFieldFunctions:
                 "prefs": {
                     "type": "object",
                     "scope": "user,activity",
+                    "properties": {},
                 }
             }
         )

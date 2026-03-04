@@ -79,25 +79,10 @@
     }
   },
   "$defs": {
-    "fieldDefinition": {
+    "fieldBase": {
       "type": "object",
-      "required": ["type", "scope"],
-      "additionalProperties": false,
+      "required": ["scope"],
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["integer", "number", "string", "boolean", "array", "object"],
-          "description": "Data type of the field. Uses JSON Schema type names."
-        },
-        "items": {
-          "$ref": "#/$defs/typeSchema",
-          "description": "Schema for array items. Required when type is 'array'."
-        },
-        "properties": {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/typeSchema" },
-          "description": "Schema for object properties. Used when type is 'object'."
-        },
         "scope": {
           "type": "string",
           "enum": ["activity", "course", "global", "user,activity", "user,course", "user,global"],
@@ -108,26 +93,96 @@
         }
       }
     },
-    "typeSchema": {
+    "integerField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/integerType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
+    "numberField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/numberType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
+    "stringField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/stringType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
+    "booleanField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/booleanType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
+    "arrayField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/arrayType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
+    "objectField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/objectType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
+    "fieldDefinition": {
+      "oneOf": [
+        { "$ref": "#/$defs/integerField" },
+        { "$ref": "#/$defs/numberField" },
+        { "$ref": "#/$defs/stringField" },
+        { "$ref": "#/$defs/booleanField" },
+        { "$ref": "#/$defs/arrayField" },
+        { "$ref": "#/$defs/objectField" }
+      ]
+    },
+    "integerType": {
       "type": "object",
       "required": ["type"],
-      "additionalProperties": false,
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["integer", "number", "string", "boolean", "array", "object"],
-          "description": "Data type."
-        },
-        "items": {
-          "$ref": "#/$defs/typeSchema",
-          "description": "Schema for array items."
-        },
+        "type": { "type": "string", "const": "integer" }
+      }
+    },
+    "numberType": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "number" }
+      }
+    },
+    "stringType": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "string" }
+      }
+    },
+    "booleanType": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "boolean" }
+      }
+    },
+    "arrayType": {
+      "type": "object",
+      "required": ["type", "items"],
+      "properties": {
+        "type": { "type": "string", "const": "array" },
+        "items": { "$ref": "#/$defs/typeSchema" }
+      }
+    },
+    "objectType": {
+      "type": "object",
+      "required": ["type", "properties"],
+      "properties": {
+        "type": { "type": "string", "const": "object" },
         "properties": {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/typeSchema" },
-          "description": "Schema for object properties."
+          "additionalProperties": { "$ref": "#/$defs/typeSchema" }
         }
       }
+    },
+    "typeSchema": {
+      "oneOf": [
+        { "$ref": "#/$defs/integerType" },
+        { "$ref": "#/$defs/numberType" },
+        { "$ref": "#/$defs/stringType" },
+        { "$ref": "#/$defs/booleanType" },
+        { "$ref": "#/$defs/arrayType" },
+        { "$ref": "#/$defs/objectType" }
+      ]
     }
   }
 }

@@ -34,7 +34,7 @@ class EventChecker:
                 f"Event '{name}' not declared in manifest. "
                 f"Declared: {sorted(self._definitions.keys())}"
             )
-        schema = build_type_schema(self._definitions[name])
+        schema = build_type_schema(self._definitions[name].root)
         try:
             jsonschema.validate(payload, schema)
         except jsonschema.ValidationError as e:

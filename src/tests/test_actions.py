@@ -1,6 +1,11 @@
 import pytest
 from server.activities.actions import ActionChecker, ActionValidationError
-from server.activities.manifest_types import Type, TypeSchema
+from server.activities.manifest_types import TypeSchema
+
+
+def type_schema(**kwargs: object) -> TypeSchema:
+    """Helper to build a TypeSchema from keyword args."""
+    return TypeSchema.model_validate(kwargs)
 
 
 class TestActionChecker:
@@ -14,11 +19,15 @@ class TestActionChecker:
 
     def test_raises_for_invalid_payload(self) -> None:
         """Should raise ActionValidationError for invalid payload."""
-        checker = ActionChecker({"my.action": TypeSchema(type=Type.object)})
+        checker = ActionChecker(
+            {"my.action": type_schema(type="object", properties={})}
+        )
         with pytest.raises(ActionValidationError, match="failed validation"):
             checker.validate("my.action", "not an object")
 
     def test_valid_action_passes(self) -> None:
         """Should not raise for valid action with matching payload."""
-        checker = ActionChecker({"my.action": TypeSchema(type=Type.object)})
+        checker = ActionChecker(
+            {"my.action": type_schema(type="object", properties={})}
+        )
         checker.validate("my.action", {"key": "value"})
