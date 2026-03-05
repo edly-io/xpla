@@ -4,6 +4,7 @@ export class XPLA extends HTMLElement {
     this.state = {};
     this.permission = "view";
     this._ws = null;
+    this._reconnectDelay = 1000;
   }
 
   connectedCallback() {
@@ -86,10 +87,38 @@ export class XPLA extends HTMLElement {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const url = `${proto}//${location.host}/api/activity/${activityName}/ws`;
     this._ws = new WebSocket(url);
+    this._ws.onopen = () => {
+      this._reconnectDelay = 1000;
+      this._flushQueue();
+    };
     this._ws.onmessage = (e) => {
       const event = JSON.parse(e.data);
       this.onEvent(event.name, JSON.parse(event.value));
     };
+    this._ws.onclose = () => {
+      this._scheduleReconnect();
+    };
+  }
+
+  _scheduleReconnect() {
+    setTimeout(() => {
+      this._reconnectDelay = Math.min(this._reconnectDelay * 2, 30000);
+      this._connectWebSocket();
+    }, this._reconnectDelay);
+  }
+
+  _storageKey() {
+    return `xpla:pending:${this.getAttribute("name")}`;
+  }
+
+  _flushQueue() {
+    const key = this._storageKey();
+    let pending = JSON.parse(localStorage.getItem(key) || "[]");
+    while (pending.length > 0 && this._ws.readyState === WebSocket.OPEN) {
+      const item = pending.shift();
+      this._ws.send(JSON.stringify(item));
+      localStorage.setItem(key, JSON.stringify(pending));
+    }
   }
 
   async loadScript(url) {
@@ -104,7 +133,13 @@ export class XPLA extends HTMLElement {
   }
 
   sendAction(name, value = "") {
-    this._ws.send(JSON.stringify({ action: name, value }));
+    const key = this._storageKey();
+    const pending = JSON.parse(localStorage.getItem(key) || "[]");
+    pending.push({ action: name, value });
+    localStorage.setItem(key, JSON.stringify(pending));
+    if (this._ws.readyState === WebSocket.OPEN) {
+      this._flushQueue();
+    }
   }
 
   getAssetUrl(path) {
