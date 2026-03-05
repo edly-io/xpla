@@ -14,7 +14,7 @@ function onAction() {
       return;
     }
     setField("video_url", value.video_url);
-    sendEvent("fields.change.video_url", value.video_url);
+    sendEvent("fields.change.video_url", value.video_url, {}, "play");
   }
 }
 

@@ -14,7 +14,7 @@ function onAction() {
       return;
     }
     setField("video_id", value.video_id);
-    sendEvent("fields.change.video_id", value.video_id);
+    sendEvent("fields.change.video_id", value.video_id, {}, "play");
   }
 }
 

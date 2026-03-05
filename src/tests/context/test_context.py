@@ -789,16 +789,23 @@ class TestSendEvent:
     """Tests for send_event host function."""
 
     def test_appends_event_to_pending(self, tmp_path: Path) -> None:
-        """Should append event to pending events list."""
+        """Should append event to pending events list with scope and permission."""
         manifest = create_manifest(events={"test.event": {"type": "string"}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.send_event("test.event", '"some value"')
+        ctx.send_event("test.event", '"some value"', "{}", "play")
 
-        assert ctx.clear_pending_events() == [
-            {"name": "test.event", "value": '"some value"'}
-        ]
+        events = ctx.clear_pending_events()
+        assert len(events) == 1
+        assert events[0]["name"] == "test.event"
+        assert events[0]["value"] == '"some value"'
+        assert events[0]["permission"] == "play"
+        # Empty scope should be filled with defaults
+        scope = events[0]["scope"]
+        assert isinstance(scope, dict)
+        assert scope["activity_id"] == ctx.activity_id
+        assert scope["course_id"] == ctx.course_id
 
     def test_appends_multiple_events(self, tmp_path: Path) -> None:
         """Should accumulate multiple events."""
@@ -808,13 +815,15 @@ class TestSendEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.send_event("event1", '"value1"')
-        ctx.send_event("event2", '"value2"')
+        ctx.send_event("event1", '"value1"', "{}", "play")
+        ctx.send_event("event2", '"value2"', "{}", "edit")
 
-        assert ctx.clear_pending_events() == [
-            {"name": "event1", "value": '"value1"'},
-            {"name": "event2", "value": '"value2"'},
-        ]
+        events = ctx.clear_pending_events()
+        assert len(events) == 2
+        assert events[0]["name"] == "event1"
+        assert events[0]["permission"] == "play"
+        assert events[1]["name"] == "event2"
+        assert events[1]["permission"] == "edit"
 
     def test_returns_empty_string(self, tmp_path: Path) -> None:
         """Should return empty string as success indicator."""
@@ -822,7 +831,7 @@ class TestSendEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        result = ctx.send_event("test", '"value"')
+        result = ctx.send_event("test", '"value"', "{}", "play")
 
         assert result == ""
 
@@ -832,11 +841,12 @@ class TestSendEvent:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        ctx.send_event("fields.change.score", "42")
+        ctx.send_event("fields.change.score", "42", "{}", "play")
 
-        assert ctx.clear_pending_events() == [
-            {"name": "fields.change.score", "value": "42"}
-        ]
+        events = ctx.clear_pending_events()
+        assert len(events) == 1
+        assert events[0]["name"] == "fields.change.score"
+        assert events[0]["value"] == "42"
 
     def test_raises_for_undeclared_event(self, tmp_path: Path) -> None:
         """Should raise EventValidationError for undeclared event."""
@@ -845,7 +855,19 @@ class TestSendEvent:
         ctx = ActivityContext(activity_dir)
 
         with pytest.raises(EventValidationError, match="not declared"):
-            ctx.send_event("unknown.event", '"value"')
+            ctx.send_event("unknown.event", '"value"', "{}", "play")
+
+    def test_explicit_scope_preserved(self, tmp_path: Path) -> None:
+        """Should preserve explicit scope without filling defaults."""
+        manifest = create_manifest(events={"test": {"type": "string"}})
+        activity_dir = setup_activity_dir(tmp_path, manifest)
+        ctx = ActivityContext(activity_dir)
+
+        ctx.send_event("test", '"val"', '{"user_id": "bob"}', "view")
+
+        events = ctx.clear_pending_events()
+        assert events[0]["scope"] == {"user_id": "bob"}
+        assert events[0]["permission"] == "view"
 
 
 class TestClearPendingEvents:
@@ -858,15 +880,14 @@ class TestClearPendingEvents:
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
-        ctx.send_event("event1", '"value1"')
-        ctx.send_event("event2", '"value2"')
+        ctx.send_event("event1", '"value1"', "{}", "play")
+        ctx.send_event("event2", '"value2"', "{}", "play")
 
         result = ctx.clear_pending_events()
 
-        assert result == [
-            {"name": "event1", "value": '"value1"'},
-            {"name": "event2", "value": '"value2"'},
-        ]
+        assert len(result) == 2
+        assert result[0]["name"] == "event1"
+        assert result[1]["name"] == "event2"
         assert not ctx.clear_pending_events()
 
     def test_returns_empty_when_no_events(self, tmp_path: Path) -> None:

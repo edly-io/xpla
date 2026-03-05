@@ -42,15 +42,15 @@ function onAction() {
     if (result.correct) {
       const correctCount = getField("correct_answers") + 1;
       setField("correct_answers", correctCount);
-      sendEvent("fields.change.correct_answers", correctCount);
+      sendEvent("fields.change.correct_answers", correctCount, {}, "play");
     } else {
       const wrongCount = getField("wrong_answers") + 1;
       setField("wrong_answers", wrongCount);
-      sendEvent("fields.change.wrong_answers", wrongCount);
+      sendEvent("fields.change.wrong_answers", wrongCount, {}, "play");
     }
 
     // Send feedback event
-    sendEvent("answer.result", result);
+    sendEvent("answer.result", result, {}, "play");
   }
 }
 

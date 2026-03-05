@@ -14,7 +14,7 @@ import {
 
 function saveUserCode(code) {
   setField("user_code", code);
-  sendEvent("fields.change.user_code", code);
+  sendEvent("fields.change.user_code", code, {}, "play");
 }
 
 function onAction() {
@@ -28,7 +28,7 @@ function onAction() {
     for (const key of ["instructions", "starter_code", "test_code"]) {
       if (value[key] !== undefined) {
         setField(key, value[key]);
-        sendEvent("fields.change." + key, value[key]);
+        sendEvent("fields.change." + key, value[key], {}, "play");
       }
     }
   }

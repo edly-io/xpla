@@ -40,9 +40,9 @@ function handleConfigSave(config) {
   setField("correct_answers", config.correct_answers);
 
   // Notify frontend of field changes
-  sendEvent("fields.change.question", config.question);
-  sendEvent("fields.change.answers", config.answers);
-  sendEvent("fields.change.correct_answers", config.correct_answers);
+  sendEvent("fields.change.question", config.question, {}, "play");
+  sendEvent("fields.change.answers", config.answers, {}, "play");
+  sendEvent("fields.change.correct_answers", config.correct_answers, {}, "edit");
 }
 
 // Check submitted answers against correct answers
@@ -68,7 +68,7 @@ function handleAnswerSubmit(selected) {
     feedback = "Incorrect. Try again!";
   }
 
-  sendEvent("answer.result", { correct: isCorrect, feedback });
+  sendEvent("answer.result", { correct: isCorrect, feedback }, {}, "play");
 }
 
 module.exports = { onAction, getState };

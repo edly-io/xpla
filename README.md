@@ -265,12 +265,14 @@ import {
   sendEvent,
   getPermission,
   getField, setField,
-  getObjectField, setObjectField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
 } from "../../src/sandbox-lib";
 
-// Send an event to the frontend
-sendEvent("answer.result", { correct: true });
+// Send an event to all connected clients in the current activity
+// sendEvent(name, value, scope, permission)
+//   scope: {} = current activity (default), or e.g. { user_id: "alice" } to target a specific user
+//   permission: minimum permission to receive the event ("view", "play", or "edit")
+sendEvent("answer.result", { correct: true }, {}, "play");
 
 // Get the current permission level ("view", "play", or "edit")
 const permission = getPermission();
@@ -285,10 +287,6 @@ setField("question", "What is 2+2?");
 // Get/set fields for a different user via scope overrides
 const studentScore = getField("score", { user_id: "student123" });
 setField("score", studentScore + 1, { user_id: "student123" });
-
-// Get/set individual keys in object fields
-const theme = getObjectField("prefs", "theme", "light");
-setObjectField("prefs", "theme", "dark");
 
 // Log field operations (append-only ordered data)
 const id = logAppend("messages", { user: "alice", text: "hello" });
@@ -328,7 +326,7 @@ function onAction() {
 module.exports = { onAction, getState };
 ```
 
-The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to the frontend using the `sendEvent` helper (which calls the `send_event` host function).
+The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, scope, permission)` (which calls the `send_event` host function). The `scope` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
 
 #### Building
 
@@ -368,19 +366,20 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 ##### Endpoints
 
-The exact HTTP API is platform-specific and does not need to follow a standard. The platform must support two types of requests from the frontend:
+The exact API is platform-specific and does not need to follow a standard. The platform must support:
 
 - **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The action value must be JSON-formatted. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, and `scope` (a dict with `user_id`, `course_id`, `activity_id`). It collects events emitted during execution and returns them as JSON.
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, and `scope` (a dict with `user_id`, `course_id`, `activity_id`).
+- **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by scope and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
-Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py).
+Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py). Event routing is handled by the [`EventBus`](./src/server/activities/event_bus.py).
 
 ##### Host functions
 
 Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py):
 
 - `get_permission() -> str`
-- `send_event(name: str, value: str)`
+- `send_event(name: str, value: str, scope: str, permission: str)`: `scope` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
 - `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
 - `log_append(name: str, value: any, scope: str) -> int`: append to a log field, returns the assigned entry ID
 - `log_get(name: str, entry_id: int, scope: str) -> any | null`: get a single log entry by ID
@@ -432,7 +431,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | `element` | DOM element | The root DOM element where the activity renders its UI. |
 | `state` | `object` | The activity state, populated by the backend's `getState()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
-| `sendAction(name, value)` | `async (string, any) => Event[]` | Sends an action to the backend sandbox. Returns the list of events emitted in response. Must validate the action name against the manifest. |
+| `sendAction(name, value)` | `(string, any) => void` | Sends an action to the backend sandbox via WebSocket. Fire-and-forget: events are delivered asynchronously through the `onEvent` callback. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
 | `onEvent(name, value)` | `(string, any) => void` | Callback invoked for every event emitted by the server. Default is a no-op; activity code overrides it. |
 
@@ -444,7 +443,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 
 ##### Event processing
 
-When `sendAction` receives a response from the backend, the runtime calls `activity.onEvent(name, parsedValue)` for each event. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.state` or performing any other side effects as needed.
+Events are delivered in real time via a WebSocket connection established on page load. When the server broadcasts an event (filtered by scope and permission), the runtime calls `activity.onEvent(name, parsedValue)`. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.state` or performing any other side effects as needed. This enables multi-user scenarios (e.g. chat) where actions by one user produce events visible to all connected clients.
 
 ##### Recommendations
 

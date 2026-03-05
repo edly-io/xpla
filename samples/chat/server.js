@@ -12,7 +12,7 @@ function onAction() {
     const user = scope.user_id;
     const entry = { user, text: value.text };
     const id = logAppend("messages", entry);
-    sendEvent("chat.new", { id, user, text: value.text });
+    sendEvent("chat.new", { id, user, text: value.text }, {}, "play");
   }
 }
 

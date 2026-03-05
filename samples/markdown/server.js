@@ -33,8 +33,8 @@ function onAction() {
 
     setField("markdown_content", markdownContent);
     setField("rendered_html", html);
-    sendEvent("fields.change.markdown_content", markdownContent);
-    sendEvent("fields.change.rendered_html", html);
+    sendEvent("fields.change.markdown_content", markdownContent, {}, "play");
+    sendEvent("fields.change.rendered_html", html, {}, "play");
   }
 }
 

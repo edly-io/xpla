@@ -21,7 +21,7 @@ declare module "extism:host" {
     get_permission(): I64;
 
     // Event posting
-    send_event(name_ptr: I64, value_ptr: I64): I64;
+    send_event(name_ptr: I64, value_ptr: I64, scope_ptr: I64, permission_ptr: I64): I64;
 
     // Get/Set field (scope resolved from manifest)
     get_field(name_ptr: I64, scope_ptr: I64): I64;

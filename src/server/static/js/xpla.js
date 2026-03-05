@@ -3,6 +3,7 @@ export class XPLA extends HTMLElement {
     super();
     this.state = {};
     this.permission = "view";
+    this._ws = null;
   }
 
   connectedCallback() {
@@ -25,6 +26,7 @@ export class XPLA extends HTMLElement {
     }
 
     this.render();
+    this._connectWebSocket();
     const src = this.getAttribute("src");
     if (src) {
       this.loadScript(src);
@@ -78,6 +80,17 @@ export class XPLA extends HTMLElement {
     this.element.innerHTML = "Empty activity";
   }
 
+  _connectWebSocket() {
+    const activityName = this.getAttribute("name");
+    // Cookies are sent automatically on the WebSocket handshake
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const url = `${proto}//${location.host}/api/activity/${activityName}/ws`;
+    this._ws = new WebSocket(url);
+    this._ws.onmessage = (e) => {
+      const event = JSON.parse(e.data);
+      this.onEvent(event.name, JSON.parse(event.value));
+    };
+  }
 
   async loadScript(url) {
     try {
@@ -90,26 +103,8 @@ export class XPLA extends HTMLElement {
     }
   }
 
-  async sendAction(name, value = "") {
-    const response = await fetch("/api/activity/" + this.attributes.name.value + "/actions/" + name, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Action send failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    this._processEvents(data.events);
-    return data.events;
-  }
-
-  _processEvents(events) {
-    for (const event of events) {
-      this.onEvent(event.name, JSON.parse(event.value));
-    }
+  sendAction(name, value = "") {
+    this._ws.send(JSON.stringify({ action: name, value }));
   }
 
   getAssetUrl(path) {

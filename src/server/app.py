@@ -6,13 +6,14 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from server.activities.context import ActivityContext, AssetAccessError
 from server.activities.actions import ActionValidationError
+from server.activities.event_bus import EventBus
 from server.activities.permission import Permission
 from server import constants
 
@@ -20,6 +21,8 @@ USER_ID_COOKIE = "xpla_user"
 SIMULATED_USERS = ["alice", "bob", "charlie"]
 
 logger = logging.getLogger(__name__)
+
+event_bus = EventBus()
 
 
 app = FastAPI(
@@ -50,11 +53,11 @@ def load_activity(request: Request, activity_type: str) -> ActivityContext:
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    user_id, permission = get_simulation_params(request)
+    user_id, permission = get_simulation_params(request.cookies)
     activity_context = ActivityContext(
         activity_dir,
-        user_id=user_id or ActivityContext.DEFAULT_USER_ID,
-        permission=permission or ActivityContext.DEFAULT_PERMISSION,
+        user_id=user_id,
+        permission=permission,
         course_id="democourse",
         activity_id="activityid",
     )
@@ -76,14 +79,18 @@ def list_activities() -> list[str]:
     return sorted(d.name for d in constants.SAMPLES_DIR.iterdir() if d.is_dir())
 
 
-def get_simulation_params(request: Request) -> tuple[str | None, Permission | None]:
+def get_simulation_params(cookies: dict[str, str]) -> tuple[str, Permission]:
     """Read simulated user/permission from cookies, with validation and fallback."""
-    user_id = request.cookies.get(USER_ID_COOKIE)
+    user_id = cookies.get(USER_ID_COOKIE)
     if user_id not in SIMULATED_USERS:
-        user_id = None
+        user_id = ActivityContext.DEFAULT_USER_ID
 
-    permission_str = request.cookies.get("xpla_permission")
-    permission = Permission(permission_str) if permission_str else None
+    permission_str = cookies.get("xpla_permission")
+    permission = (
+        Permission(permission_str)
+        if permission_str
+        else ActivityContext.DEFAULT_PERMISSION
+    )
 
     return user_id, permission
 
@@ -153,7 +160,7 @@ async def activity_asset(
 async def send_action(
     request: Request, activity_type: str, action_name: str
 ) -> JSONResponse:
-    """Send an action to the activity sandbox and receive response events."""
+    """Send an action to the activity sandbox. Events are broadcast via WebSocket."""
     context = load_activity(request, activity_type)
     action_value = await request.json()
 
@@ -162,6 +169,64 @@ async def send_action(
     except ActionValidationError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
-    # Return events posted by sandbox
+    # Publish events via the event bus (no longer returned in response)
     events = context.clear_pending_events()
-    return JSONResponse(content={"events": events})
+    await event_bus.publish(activity_type, events)
+    return JSONResponse(content={})
+
+
+def _load_activity_for_ws(
+    activity_type: str,
+    user_id: str,
+    permission: Permission,
+) -> ActivityContext:
+    """Load an activity context for WebSocket use (no Request object)."""
+    try:
+        activity_dir = find_activity_dir(activity_type)
+    except ActivityNotFound as e:
+        raise ValueError(str(e)) from e
+
+    return ActivityContext(
+        activity_dir,
+        user_id=user_id,
+        permission=permission,
+        course_id="democourse",
+        activity_id="activityid",
+    )
+
+
+@app.websocket("/api/activity/{activity_type}/ws")
+async def activity_ws(websocket: WebSocket, activity_type: str) -> None:
+    """WebSocket endpoint for real-time event broadcasting."""
+    await websocket.accept()
+
+    # Read user/permission from cookies (same as HTTP endpoints)
+    user_id, permission = get_simulation_params(websocket.cookies)
+
+    subscriber = event_bus.subscribe(
+        activity_type,
+        websocket,
+        user_id,
+        permission,
+        course_id="democourse",
+        activity_id="activityid",
+    )
+
+    while True:
+        try:
+            data = await websocket.receive_json()
+        except WebSocketDisconnect:
+            event_bus.unsubscribe(activity_type, subscriber)
+            return
+        action_name = data.get("action", "")
+        action_value = data.get("value", "")
+
+        context = _load_activity_for_ws(activity_type, user_id, permission)
+        try:
+            context.on_action(action_name, action_value)
+        except ActionValidationError as e:
+            logger.warning("WS action validation error: %s", e)
+            continue
+
+        events = context.clear_pending_events()
+        await event_bus.publish(activity_type, events)

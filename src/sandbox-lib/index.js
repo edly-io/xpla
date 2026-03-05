@@ -15,8 +15,8 @@ const {
   get_permission,
 } = Host.getFunctions();
 
-export function sendEvent(name, value) {
-  send_event(string2memoryOffset(name), data2memoryOffset(value));
+export function sendEvent(name, value, scope = {}, permission = "play") {
+  send_event(string2memoryOffset(name), data2memoryOffset(value), data2memoryOffset(scope), string2memoryOffset(permission));
 }
 
 // Get the current permission level ("view", "play", or "edit").

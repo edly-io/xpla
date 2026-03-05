@@ -9,7 +9,7 @@ from collections.abc import Callable
 import json
 import logging
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, TypedDict
 import urllib.error
 import urllib.request
 
@@ -25,6 +25,13 @@ from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
 logger = logging.getLogger(__file__)
+
+
+class PendingEvent(TypedDict):
+    name: str
+    value: str
+    scope: dict[str, str]
+    permission: str
 
 
 class MissingSandboxError(Exception):
@@ -61,7 +68,7 @@ class ActivityContext:
         self.kv_store = kv.get_default()
 
         # Events posted by sandbox during execution
-        self._pending_events: list[dict[str, str]] = []
+        self._pending_events: list[PendingEvent] = []
 
         # Manifest capabilities and fields (validated by Pydantic)
         with open(self._activity_dir / "manifest.json", encoding="utf8") as f:
@@ -320,7 +327,7 @@ class ActivityContext:
                 pass
         return self.get_all_fields()
 
-    def clear_pending_events(self) -> list[dict[str, str]]:
+    def clear_pending_events(self) -> list[PendingEvent]:
         """Return and clear all pending events."""
         events = self._pending_events
         self._pending_events = []
@@ -350,16 +357,37 @@ class ActivityContext:
         """
         return self._permission.value
 
-    def send_event(self, name: str, value: str) -> str:
+    def send_event(self, name: str, value: str, scope: str, permission: str) -> str:
         """Send an event back to the client.
 
         Called by sandbox code to send events (e.g., field changes) to the frontend.
+
+        Args:
+            name: Event name.
+            value: JSON-encoded event value.
+            scope: JSON-encoded scope dict (e.g. '{"activity_id": "..."}').
+                   Empty dict {} means use current context scope.
+            permission: Minimum permission to receive the event ("view", "play", or "edit").
 
         Raises:
             EventValidationError: If the event is not declared in manifest.
         """
         self.event_checker.validate(name, json.loads(value))
-        self._pending_events.append({"name": name, "value": value})
+        parsed_scope = json.loads(scope)
+        # Fill in defaults for empty scope
+        if not parsed_scope:
+            parsed_scope = {
+                "activity_id": self._activity_id,
+                "course_id": self._course_id,
+            }
+        self._pending_events.append(
+            {
+                "name": name,
+                "value": value,
+                "scope": parsed_scope,
+                "permission": permission,
+            }
+        )
         return ""
 
     def get_field(
