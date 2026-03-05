@@ -3,13 +3,13 @@
 import asyncio
 from unittest.mock import AsyncMock
 
-from server.activities.event_bus import (
+from xpla.event_bus import (
     EventBus,
     _has_permission,
     _matches_scope,
     Subscriber,
 )
-from server.activities.permission import Permission
+from xpla.permission import Permission
 
 
 def _make_subscriber(

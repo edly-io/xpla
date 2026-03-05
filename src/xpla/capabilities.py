@@ -2,7 +2,7 @@
 
 from urllib.parse import urlparse
 
-from server.activities.manifest_types import Capabilities
+from xpla.manifest_types import Capabilities
 
 __all__ = [
     "CapabilityChecker",

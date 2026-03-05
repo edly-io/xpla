@@ -1,6 +1,6 @@
 import pytest
-from server.activities.events import EventChecker, EventValidationError
-from server.activities.manifest_types import TypeSchema
+from xpla.events import EventChecker, EventValidationError
+from xpla.manifest_types import TypeSchema
 
 
 def type_schema(**kwargs: object) -> TypeSchema:

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 CURRENT_DIR = Path(__file__).parent
-STATIC_DIR = CURRENT_DIR / "static"
+STATIC_DIR = CURRENT_DIR.parent / "static"
 SAMPLES_DIR = CURRENT_DIR.parent.parent / "samples"
 TEMPLATES_DIR = CURRENT_DIR / "templates"
 

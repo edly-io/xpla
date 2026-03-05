@@ -4,8 +4,8 @@ from typing import Any
 
 import jsonschema
 
-from server.activities.fields import build_type_schema
-from server.activities.manifest_types import TypeSchema
+from xpla.fields import build_type_schema
+from xpla.manifest_types import TypeSchema
 
 __all__ = [
     "EventChecker",

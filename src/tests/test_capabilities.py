@@ -1,6 +1,6 @@
 import pytest
-from server.activities.capabilities import CapabilityChecker, CapabilityError
-from server.activities.manifest_types import (
+from xpla.capabilities import CapabilityChecker, CapabilityError
+from xpla.manifest_types import (
     Capabilities,
     Http,
 )

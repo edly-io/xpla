@@ -130,7 +130,7 @@ my-activity/
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
 - `client` (required): Path to the client-side JavaScript module, relative to `manifest.json`.
 - `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
-- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/server/activities/capabilities.py`](./src/server/activities/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
+- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`src/xpla/capabilities.py`](./src/xpla/capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
 - `fields` (optional, defaults to `{}`): Declares activity fields with type and scope. Fields are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
 - `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.
@@ -243,7 +243,7 @@ The `activity` object exposes the following properties and methods:
 - `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
 - `onEvent(name, value)`: Override this callback to handle events from the server. Called for every event with the parsed value.
 
-The `XPLA` class is implemented in [`xpla.js`](./src/server/static/js/xpla.js).
+The `XPLA` class is implemented in [`xpla.js`](./src/static/js/xpla.js).
 
 
 #### Server sandbox (declared via `server` field)
@@ -356,11 +356,11 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 2. **Sandbox execution.** Load the WebAssembly module declared in `manifest.server` and execute its exported functions (`getState`, `onAction`). We recommend using [Extism](https://extism.org/), which provides plugin runtimes for many host languages (Python, Go, Rust, Java, etc.).
 
-3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`src/server/activities/context.py`](./src/server/activities/context.py).
+3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`src/xpla/context.py`](./src/xpla/context.py).
 
-4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`src/server/activities/actions.py`](./src/server/activities/actions.py) (actions), [`src/server/activities/events.py`](./src/server/activities/events.py) (events), [`src/server/activities/fields.py`](./src/server/activities/fields.py) (fields).
+4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`src/xpla/actions.py`](./src/xpla/actions.py) (actions), [`src/xpla/events.py`](./src/xpla/events.py) (events), [`src/xpla/fields.py`](./src/xpla/fields.py) (fields).
 
-5. **Key-value store.** Activity fields are persisted in a key-value store, scoped by activity name and (for user-scoped fields) user ID. The store must support `get` and `set` operations. Our implementation: [`src/server/activities/kv.py`](./src/server/activities/kv.py).
+5. **Key-value store.** Activity fields are persisted in a key-value store, scoped by activity name and (for user-scoped fields) user ID. The store must support `get` and `set` operations. Our implementation: [`src/xpla/kv.py`](./src/xpla/kv.py).
 
 6. **Static asset serving.** Serve files declared in the manifest's `static` array (plus `client` and `manifest.json`). Paths must be validated to prevent directory traversal.
 
@@ -372,11 +372,11 @@ The exact API is platform-specific and does not need to follow a standard. The p
 - **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, and `scope` (a dict with `user_id`, `course_id`, `activity_id`).
 - **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by scope and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
-Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py). Event routing is handled by the [`EventBus`](./src/server/activities/event_bus.py).
+Our implementation exposes these as FastAPI endpoints in [`src/xplademo/app.py`](./src/xplademo/app.py). Event routing is handled by the [`EventBus`](./src/xpla/event_bus.py).
 
 ##### Host functions
 
-Plugins can call host functions which are defined in [`src/server/activities/context.py`](./src/server/activities/context.py):
+Plugins can call host functions which are defined in [`src/xpla/context.py`](./src/xpla/context.py):
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str, scope: str, permission: str)`: `scope` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
@@ -414,7 +414,7 @@ See the [`samples/chat`](./samples/chat) activity for a working example.
 
 ##### Recommendations
 
-- **Use Extism for sandbox execution.** Extism provides a consistent plugin API across many host languages and handles WebAssembly loading, memory management, and host function binding. See [`src/server/activities/sandbox.py`](./src/server/activities/sandbox.py).
+- **Use Extism for sandbox execution.** Extism provides a consistent plugin API across many host languages and handles WebAssembly loading, memory management, and host function binding. See [`src/xpla/sandbox.py`](./src/xpla/sandbox.py).
 - **Validate everything at runtime.** Don't trust that activity code will send well-formed actions or events. Validate action names and payloads against the manifest before calling the sandbox, and validate events before forwarding them to the frontend.
 - **Scope KV keys carefully.** We use the pattern `xpla.<activity_name>.<course_id>.<activity_id>.<user_id>.<value_name>` to prevent activities from interfering with each other's state. Depending on the scope, some segments are empty (e.g., for platform-scoped values, course_id and activity_id are empty).
 
@@ -447,8 +447,8 @@ Events are delivered in real time via a WebSocket connection established on page
 
 ##### Recommendations
 
-- **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpl-activity>`), which provides a clean encapsulation boundary and works with any framework. See [`src/server/static/js/xpla.js`](./src/server/static/js/xpla.js).
-- **Pass initial state as a data attribute.** We serialize the state JSON into a `data-state` attribute and the permission into `data-permission`. This avoids extra round-trips. See [`src/server/templates/activity.html`](./src/server/templates/activity.html).
+- **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpl-activity>`), which provides a clean encapsulation boundary and works with any framework. See [`src/static/js/xpla.js`](./src/static/js/xpla.js).
+- **Pass initial state as a data attribute.** We serialize the state JSON into a `data-state` attribute and the permission into `data-permission`. This avoids extra round-trips. See [`src/xplademo/templates/activity.html`](./src/xplademo/templates/activity.html).
 - **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. The `<xpl-activity>` element supports an `embed` attribute that controls how the activity is rendered:
   - **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
   - **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.

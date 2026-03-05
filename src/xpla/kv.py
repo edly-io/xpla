@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
 
-from server.constants import DIST_DIR
-from server.activities.fields import FieldType
+from xpla.fields import FieldType
+
+# Project root's dist/ directory
+DIST_DIR = Path(__file__).parent.parent.parent / "dist"
 
 
 class KVStore:

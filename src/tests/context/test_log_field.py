@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from server.activities.context import ActivityContext
-from server.activities.fields import FieldValidationError
+from xpla.context import ActivityContext
+from xpla.fields import FieldValidationError
 from .utils import create_manifest, setup_activity_dir
 
 

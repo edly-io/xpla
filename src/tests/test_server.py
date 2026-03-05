@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from server.app import app
-from server import constants
+from xplademo.app import app
+from xplademo import constants
 
 
 @pytest.fixture(name="samples_dir")

@@ -15,14 +15,14 @@ import urllib.request
 
 import extism
 
-from server.activities.actions import ActionChecker
-from server.activities.capabilities import CapabilityChecker, CapabilityError
-from server.activities.events import EventChecker
-from server.activities.permission import Permission
-from server.activities.fields import FieldChecker, FieldType, FieldValidationError
-from server.activities.manifest_types import LogField, Scope, XplaActivityManifest
-from server.activities import kv
-from server.activities.sandbox import SandboxExecutor
+from xpla.actions import ActionChecker
+from xpla.capabilities import CapabilityChecker, CapabilityError
+from xpla.events import EventChecker
+from xpla.permission import Permission
+from xpla.fields import FieldChecker, FieldType, FieldValidationError
+from xpla.manifest_types import LogField, Scope, XplaActivityManifest
+from xpla import kv
+from xpla.sandbox import SandboxExecutor
 
 logger = logging.getLogger(__file__)
 

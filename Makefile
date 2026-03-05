@@ -25,7 +25,7 @@ samples/%/client.bundle.js: samples/%/client.js
 	./src/tools/bundle_client.py $< --output $@
 
 server: ## Run a development server
-	fastapi dev src/server/app.py --host=127.0.0.1 --port=9752
+	fastapi dev src/xplademo/app.py --host=127.0.0.1 --port=9752
 
 format: ## Format code with black
 	black src/
@@ -52,8 +52,8 @@ test-codegen: ## Make sure that manifest types are up-to-date
 
 # This command must be run every time the schema is updated
 .PHONY: manifest-types
-manifest-types: src/server/activities/manifest_types.py ## Generate manifest types based on schema
-src/server/activities/manifest_types.py: src/sandbox-lib/manifest.schema.json 
+manifest-types: src/xpla/manifest_types.py ## Generate manifest types based on schema
+src/xpla/manifest_types.py: src/sandbox-lib/manifest.schema.json 
 	datamodel-codegen $(CODEGEN_OPTIONS) \
 		--input=src/sandbox-lib/manifest.schema.json \
 		--input-file-type=jsonschema \
@@ -61,7 +61,7 @@ src/server/activities/manifest_types.py: src/sandbox-lib/manifest.schema.json
 		--formatters black isort \
 		--output-model-type=pydantic_v2.BaseModel \
 		--use-annotated \
-		--output=src/server/activities/manifest_types.py \
+		--output=src/xpla/manifest_types.py \
 		--disable-timestamp
 
 ###### Additional commands
