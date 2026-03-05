@@ -9,7 +9,12 @@ from xpla.context import ActivityContext, MissingSandboxError
 from xpla.events import EventValidationError
 from xpla.fields import FieldValidationError
 
-from .utils import create_manifest, setup_activity_dir
+from .utils import (
+    create_manifest,
+    make_kv_store,
+    setup_activity_dir,
+    make_activity_context,
+)
 
 
 class TestActivityContextInit:
@@ -18,18 +23,14 @@ class TestActivityContextInit:
     def test_init_creates_kv_store(self, tmp_path: Path) -> None:
         """Should create a KV store at the expected path."""
         manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.kv_store is not None
 
     def test_init_loads_manifest(self, tmp_path: Path) -> None:
         """Should load manifest from activity directory."""
         manifest = create_manifest("my-activity", {"http": {}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.manifest.name == "my-activity"
         assert ctx.manifest.capabilities is not None
@@ -38,9 +39,7 @@ class TestActivityContextInit:
     def test_init_creates_capability_checker(self, tmp_path: Path) -> None:
         """Should create a CapabilityChecker from manifest."""
         manifest = create_manifest(capabilities={"http": {}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.capability_checker is not None
         # Should not raise for http capability
@@ -49,9 +48,7 @@ class TestActivityContextInit:
     def test_init_without_sandbox(self, tmp_path: Path) -> None:
         """Should set sandbox to None when no wasm file exists."""
         manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.sandbox is None
 
@@ -64,7 +61,7 @@ class TestActivityContextInit:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
-        ctx = ActivityContext(activity_dir)
+        ctx = ActivityContext(activity_dir, make_kv_store())
 
         mock_sandbox_executor.assert_called_once()
         assert ctx.sandbox is not None
@@ -76,18 +73,14 @@ class TestActivityContextProperties:
     def test_name_property(self, tmp_path: Path) -> None:
         """Should return the activity name from manifest."""
         manifest = create_manifest("quiz-activity")
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.name == "quiz-activity"
 
     def test_client_path_property(self, tmp_path: Path) -> None:
         """Should return client path from manifest."""
         manifest = create_manifest(client="src/my-client.js")
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.client_path == "src/my-client.js"
 
@@ -98,8 +91,7 @@ class TestCallSandboxFunction:
     def test_raises_when_no_sandbox(self, tmp_path: Path) -> None:
         """Should raise MissingSandboxError when sandbox is None."""
         manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         with pytest.raises(MissingSandboxError):
             ctx.call_sandbox_function("test_fn", "input")
@@ -117,7 +109,7 @@ class TestCallSandboxFunction:
         mock_sandbox.call_function.return_value = b"result"
         mock_sandbox_class.return_value = mock_sandbox
 
-        ctx = ActivityContext(activity_dir)
+        ctx = ActivityContext(activity_dir, make_kv_store())
         result = ctx.call_sandbox_function("my_function", "input_data")
 
         mock_sandbox.call_function.assert_called_once_with("my_function", "input_data")
@@ -130,8 +122,7 @@ class TestHostFunctions:
     def test_returns_expected_functions(self, tmp_path: Path) -> None:
         """Should return list of host function callables."""
         manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         functions = ctx.host_functions()
 
@@ -156,8 +147,7 @@ class TestHttpRequest:
     def test_error_when_no_http_capability(self, tmp_path: Path) -> None:
         """Should return status=0 when no HTTP capability declared."""
         manifest = create_manifest(capabilities={})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         result = ctx.http_request("https://example.com", "GET", b"", ())
 
@@ -171,8 +161,7 @@ class TestHttpRequest:
         manifest = create_manifest(
             capabilities={"http": {"allowed_hosts": ["api.example.com"]}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         result = ctx.http_request("https://evil.com/hack", "GET", b"", ())
 
@@ -188,8 +177,7 @@ class TestHttpRequest:
         manifest = create_manifest(
             capabilities={"http": {"allowed_hosts": ["api.example.com"]}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         mock_response = MagicMock()
         mock_response.read.return_value = b'{"data": "test"}'
@@ -218,8 +206,7 @@ class TestHttpRequest:
     def test_handles_http_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Should return structured response on HTTPError."""
         manifest = create_manifest(capabilities={"http": {}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         error = urllib.error.HTTPError(
             "https://example.com", 404, "Not Found", {}, None  # type: ignore[arg-type]
@@ -237,8 +224,7 @@ class TestHttpRequest:
     def test_handles_url_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Should return status=0 on URLError."""
         manifest = create_manifest(capabilities={"http": {}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
 
@@ -254,8 +240,7 @@ class TestHttpRequest:
     ) -> None:
         """Should allow all hosts when allowed_hosts is empty."""
         manifest = create_manifest(capabilities={"http": {}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         mock_response = MagicMock()
         mock_response.read.return_value = b"ok"
@@ -286,8 +271,7 @@ class TestLoadField:
                 }
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         result = ctx.load_field("c", "a", "alice", "score")
 
@@ -305,8 +289,7 @@ class TestLoadField:
                 "done": {"type": "boolean", "scope": "user,activity"},
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         assert ctx.load_field("c", "a", user, "count") == 0
@@ -325,8 +308,7 @@ class TestLoadField:
                 }
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "score", 42)
@@ -339,8 +321,7 @@ class TestLoadField:
         manifest = create_manifest(
             fields={"score": {"type": "integer", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="not declared"):
             ctx.load_field("c", "a", "alice", "unknown")
@@ -356,8 +337,7 @@ class TestLoadField:
                 }
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         base_user = "alice"
 
         ctx.store_field("c", "a", f"{base_user}_1", "score", 10)
@@ -377,8 +357,7 @@ class TestLoadField:
                 }
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.store_field("c", "a", "", "question", "What is 2+2?")
         result = ctx.load_field("c", "a", "", "question")
@@ -394,8 +373,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"count": {"type": "integer", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "count", 42)
@@ -407,8 +385,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"ratio": {"type": "number", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "ratio", 3.14)
@@ -420,8 +397,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"name": {"type": "string", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "name", "Alice")
@@ -433,8 +409,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"completed": {"type": "boolean", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "completed", True)
@@ -452,8 +427,7 @@ class TestStoreField:
                 }
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "tags", ["a", "b", "c"])
@@ -465,8 +439,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"count": {"type": "integer", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         with pytest.raises(FieldValidationError, match="failed validation"):
@@ -477,8 +450,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"score": {"type": "integer", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         with pytest.raises(FieldValidationError, match="not declared"):
@@ -489,8 +461,7 @@ class TestStoreField:
         manifest = create_manifest(
             fields={"count": {"type": "integer", "scope": "user,activity"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         user = "alice"
 
         ctx.store_field("c", "a", user, "count", 10)
@@ -510,8 +481,7 @@ class TestGetAllFields:
                 "secret": {"type": "string", "scope": "activity"},
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         result = ctx.get_all_fields()
         assert "public" in result
@@ -533,8 +503,7 @@ class TestGetAllFields:
                 },
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.store_field(ctx.course_id, ctx.activity_id, ctx.user_id, "score", 42)
         ctx.store_field(ctx.course_id, ctx.activity_id, "", "question", "What is 2+2?")
@@ -558,8 +527,7 @@ class TestGetAllFields:
                 },
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.store_field(ctx.course_id, "", "", "course_total", 100)
         ctx.store_field(ctx.course_id, "", ctx.user_id, "course_score", 85)
@@ -583,8 +551,7 @@ class TestGetAllFields:
                 },
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.store_field("", "", "", "global_setting", "on")
         ctx.store_field("", "", ctx.user_id, "global_pref", "dark")
@@ -601,8 +568,7 @@ class TestScopeAwareGetSetField:
         manifest = create_manifest(
             fields={"question": {"type": "string", "scope": "activity", "default": ""}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.get_field("question", {}) == ""
         ctx.set_field("question", "What is 2+2?", {})
@@ -615,8 +581,7 @@ class TestScopeAwareGetSetField:
                 "score": {"type": "integer", "scope": "user,activity", "default": 0}
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         assert ctx.get_field("score", {}) == 0
@@ -628,8 +593,7 @@ class TestScopeAwareGetSetField:
         manifest = create_manifest(
             fields={"total": {"type": "integer", "scope": "course", "default": 0}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.get_field("total", {}) == 0
         ctx.set_field("total", 99, {})
@@ -640,8 +604,7 @@ class TestScopeAwareGetSetField:
         manifest = create_manifest(
             fields={"grade": {"type": "integer", "scope": "user,course", "default": 0}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         assert ctx.get_field("grade", {}) == 0
@@ -653,8 +616,7 @@ class TestScopeAwareGetSetField:
         manifest = create_manifest(
             fields={"setting": {"type": "string", "scope": "global", "default": ""}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         assert ctx.get_field("setting", {}) == ""
         ctx.set_field("setting", "dark", {})
@@ -665,8 +627,7 @@ class TestScopeAwareGetSetField:
         manifest = create_manifest(
             fields={"pref": {"type": "string", "scope": "user,global", "default": ""}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         assert ctx.get_field("pref", {}) == ""
@@ -685,8 +646,7 @@ class TestScopeAwareGetSetField:
                 "count_course": {"type": "integer", "scope": "course", "default": 0},
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.set_field("count_activity", 10, {})
         ctx.set_field("count_course", 20, {})
@@ -709,8 +669,7 @@ class TestGetState:
                 },
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         result = ctx.get_state()
@@ -729,7 +688,7 @@ class TestGetState:
         mock_sandbox.call_function.return_value = b'{"question": "test"}'
         mock_sandbox_class.return_value = mock_sandbox
 
-        ctx = ActivityContext(activity_dir)
+        ctx = ActivityContext(activity_dir, make_kv_store())
         result = ctx.get_state()
 
         expected_input = {
@@ -765,7 +724,7 @@ class TestGetState:
         mock_sandbox.call_function.side_effect = RuntimeError("getState not found")
         mock_sandbox_class.return_value = mock_sandbox
 
-        ctx = ActivityContext(activity_dir)
+        ctx = ActivityContext(activity_dir, make_kv_store())
         ctx.user_id = "alice"
         result = ctx.get_state()
 
@@ -778,8 +737,7 @@ class TestSendEvent:
     def test_appends_event_to_pending(self, tmp_path: Path) -> None:
         """Should append event to pending events list with scope and permission."""
         manifest = create_manifest(events={"test.event": {"type": "string"}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.send_event("test.event", '"some value"', "{}", "play")
 
@@ -799,8 +757,7 @@ class TestSendEvent:
         manifest = create_manifest(
             events={"event1": {"type": "string"}, "event2": {"type": "string"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.send_event("event1", '"value1"', "{}", "play")
         ctx.send_event("event2", '"value2"', "{}", "edit")
@@ -815,8 +772,7 @@ class TestSendEvent:
     def test_returns_empty_string(self, tmp_path: Path) -> None:
         """Should return empty string as success indicator."""
         manifest = create_manifest(events={"test": {"type": "string"}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         result = ctx.send_event("test", '"value"', "{}", "play")
 
@@ -825,8 +781,7 @@ class TestSendEvent:
     def test_allows_declared_fields_change_events(self, tmp_path: Path) -> None:
         """Should allow fields.change.* events when declared in manifest."""
         manifest = create_manifest(events={"fields.change.score": {"type": "integer"}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.send_event("fields.change.score", "42", "{}", "play")
 
@@ -838,8 +793,7 @@ class TestSendEvent:
     def test_raises_for_undeclared_event(self, tmp_path: Path) -> None:
         """Should raise EventValidationError for undeclared event."""
         manifest = create_manifest(events={"declared.event": {"type": "string"}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         with pytest.raises(EventValidationError, match="not declared"):
             ctx.send_event("unknown.event", '"value"', "{}", "play")
@@ -847,8 +801,7 @@ class TestSendEvent:
     def test_explicit_scope_preserved(self, tmp_path: Path) -> None:
         """Should preserve explicit scope without filling defaults."""
         manifest = create_manifest(events={"test": {"type": "string"}})
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         ctx.send_event("test", '"val"', '{"user_id": "bob"}', "view")
 
@@ -865,8 +818,7 @@ class TestClearPendingEvents:
         manifest = create_manifest(
             events={"event1": {"type": "string"}, "event2": {"type": "string"}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.send_event("event1", '"value1"', "{}", "play")
         ctx.send_event("event2", '"value2"', "{}", "play")
 
@@ -880,8 +832,7 @@ class TestClearPendingEvents:
     def test_returns_empty_when_no_events(self, tmp_path: Path) -> None:
         """Should return empty list when no events pending."""
         manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         assert not ctx.clear_pending_events()
 
 
@@ -895,8 +846,7 @@ class TestFieldScopeOverrides:
                 "score": {"type": "integer", "scope": "user,activity", "default": 0}
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         # Set a field for bob via scope override
@@ -914,8 +864,7 @@ class TestFieldScopeOverrides:
                 "score": {"type": "integer", "scope": "user,activity", "default": 0}
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         ctx.set_field("score", 99, {"user_id": "bob"})
@@ -929,8 +878,7 @@ class TestFieldScopeOverrides:
         manifest = create_manifest(
             fields={"total": {"type": "integer", "scope": "course", "default": 0}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
             ctx.get_field("total", {"instance_id": "other"})
@@ -942,8 +890,7 @@ class TestFieldScopeOverrides:
         manifest = create_manifest(
             fields={"question": {"type": "string", "scope": "activity", "default": ""}}
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
             ctx.get_field("question", {"user_id": "bob"})

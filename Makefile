@@ -24,8 +24,14 @@ samples/%/server.wasm: samples/%/server.js $(SANDBOX_LIB) src/sandbox-lib/sandbo
 samples/%/client.bundle.js: samples/%/client.js
 	./src/tools/bundle_client.py $< --output $@
 
-server: ## Run a development server
+xplademo: ## Run a development server for the demo app
 	fastapi dev src/xplademo/app.py --host=127.0.0.1 --port=9752
+
+xpln: ## Run the notebook API server (port 9753)
+	fastapi dev src/xpln/app.py --host=127.0.0.1 --port=9753
+
+xpln-frontend: ## Run the notebook frontend dev server (port 3000)
+	cd src/xpln/frontend && npm run dev
 
 format: ## Format code with black
 	black src/

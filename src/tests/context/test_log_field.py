@@ -4,7 +4,12 @@ import pytest
 
 from xpla.context import ActivityContext
 from xpla.fields import FieldValidationError
-from .utils import create_manifest, setup_activity_dir
+from .utils import (
+    create_manifest,
+    make_kv_store,
+    setup_activity_dir,
+    make_activity_context,
+)
 
 
 def make_ctx(tmp_path: Path) -> ActivityContext:
@@ -24,7 +29,7 @@ def make_ctx(tmp_path: Path) -> ActivityContext:
         }
     )
     activity_dir = setup_activity_dir(tmp_path, manifest)
-    return ActivityContext(activity_dir)
+    return ActivityContext(activity_dir, field_store=make_kv_store())
 
 
 class TestLogFieldFunctions:
@@ -107,8 +112,7 @@ class TestLogFieldFunctions:
                 }
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         ctx.user_id = "alice"
 
         ctx.log_append("messages", "alice msg", {})
@@ -133,8 +137,7 @@ class TestLogFieldFunctions:
                 "count": {"type": "integer", "scope": "activity"},
             }
         )
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
+        ctx = make_activity_context(tmp_path, manifest)
         result = ctx.get_all_fields()
         assert "count" in result
         assert "messages" not in result

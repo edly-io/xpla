@@ -68,7 +68,7 @@ Build all sample activities with sandboxes:
 
 Launch a development server:
 
-    make server
+    make xplademo
 
 Then open http://127.0.0.1:9752 in a browser.
 

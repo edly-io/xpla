@@ -3,7 +3,10 @@
 {% block title %}{{ activity_context.title or "Activity" }}{% endblock %}
 
 {% block body %}
-<script type="module" src="{{ url_for('static', path='js/xpla.js') }}"></script>
+<script type="module">
+import { XPLA } from "{{ url_for('static', path='js/xpla.js') }}";
+customElements.define("xpl-activity", XPLA);
+</script>
 <h2>{{ activity_context.name }}</h2>
 <div id="simulation-toolbar" style="margin-bottom: 1em; display: flex; gap: 1em; align-items: center;">
   <label>User

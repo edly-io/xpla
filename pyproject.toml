@@ -6,6 +6,8 @@ dependencies = [
     "fastapi[standard]",
     "jinja2",
     "jsonschema",
+    "alembic",
+    "sqlmodel",
     "uvicorn[standard]",
 ]
 
@@ -21,6 +23,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pylint.MAIN]
+ignore-paths=["src/xpln/frontend"]
 
 [tool.pylint.'MESSAGES CONTROL']
 disable=[
@@ -41,3 +46,7 @@ plugins = ['pydantic.mypy']
 warn_unused_configs = true
 ignore_missing_imports = true
 strict = true
+exclude = ["src/xpln/frontend"]
+
+[tool.black]
+extend-exclude = "src/xpln/frontend"

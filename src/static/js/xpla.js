@@ -171,5 +171,3 @@ export class XPLA extends HTMLElement {
   }
 }
 
-// Attach elements to classes
-customElements.define("xpl-activity", XPLA);

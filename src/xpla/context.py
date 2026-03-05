@@ -18,10 +18,10 @@ import extism
 from xpla.actions import ActionChecker
 from xpla.capabilities import CapabilityChecker, CapabilityError
 from xpla.events import EventChecker
+from xpla.field_store import FieldStore
 from xpla.permission import Permission
 from xpla.fields import FieldChecker, FieldType, FieldValidationError
 from xpla.manifest_types import LogField, Scope, XplaActivityManifest
-from xpla import kv
 from xpla.sandbox import SandboxExecutor
 
 logger = logging.getLogger(__file__)
@@ -52,6 +52,7 @@ class ActivityContext:
     def __init__(
         self,
         activity_dir: Path,
+        field_store: FieldStore,
         # TODO make these arguments positional, and not optional
         activity_id: str = DEFAULT_ACTIVITY_ID,
         course_id: str = DEFAULT_COURSE_ID,
@@ -64,8 +65,8 @@ class ActivityContext:
         self._course_id: str = course_id
         self._activity_id: str = activity_id
 
-        # Key-value store (used internally for field storage)
-        self.kv_store = kv.get_default()
+        # Field storage backend
+        self.kv_store: FieldStore = field_store
 
         # Events posted by sandbox during execution
         self._pending_events: list[PendingEvent] = []
@@ -192,7 +193,7 @@ class ActivityContext:
     def _field_key(
         self, name: str, course_id: str, activity_id: str, user_id: str
     ) -> str:
-        """Generate the KV store key for a field."""
+        """Generate the storage key for a field."""
         return f"xpla.{self.name}.{course_id}.{activity_id}.{user_id}.{name}"
 
     def load_field(
@@ -297,9 +298,6 @@ class ActivityContext:
 
     def get_all_fields(self) -> dict[str, FieldType]:
         """Get all declared fields for a user.
-
-        Args:
-            user_id: The user ID for loading user-scoped fields.
 
         Returns:
             A dict of field names to their current values.
@@ -436,29 +434,6 @@ class ActivityContext:
         self.store_field(course_id, activity_id, user_id, name, value)
         return True
 
-    def _load_log_data(
-        self, course_id: str, activity_id: str, user_id: str, name: str
-    ) -> dict[str, Any]:
-        """Load log data from KV store, returning default if not set."""
-        key = self._field_key(name, course_id, activity_id, user_id)
-        stored = self.kv_store.get(key)
-        if stored is None:
-            return {"next_id": 0, "entries": {}}
-        assert isinstance(stored, dict)
-        return stored
-
-    def _store_log_data(
-        self,
-        course_id: str,
-        activity_id: str,
-        user_id: str,
-        name: str,
-        data: dict[str, Any],
-    ) -> None:
-        """Store log data to KV store."""
-        key = self._field_key(name, course_id, activity_id, user_id)
-        self.kv_store.set(key, data)
-
     def _log_scope_segments(
         self, name: str, scope: dict[str, str] | None = None
     ) -> tuple[str, str, str]:
@@ -478,9 +453,8 @@ class ActivityContext:
         Returns the value if found, None otherwise.
         """
         course_id, activity_id, user_id = self._log_scope_segments(name, scope)
-        data = self._load_log_data(course_id, activity_id, user_id, name)
-        value: FieldType | None = data["entries"].get(str(entry_id))
-        return value
+        key = self._field_key(name, course_id, activity_id, user_id)
+        return self.kv_store.log_get(key, entry_id)
 
     def log_get_range(
         self,
@@ -494,13 +468,8 @@ class ActivityContext:
         Returns a list of {id, value} dicts.
         """
         course_id, activity_id, user_id = self._log_scope_segments(name, scope)
-        data = self._load_log_data(course_id, activity_id, user_id, name)
-        result: list[dict[str, Any]] = []
-        for i in range(from_id, to_id):
-            key = str(i)
-            if key in data["entries"]:
-                result.append({"id": i, "value": data["entries"][key]})
-        return result
+        key = self._field_key(name, course_id, activity_id, user_id)
+        return self.kv_store.log_get_range(key, from_id, to_id)
 
     def log_append(
         self,
@@ -511,12 +480,8 @@ class ActivityContext:
         """Append a value to a log field. Returns the assigned id."""
         course_id, activity_id, user_id = self._log_scope_segments(name, scope)
         self.field_checker.validate_log_item(name, value)
-        data = self._load_log_data(course_id, activity_id, user_id, name)
-        entry_id: int = data["next_id"]
-        data["entries"][str(entry_id)] = value
-        data["next_id"] = entry_id + 1
-        self._store_log_data(course_id, activity_id, user_id, name, data)
-        return entry_id
+        key = self._field_key(name, course_id, activity_id, user_id)
+        return self.kv_store.log_append(key, value)
 
     def log_delete(
         self,
@@ -526,13 +491,8 @@ class ActivityContext:
     ) -> bool:
         """Delete a single log entry by id. Returns True if the entry existed."""
         course_id, activity_id, user_id = self._log_scope_segments(name, scope)
-        data = self._load_log_data(course_id, activity_id, user_id, name)
-        key = str(entry_id)
-        if key not in data["entries"]:
-            return False
-        del data["entries"][key]
-        self._store_log_data(course_id, activity_id, user_id, name, data)
-        return True
+        key = self._field_key(name, course_id, activity_id, user_id)
+        return self.kv_store.log_delete(key, entry_id)
 
     def log_delete_range(
         self,
@@ -543,16 +503,8 @@ class ActivityContext:
     ) -> int:
         """Delete log entries in range [from_id, to_id). Returns count deleted."""
         course_id, activity_id, user_id = self._log_scope_segments(name, scope)
-        data = self._load_log_data(course_id, activity_id, user_id, name)
-        count = 0
-        for i in range(from_id, to_id):
-            key = str(i)
-            if key in data["entries"]:
-                del data["entries"][key]
-                count += 1
-        if count > 0:
-            self._store_log_data(course_id, activity_id, user_id, name, data)
-        return count
+        key = self._field_key(name, course_id, activity_id, user_id)
+        return self.kv_store.log_delete_range(key, from_id, to_id)
 
     def http_request(
         self,

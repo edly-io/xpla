@@ -1,6 +1,10 @@
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
+
+from xpla.context import ActivityContext
+from xplademo.kv import KVStore
 
 
 def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -36,3 +40,15 @@ def setup_activity_dir(tmp_path: Path, manifest: dict[str, Any]) -> Path:
     with open(activity_dir / "manifest.json", "w", encoding="utf8") as f:
         json.dump(manifest, f)
     return activity_dir
+
+
+def make_kv_store() -> KVStore:
+    """Create a temporary KVStore for tests."""
+    tmpdir = tempfile.mkdtemp()
+    return KVStore(Path(tmpdir) / "kv.json")
+
+
+def make_activity_context(tmp_path: Path, manifest: dict[str, Any]) -> ActivityContext:
+    """Create an ActivityContext with a dummy key-value store and activity directory for tests"""
+    activity_dir = setup_activity_dir(tmp_path, manifest)
+    return ActivityContext(activity_dir, make_kv_store())

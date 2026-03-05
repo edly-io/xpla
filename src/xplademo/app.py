@@ -16,9 +16,12 @@ from xpla.actions import ActionValidationError
 from xpla.event_bus import EventBus
 from xpla.permission import Permission
 from xplademo import constants
+from xplademo.kv import KVStore, get_default
 
 USER_ID_COOKIE = "xpla_user"
 SIMULATED_USERS = ["alice", "bob", "charlie"]
+
+kv_store: KVStore = get_default()
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +49,17 @@ class ActivityNotFound(Exception):
     """Raised when an activity cannot be found."""
 
 
-def load_activity(request: Request, activity_type: str) -> ActivityContext:
+def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityContext:
     """Load an activity by ID from the samples directory."""
     try:
         activity_dir = find_activity_dir(activity_type)
     except ActivityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    user_id, permission = get_simulation_params(request.cookies)
+    user_id, permission = get_simulation_params(cookies)
     activity_context = ActivityContext(
         activity_dir,
+        kv_store,
         user_id=user_id,
         permission=permission,
         course_id="democourse",
@@ -106,7 +110,7 @@ async def home(request: Request) -> HTMLResponse:
 @app.get("/a/{activity_type}")
 async def activity(request: Request, activity_type: str) -> HTMLResponse:
     """Serve an activity"""
-    activity_context = load_activity(request, activity_type)
+    activity_context = load_activity(request.cookies, activity_type)
     activity_state = activity_context.get_state()
 
     return templates.TemplateResponse(
@@ -126,7 +130,7 @@ async def activity(request: Request, activity_type: str) -> HTMLResponse:
 @app.get("/a/{activity_type}/embed")
 async def activity_embed(request: Request, activity_type: str) -> HTMLResponse:
     """Serve an activity in a standalone page for iframe embedding."""
-    activity_context = load_activity(request, activity_type)
+    activity_context = load_activity(request.cookies, activity_type)
     activity_state = activity_context.get_state()
 
     return templates.TemplateResponse(
@@ -145,7 +149,7 @@ async def activity_asset(
     request: Request, activity_type: str, file_path: str
 ) -> FileResponse:
     """Serve static files from an activity directory."""
-    activity_context = load_activity(request, activity_type)
+    activity_context = load_activity(request.cookies, activity_type)
 
     # Security: ensure path doesn't escape activity directory
     try:
@@ -161,7 +165,7 @@ async def send_action(
     request: Request, activity_type: str, action_name: str
 ) -> JSONResponse:
     """Send an action to the activity sandbox. Events are broadcast via WebSocket."""
-    context = load_activity(request, activity_type)
+    context = load_activity(request.cookies, activity_type)
     action_value = await request.json()
 
     try:
@@ -175,41 +179,21 @@ async def send_action(
     return JSONResponse(content={})
 
 
-def _load_activity_for_ws(
-    activity_type: str,
-    user_id: str,
-    permission: Permission,
-) -> ActivityContext:
-    """Load an activity context for WebSocket use (no Request object)."""
-    try:
-        activity_dir = find_activity_dir(activity_type)
-    except ActivityNotFound as e:
-        raise ValueError(str(e)) from e
-
-    return ActivityContext(
-        activity_dir,
-        user_id=user_id,
-        permission=permission,
-        course_id="democourse",
-        activity_id="activityid",
-    )
-
-
 @app.websocket("/api/activity/{activity_type}/ws")
 async def activity_ws(websocket: WebSocket, activity_type: str) -> None:
     """WebSocket endpoint for real-time event broadcasting."""
     await websocket.accept()
 
     # Read user/permission from cookies (same as HTTP endpoints)
-    user_id, permission = get_simulation_params(websocket.cookies)
+    context = load_activity(websocket.cookies, activity_type)
 
     subscriber = event_bus.subscribe(
         activity_type,
         websocket,
-        user_id,
-        permission,
-        course_id="democourse",
-        activity_id="activityid",
+        context.user_id,
+        context.permission,
+        course_id=context.course_id,
+        activity_id=context.activity_id,
     )
 
     while True:
@@ -221,7 +205,6 @@ async def activity_ws(websocket: WebSocket, activity_type: str) -> None:
         action_name = data.get("action", "")
         action_value = data.get("value", "")
 
-        context = _load_activity_for_ws(activity_type, user_id, permission)
         try:
             context.on_action(action_name, action_value)
         except ActionValidationError as e:
