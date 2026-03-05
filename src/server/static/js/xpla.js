@@ -4,7 +4,7 @@ export class XPLA extends HTMLElement {
     this.state = {};
     this.permission = "view";
     this._ws = null;
-    this._reconnectDelay = 1000;
+    this._reconnectDelay = 500;
   }
 
   connectedCallback() {
@@ -88,7 +88,7 @@ export class XPLA extends HTMLElement {
     const url = `${proto}//${location.host}/api/activity/${activityName}/ws`;
     this._ws = new WebSocket(url);
     this._ws.onopen = () => {
-      this._reconnectDelay = 1000;
+      this._reconnectDelay = 500;
       this._flushQueue();
       this._setOfflineBanner(false);
     };
@@ -117,7 +117,7 @@ export class XPLA extends HTMLElement {
 
   _scheduleReconnect() {
     setTimeout(() => {
-      this._reconnectDelay = Math.min(this._reconnectDelay * 2, 30000);
+      this._reconnectDelay = Math.min(this._reconnectDelay * 2, 2000);
       this._connectWebSocket();
     }, this._reconnectDelay);
   }
