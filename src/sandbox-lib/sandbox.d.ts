@@ -27,10 +27,6 @@ declare module "extism:host" {
     get_field(name_ptr: I64, scope_ptr: I64): I64;
     set_field(name_ptr: I64, value_ptr: I64, scope_ptr: I64): I32;
 
-    // Get/Set object field key
-    get_object_field(name_ptr: I64, key_ptr: I64, default_ptr: I64, scope_ptr: I64): I64;
-    set_object_field(name_ptr: I64, key_ptr: I64, value_ptr: I64, scope_ptr: I64): I32;
-
     // Log field operations
     log_get(name_ptr: I64, id: I64, scope_ptr: I64): I64;
     log_get_range(name_ptr: I64, from_id: I64, to_id: I64, scope_ptr: I64): I64;

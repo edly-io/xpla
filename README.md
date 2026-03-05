@@ -382,7 +382,6 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
 - `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
-- `get_object_field(name: str, key: str, default: any, scope: str)` / `set_object_field(name: str, key: str, value: any, scope: str)`: key-level access to object-typed fields. Raises `FieldValidationError` if the field is not of type `object`
 - `log_append(name: str, value: any, scope: str) -> int`: append to a log field, returns the assigned entry ID
 - `log_get(name: str, entry_id: int, scope: str) -> any | null`: get a single log entry by ID
 - `log_get_range(name: str, from_id: int, to_id: int, scope: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`

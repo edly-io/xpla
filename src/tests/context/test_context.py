@@ -142,8 +142,6 @@ class TestHostFunctions:
             "send_event",
             "get_field",
             "set_field",
-            "get_object_field",
-            "set_object_field",
             "log_get",
             "log_get_range",
             "log_append",
