@@ -11,6 +11,23 @@
             max-width: 1024px;
             margin: auto;
         }
+        .offline-banner {
+            position: fixed;
+            bottom: 8px;
+            right: 8px;
+            padding: 4px 10px;
+            background: #d32f2f;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 13px;
+            z-index: 9999;
+            opacity: 0.92;
+            pointer-events: none;
+            display: none;
+        }
+        .offline-banner.offline {
+            display: block;
+        }
     </style>
 </head>
 <body>

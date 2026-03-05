@@ -90,14 +90,29 @@ export class XPLA extends HTMLElement {
     this._ws.onopen = () => {
       this._reconnectDelay = 1000;
       this._flushQueue();
+      this._setOfflineBanner(false);
     };
     this._ws.onmessage = (e) => {
       const event = JSON.parse(e.data);
       this.onEvent(event.name, JSON.parse(event.value));
     };
     this._ws.onclose = () => {
+      this._setOfflineBanner(true);
       this._scheduleReconnect();
     };
+  }
+
+  _setOfflineBanner(visible) {
+    var elements = document.getElementsByClassName("offline-banner");
+    if(visible) {
+      for(var element of elements) {
+        element.classList.add("offline");
+      }
+    } else {
+      for(var element of elements) {
+        element.classList.remove("offline");
+      }
+    }
   }
 
   _scheduleReconnect() {

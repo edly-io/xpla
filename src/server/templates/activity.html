@@ -9,14 +9,14 @@
   <label>User
     <select id="sim-user">
       {% for u in simulated_users %}
-      <option value="{{ u }}" {% if u == current_user %}selected{% endif %}>{{ u }}</option>
+      <option value="{{ u }}" {% if u==current_user %}selected{% endif %}>{{ u }}</option>
       {% endfor %}
     </select>
   </label>
   <label>Permission
     <select id="sim-permission">
       {% for p in permission_levels %}
-      <option value="{{ p }}" {% if p == current_permission %}selected{% endif %}>{{ p }}</option>
+      <option value="{{ p }}" {% if p==current_permission %}selected{% endif %}>{{ p }}</option>
       {% endfor %}
     </select>
   </label>
@@ -26,27 +26,25 @@
       <option value="iframe">iframe</option>
     </select>
   </label>
+  <div class="offline-banner">Offline - reconnecting...</div>
 </div>
 <script>
-  document.getElementById("sim-user").addEventListener("change", function() {
+  document.getElementById("sim-user").addEventListener("change", function () {
     document.cookie = "{{ USER_ID_COOKIE }}=" + this.value + "; path=/";
     location.reload();
   });
-  document.getElementById("sim-permission").addEventListener("change", function() {
+  document.getElementById("sim-permission").addEventListener("change", function () {
     document.cookie = "xpla_permission=" + this.value + "; path=/";
     location.reload();
   });
 </script>
 <div id="activity-container">
-<xpl-activity
-    name="{{ activity_context.name }}"
+  <xpl-activity name="{{ activity_context.name }}"
     src="{{ url_for('activity_asset', activity_type=activity_context.name, file_path=activity_context.client_path) }}"
-    data-state="{{ state_json | escape }}"
-    data-permission="{{ current_permission }}"
-></xpl-activity>
+    data-state="{{ state_json | escape }}" data-permission="{{ current_permission }}"></xpl-activity>
 </div>
 <script>
-  document.getElementById("sim-embed").addEventListener("change", function() {
+  document.getElementById("sim-embed").addEventListener("change", function () {
     const container = document.getElementById("activity-container");
     if (this.value === "iframe") {
       const iframe = document.createElement("iframe");
@@ -57,7 +55,7 @@
       container.innerHTML = "";
       container.appendChild(iframe);
 
-      window.addEventListener("message", function(e) {
+      window.addEventListener("message", function (e) {
         if (e.data && e.data.type === "xpla:resize") {
           iframe.style.height = e.data.height + "px";
         }
