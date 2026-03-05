@@ -30,19 +30,6 @@ The preferred mode for running xPLA on the client is using [shadow DOM](https://
 
 Note that most LMS support a "raw HTML" activity that is usually completely unsandboxed and is free to break the DOM and run arbitrary client code. Thus we are not sure whether the lack of client-side isolation is an actual issue.
 
-### Activity fields stored as key-values
-
-Activities define a number of fields that may be scoped per user, activity instance, course or platform. At the moment, these fields are stored as key-values that must be defined in `manifest.json` (see below). This means that it's impossible (or actually: very difficult) to store relational data. In particular, the current implementation makes it impractical to implement a chat activity with a large number of chats: the `list` type would store all chats, and reading/writing chats would be prohibitive.
-
-Here are some ideas to address this limitation:
-
-1. Store a raw sqlite database as `bytes` as activity fields: this is almost certainly overkill, and probably not very performant...
-2. Create a new `index` type that would somehow allow activities to query data by range: implementation would be left to the platform developers, which may require a lot of work. It is unclear how the existing `get/set_field` host functions would be reused with this type.
-3. Extend the existing `list` type to allow querying by range: for instance, `getField("mylist[10:]")` would return all values after the 10th element. This is probably easier to implement for platform developers, but not very versatile.
-4. Expose host functions such as `get_indexed_field(key, from, to)`: this would be most convenient for activity developers, but then a whole bunch of new host functions would then be required to insert, append and delete data.
-
-More research is needed.
-
 ### No versioning or migration mechanism
 
 Currently, activity types do not have an associated version. In particular, this means that when we modify the types of activity fields, existing data must be migrated manually, at runtime, by the activity itself. We need a mechanism to facilitate upgrading activities to a new version and migrate existing data. We could draw inspiration from the [content upgrade](https://h5p.org/documentation/developers/content-upgrade) API in H5P.
@@ -170,7 +157,7 @@ Each field must have a `type` and `scope`. An optional `default` can be provided
 }
 ```
 
-**Types:** `integer`, `number`, `string`, `boolean`, `array`, `object`. For `array`, specify an `items` field with a type schema. For `object`, specify a `properties` field. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`, `[]`, `{}`.
+**Types:** `integer`, `number`, `string`, `boolean`, `array`, `object`, `log`. For `array` and `log`, specify an `items` field with a type schema. For `object`, specify a `properties` field. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`, `[]`, `{}`. Log fields have no default and are not included in `get_field`/`set_field` or `get_all_fields` — they are accessed exclusively via the [log host functions](#log-fields).
 
 **Scopes:**
 
@@ -279,6 +266,7 @@ import {
   getPermission,
   getField, setField,
   getObjectField, setObjectField,
+  logAppend, logGet, logGetRange, logDelete, logDeleteRange,
 } from "../../src/sandbox-lib";
 
 // Send an event to the frontend
@@ -301,6 +289,13 @@ setField("score", studentScore + 1, { user_id: "student123" });
 // Get/set individual keys in object fields
 const theme = getObjectField("prefs", "theme", "light");
 setObjectField("prefs", "theme", "dark");
+
+// Log field operations (append-only ordered data)
+const id = logAppend("messages", { user: "alice", text: "hello" });
+const entry = logGet("messages", id);       // { user: "alice", text: "hello" }
+const all = logGetRange("messages", 0, 100); // [{ id: 0, value: {...} }, ...]
+logDelete("messages", id);                   // true
+logDeleteRange("messages", 0, 50);           // returns count deleted
 ```
 
 ##### Exported functions
@@ -382,12 +377,38 @@ Plugins can call host functions which are defined in [`src/server/activities/con
 
 - `get_permission() -> str`
 - `send_event(name: str, value: str)`
-- `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior
+- `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
 - `get_object_field(name: str, key: str, default: any, scope: str)` / `set_object_field(name: str, key: str, value: any, scope: str)`: key-level access to object-typed fields. Raises `FieldValidationError` if the field is not of type `object`
+- `log_append(name: str, value: any, scope: str) -> int`: append to a log field, returns the assigned entry ID
+- `log_get(name: str, entry_id: int, scope: str) -> any | null`: get a single log entry by ID
+- `log_get_range(name: str, from_id: int, to_id: int, scope: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
+- `log_delete(name: str, entry_id: int, scope: str) -> bool`: delete a single entry, returns whether it existed
+- `log_delete_range(name: str, from_id: int, to_id: int, scope: str) -> int`: delete entries in range, returns count deleted
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
 - `submit_grade(score: float)`
 
-<!-- TODO actually document these host functions -->
+##### Log fields
+
+The `log` type provides append-only ordered storage with auto-incrementing IDs, suitable for chat messages, event histories, and similar use cases. Unlike other field types, log fields are not accessible via `get_field`/`set_field` and are not included in `get_all_fields` — they have dedicated host functions (`log_append`, `log_get`, `log_get_range`, `log_delete`, `log_delete_range`).
+
+Log fields cannot be nested: the `items` type schema uses the same types as other fields (`integer`, `number`, `string`, `boolean`, `array`, `object`) but not `log`.
+
+**Internal storage format.** The reference implementation stores each log as a single KV entry with the structure `{"next_id": N, "entries": {"0": val, "1": val, ...}}`. This is adequate for small to medium logs.
+
+**SQL implementation guidance.** For production platforms, logs should be backed by a SQL table rather than a single KV blob. A suggested schema:
+
+```sql
+CREATE TABLE xpla_log_entries (
+    field_key  TEXT NOT NULL,   -- same scoped key as other fields
+    entry_id   INTEGER NOT NULL,
+    value      JSONB NOT NULL,
+    PRIMARY KEY (field_key, entry_id)
+);
+```
+
+With this table, `log_append` becomes an `INSERT` with a `SELECT max(entry_id) + 1`, `log_get` is a simple `SELECT ... WHERE entry_id = ?`, `log_get_range` is `SELECT ... WHERE entry_id >= ? AND entry_id < ? ORDER BY entry_id`, and `log_delete`/`log_delete_range` are `DELETE` statements. A separate sequence or `max + 1` query provides the next ID. This representation scales well and supports efficient range queries via the primary key index.
+
+See the [`samples/chat`](./samples/chat) activity for a working example.
 
 ##### Recommendations
 

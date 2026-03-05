@@ -1,0 +1,37 @@
+{
+  "name": "chat",
+  "client": "client.js",
+  "server": "server.wasm",
+  "capabilities": {},
+  "fields": {
+    "messages": {
+      "type": "log",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {"type": "string"},
+          "text": {"type": "string"}
+        }
+      },
+      "scope": "activity"
+    }
+  },
+  "actions": {
+    "chat.post": {
+      "type": "object",
+      "properties": {
+        "text": {"type": "string"}
+      }
+    }
+  },
+  "events": {
+    "chat.new": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer"},
+        "user": {"type": "string"},
+        "text": {"type": "string"}
+      }
+    }
+  }
+}

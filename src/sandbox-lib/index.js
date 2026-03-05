@@ -9,6 +9,11 @@ const {
   set_field,
   get_object_field,
   set_object_field,
+  log_get,
+  log_get_range,
+  log_append,
+  log_delete,
+  log_delete_range,
   get_permission,
 } = Host.getFunctions();
 
@@ -46,6 +51,31 @@ export function setObjectField(name, key, value, scope = {}) {
   set_object_field(
     string2memoryOffset(name), string2memoryOffset(key), data2memoryOffset(value), data2memoryOffset(scope)
   );
+}
+
+// Get a single log entry by id.
+export function logGet(name, id, scope = {}) {
+  return memoryOffset2data(log_get(string2memoryOffset(name), id, data2memoryOffset(scope)));
+}
+
+// Get log entries in range [fromId, toId).
+export function logGetRange(name, fromId, toId, scope = {}) {
+  return memoryOffset2data(log_get_range(string2memoryOffset(name), fromId, toId, data2memoryOffset(scope)));
+}
+
+// Append a value to a log field. Returns the assigned id.
+export function logAppend(name, value, scope = {}) {
+  return log_append(string2memoryOffset(name), data2memoryOffset(value), data2memoryOffset(scope));
+}
+
+// Delete a single log entry by id.
+export function logDelete(name, id, scope = {}) {
+  return log_delete(string2memoryOffset(name), id, data2memoryOffset(scope));
+}
+
+// Delete log entries in range [fromId, toId). Returns count deleted.
+export function logDeleteRange(name, fromId, toId, scope = {}) {
+  return log_delete_range(string2memoryOffset(name), fromId, toId, data2memoryOffset(scope));
 }
 
 function string2memoryOffset(str) {

@@ -159,6 +159,11 @@ class ObjectType(BaseModel):
     properties: dict[str, TypeSchema]
 
 
+class LogType(BaseModel):
+    type: Literal["log"]
+    items: TypeSchema
+
+
 class ArrayField(ArrayType, FieldBase):
     model_config = ConfigDict(
         extra="forbid",
@@ -179,6 +184,12 @@ class TypeSchema(
     root: IntegerType | NumberType | StringType | BooleanType | ArrayType | ObjectType
 
 
+class LogField(LogType, FieldBase):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
 class FieldDefinition(
     RootModel[
         IntegerField
@@ -187,6 +198,7 @@ class FieldDefinition(
         | BooleanField
         | ArrayField
         | ObjectField
+        | LogField
     ]
 ):
     root: (
@@ -196,11 +208,14 @@ class FieldDefinition(
         | BooleanField
         | ArrayField
         | ObjectField
+        | LogField
     )
 
 
 XplaActivityManifest.model_rebuild()
 ArrayType.model_rebuild()
 ObjectType.model_rebuild()
+LogType.model_rebuild()
 ArrayField.model_rebuild()
 ObjectField.model_rebuild()
+LogField.model_rebuild()

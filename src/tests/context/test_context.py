@@ -144,6 +144,11 @@ class TestHostFunctions:
             "set_field",
             "get_object_field",
             "set_object_field",
+            "log_get",
+            "log_get_range",
+            "log_append",
+            "log_delete",
+            "log_delete_range",
             "http_request",
             "submit_grade",
         ]

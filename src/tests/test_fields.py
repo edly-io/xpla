@@ -238,3 +238,69 @@ class TestFieldChecker:
                 items={"type": "integer"},
                 properties={"x": {"type": "integer"}},
             )
+
+    def test_log_field_accepted(self) -> None:
+        """Should accept a log field definition."""
+        fields = {
+            "messages": field(
+                type="log",
+                items={"type": "string"},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        assert "messages" in checker.field_names
+
+    def test_require_log_type_passes_for_log(self) -> None:
+        """Should not raise for log-typed fields."""
+        fields = {
+            "messages": field(
+                type="log",
+                items={"type": "string"},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        checker.require_log_type("messages")  # Should not raise
+
+    def test_require_log_type_raises_for_non_log(self) -> None:
+        """Should raise FieldValidationError for non-log fields."""
+        fields = {"count": field(type="integer", scope=Scope.activity)}
+        checker = FieldChecker(fields)
+        with pytest.raises(FieldValidationError, match="expected 'log'"):
+            checker.require_log_type("count")
+
+    def test_validate_log_item_passes(self) -> None:
+        """Should pass for valid log item."""
+        fields = {
+            "messages": field(
+                type="log",
+                items={"type": "string"},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        checker.validate_log_item("messages", "hello")  # Should not raise
+
+    def test_validate_log_item_fails(self) -> None:
+        """Should raise for invalid log item."""
+        fields = {
+            "messages": field(
+                type="log",
+                items={"type": "string"},
+                scope=Scope.activity,
+            )
+        }
+        checker = FieldChecker(fields)
+        with pytest.raises(FieldValidationError, match="item failed validation"):
+            checker.validate_log_item("messages", 123)
+
+    def test_log_field_rejects_properties(self) -> None:
+        """Should reject a log field that has 'properties' (object-only attribute)."""
+        with pytest.raises(ValidationError):
+            field(
+                type="log",
+                scope="activity",
+                items={"type": "string"},
+                properties={"x": {"type": "integer"}},
+            )

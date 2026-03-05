@@ -117,6 +117,10 @@
       "unevaluatedProperties": false,
       "allOf": [{ "$ref": "#/$defs/objectType" }, { "$ref": "#/$defs/fieldBase" }]
     },
+    "logField": {
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/logType" }, { "$ref": "#/$defs/fieldBase" }]
+    },
     "fieldDefinition": {
       "oneOf": [
         { "$ref": "#/$defs/integerField" },
@@ -124,7 +128,8 @@
         { "$ref": "#/$defs/stringField" },
         { "$ref": "#/$defs/booleanField" },
         { "$ref": "#/$defs/arrayField" },
-        { "$ref": "#/$defs/objectField" }
+        { "$ref": "#/$defs/objectField" },
+        { "$ref": "#/$defs/logField" }
       ]
     },
     "integerType": {
@@ -172,6 +177,14 @@
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/typeSchema" }
         }
+      }
+    },
+    "logType": {
+      "type": "object",
+      "required": ["type", "items"],
+      "properties": {
+        "type": { "type": "string", "const": "log" },
+        "items": { "$ref": "#/$defs/typeSchema" }
       }
     },
     "typeSchema": {

@@ -11,6 +11,8 @@ from server.activities.manifest_types import (
     BooleanField,
     FieldDefinition,
     IntegerField,
+    LogField,
+    LogType,
     NumberField,
     ObjectField,
     ObjectType,
@@ -20,7 +22,13 @@ from server.activities.manifest_types import (
 
 # Union of all concrete field definition types (the inner type of FieldDefinition)
 FieldVariant = (
-    IntegerField | NumberField | StringField | BooleanField | ArrayField | ObjectField
+    IntegerField
+    | NumberField
+    | StringField
+    | BooleanField
+    | ArrayField
+    | ObjectField
+    | LogField
 )
 
 __all__ = [
@@ -54,6 +62,8 @@ def build_type_schema(definition: Any) -> dict[str, Any]:
                 k: build_type_schema(v.root) for k, v in definition.properties.items()
             },
         }
+    if isinstance(definition, (LogType, LogField)):
+        return build_type_schema(definition.items.root)
     return {"type": definition.type}
 
 
@@ -132,6 +142,30 @@ class FieldChecker:
             raise FieldValidationError(
                 f"Field '{name}' is of type '{definition.type}', expected 'object'"
             )
+
+    def require_log_type(self, name: str) -> None:
+        """Raise if the field is not of type 'log'."""
+        definition = self.get_definition(name)
+        if not isinstance(definition, LogField):
+            raise FieldValidationError(
+                f"Field '{name}' is of type '{definition.type}', expected 'log'"
+            )
+
+    def validate_log_item(self, name: str, value: FieldType) -> None:
+        """Validate a single item value against the log's items schema.
+
+        Raises:
+            FieldValidationError: If the value is invalid.
+        """
+        definition = self.get_definition(name)
+        assert isinstance(definition, LogField)
+        schema = build_type_schema(definition)
+        try:
+            jsonschema.validate(value, schema)
+        except jsonschema.ValidationError as e:
+            raise FieldValidationError(
+                f"Log field '{name}' item failed validation: {e.message}"
+            ) from e
 
     def get_scope(self, name: str) -> Scope:
         """Get the scope of a declared field."""

@@ -20,7 +20,7 @@ from server.activities.capabilities import CapabilityChecker, CapabilityError
 from server.activities.events import EventChecker
 from server.activities.permission import Permission
 from server.activities.fields import FieldChecker, FieldType, FieldValidationError
-from server.activities.manifest_types import Scope, XplaActivityManifest
+from server.activities.manifest_types import LogField, Scope, XplaActivityManifest
 from server.activities import kv
 from server.activities.sandbox import SandboxExecutor
 
@@ -286,6 +286,8 @@ class ActivityContext:
         """
         result: dict[str, FieldType] = {}
         for name in self.field_checker.field_names:
+            if isinstance(self.field_checker.get_definition(name), LogField):
+                continue
             scope = self.field_checker.get_scope(name)
             course_id, activity_id, uid = self._scope_key_segments(scope)
             result[name] = self.load_field(course_id, activity_id, uid, name)
@@ -323,6 +325,11 @@ class ActivityContext:
             self.set_field,
             self.get_object_field,
             self.set_object_field,
+            self.log_get,
+            self.log_get_range,
+            self.log_append,
+            self.log_delete,
+            self.log_delete_range,
             self.http_request,
             self.submit_grade,
         ]
@@ -357,6 +364,10 @@ class ActivityContext:
         Returns JSON-encoded value (e.g., "42" for integer, "true" for boolean).
         Returns the default value if not set.
         """
+        if isinstance(self.field_checker.get_definition(name), LogField):
+            raise FieldValidationError(
+                f"Field '{name}' is of type 'log'; use log_get/log_get_range instead"
+            )
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
         value = self.load_field(course_id, activity_id, user_id, name)
@@ -375,6 +386,10 @@ class ActivityContext:
             value: JSON-encoded value.
             scope: JSON-encoded dict of scope overrides.
         """
+        if isinstance(self.field_checker.get_definition(name), LogField):
+            raise FieldValidationError(
+                f"Field '{name}' is of type 'log'; use log_append instead"
+            )
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, scope)
         self.store_field(course_id, activity_id, user_id, name, value)
@@ -426,6 +441,124 @@ class ActivityContext:
         obj[key] = value
         self.store_field(course_id, activity_id, user_id, name, obj)
         return True
+
+    def _load_log_data(
+        self, course_id: str, activity_id: str, user_id: str, name: str
+    ) -> dict[str, Any]:
+        """Load log data from KV store, returning default if not set."""
+        key = self._field_key(name, course_id, activity_id, user_id)
+        stored = self.kv_store.get(key)
+        if stored is None:
+            return {"next_id": 0, "entries": {}}
+        assert isinstance(stored, dict)
+        return stored
+
+    def _store_log_data(
+        self,
+        course_id: str,
+        activity_id: str,
+        user_id: str,
+        name: str,
+        data: dict[str, Any],
+    ) -> None:
+        """Store log data to KV store."""
+        key = self._field_key(name, course_id, activity_id, user_id)
+        self.kv_store.set(key, data)
+
+    def _log_scope_segments(
+        self, name: str, scope: dict[str, str] | None = None
+    ) -> tuple[str, str, str]:
+        """Validate log field and return scope key segments."""
+        self.field_checker.require_log_type(name)
+        field_scope = self.field_checker.get_scope(name)
+        return self._scope_key_segments(field_scope, scope)
+
+    def log_get(
+        self,
+        name: str,
+        entry_id: int,
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> Annotated[FieldType | None, extism.Json]:
+        """Get a single log entry by id.
+
+        Returns the value if found, None otherwise.
+        """
+        course_id, activity_id, user_id = self._log_scope_segments(name, scope)
+        data = self._load_log_data(course_id, activity_id, user_id, name)
+        value: FieldType | None = data["entries"].get(str(entry_id))
+        return value
+
+    def log_get_range(
+        self,
+        name: str,
+        from_id: int,
+        to_id: int,
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> Annotated[list[dict[str, Any]], extism.Json]:
+        """Get log entries in range [from_id, to_id).
+
+        Returns a list of {id, value} dicts.
+        """
+        course_id, activity_id, user_id = self._log_scope_segments(name, scope)
+        data = self._load_log_data(course_id, activity_id, user_id, name)
+        result: list[dict[str, Any]] = []
+        for i in range(from_id, to_id):
+            key = str(i)
+            if key in data["entries"]:
+                result.append({"id": i, "value": data["entries"][key]})
+        return result
+
+    def log_append(
+        self,
+        name: str,
+        value: Annotated[FieldType, extism.Json],
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> int:
+        """Append a value to a log field. Returns the assigned id."""
+        course_id, activity_id, user_id = self._log_scope_segments(name, scope)
+        self.field_checker.validate_log_item(name, value)
+        data = self._load_log_data(course_id, activity_id, user_id, name)
+        entry_id: int = data["next_id"]
+        data["entries"][str(entry_id)] = value
+        data["next_id"] = entry_id + 1
+        self._store_log_data(course_id, activity_id, user_id, name, data)
+        return entry_id
+
+    def log_delete(
+        self,
+        name: str,
+        entry_id: int,
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> bool:
+        """Delete a single log entry by id. Returns True if the entry existed."""
+        course_id, activity_id, user_id = self._log_scope_segments(name, scope)
+        data = self._load_log_data(course_id, activity_id, user_id, name)
+        key = str(entry_id)
+        if key not in data["entries"]:
+            return False
+        del data["entries"][key]
+        self._store_log_data(course_id, activity_id, user_id, name, data)
+        return True
+
+    def log_delete_range(
+        self,
+        name: str,
+        from_id: int,
+        to_id: int,
+        scope: Annotated[dict[str, str], extism.Json],
+    ) -> int:
+        """Delete log entries in range [from_id, to_id). Returns count deleted."""
+        course_id, activity_id, user_id = self._log_scope_segments(name, scope)
+        data = self._load_log_data(course_id, activity_id, user_id, name)
+        count = 0
+        for i in range(from_id, to_id):
+            key = str(i)
+            if key in data["entries"]:
+                del data["entries"][key]
+                count += 1
+        if count > 0:
+            self._store_log_data(course_id, activity_id, user_id, name, data)
+        return count
 
     def http_request(
         self,
