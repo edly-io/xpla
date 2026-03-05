@@ -3,18 +3,16 @@
 // Actions handled:
 // - chat.post: Append a message and broadcast it
 
-import { sendEvent, logAppend, logGetRange, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, logAppend, logGetRange } from "../../src/sandbox-lib";
 
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
+  const { name, value, scope } = JSON.parse(Host.inputString());
 
-  if (actionName === "chat.post") {
-    const user = getPermission(); // placeholder: use permission as user id
-    const entry = { user, text: actionValue.text };
+  if (name === "chat.post") {
+    const user = scope.user_id;
+    const entry = { user, text: value.text };
     const id = logAppend("messages", entry);
-    sendEvent("chat.new", { id, user, text: actionValue.text });
+    sendEvent("chat.new", { id, user, text: value.text });
   }
 }
 

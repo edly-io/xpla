@@ -18,29 +18,27 @@ function saveUserCode(code) {
 }
 
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
+  const { name, value } = JSON.parse(Host.inputString());
 
-  if (actionName === "config.save") {
+  if (name === "config.save") {
     if (getPermission() !== "edit") {
       console.log("config.save rejected: permission is " + getPermission());
       return;
     }
     for (const key of ["instructions", "starter_code", "test_code"]) {
-      if (actionValue[key] !== undefined) {
-        setField(key, actionValue[key]);
-        sendEvent("fields.change." + key, actionValue[key]);
+      if (value[key] !== undefined) {
+        setField(key, value[key]);
+        sendEvent("fields.change." + key, value[key]);
       }
     }
   }
 
-  if (actionName === "code.run" || actionName === "code.check") {
+  if (name === "code.run" || name === "code.check") {
     if (getPermission() === "view") {
-      console.log(actionName + " rejected: permission is view");
+      console.log(name + " rejected: permission is view");
       return;
     }
-    saveUserCode(actionValue.code);
+    saveUserCode(value.code);
   }
 }
 

@@ -4,8 +4,8 @@
 // Include in your sandbox project's tsconfig.json or reference directly.
 
 declare module "main" {
-  // Handle incoming events from the frontend
-  // Input: JSON { "name": "...", "value": "..." }
+  // Handle incoming action from the frontend.
+  // Input: JSON { "name": "...", "value": ..., "scope": { "user_id": "...", "course_id": "...", "activity_id": "..." } }
   export function onAction(): I32;
   // Return state to display to the user.
   // Output: JSON

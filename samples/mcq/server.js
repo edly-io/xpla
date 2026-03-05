@@ -8,14 +8,12 @@ import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-
 
 // Handle incoming actions from frontend
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
+  const { name, value } = JSON.parse(Host.inputString());
 
-  if (actionName === "config.save") {
-    handleConfigSave(actionValue);
-  } else if (actionName === "answer.submit") {
-    handleAnswerSubmit(actionValue);
+  if (name === "config.save") {
+    handleConfigSave(value);
+  } else if (name === "answer.submit") {
+    handleAnswerSubmit(value);
   }
 }
 

@@ -6,17 +6,15 @@
 import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
 
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
+  const { name, value } = JSON.parse(Host.inputString());
 
-  if (actionName === "config.save") {
+  if (name === "config.save") {
     if (getPermission() !== "edit") {
       console.log("config.save rejected: permission is " + getPermission());
       return;
     }
-    setField("video_id", actionValue.video_id);
-    sendEvent("fields.change.video_id", actionValue.video_id);
+    setField("video_id", value.video_id);
+    sendEvent("fields.change.video_id", value.video_id);
   }
 }
 

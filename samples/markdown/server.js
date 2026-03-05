@@ -20,16 +20,14 @@ function renderMarkdown(content, headerStartLevel) {
 }
 
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
+  const { name, value } = JSON.parse(Host.inputString());
 
-  if (actionName === "config.save") {
+  if (name === "config.save") {
     if (getPermission() !== "edit") {
       console.log("config.save rejected: permission is " + getPermission());
       return;
     }
-    const markdownContent = actionValue.markdown_content;
+    const markdownContent = value.markdown_content;
     const headerStartLevel = getField("header_start_level") || 2;
     const html = renderMarkdown(markdownContent, headerStartLevel);
 

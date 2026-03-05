@@ -26,19 +26,16 @@ function getState() {
 }
 
 // Handle incoming actions from frontend
-// Input: JSON { "name": "...", "value": "..." }
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  const actionName = input.name;
-  const actionValue = input.value;
+  const { name, value } = JSON.parse(Host.inputString());
 
-  if (actionName === "answer.submit") {
+  if (name === "answer.submit") {
     if (getPermission() === "view") {
       console.log("answer.submit rejected: permission is view");
       return;
     }
     // Parse the submission: { question: "2+2", answer: "4" }
-    const submission = actionValue;
+    const submission = value;
     const result = checkAnswer(submission.question, submission.answer);
 
     // Update counters and emit value change events

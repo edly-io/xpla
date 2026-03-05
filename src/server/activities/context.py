@@ -145,12 +145,24 @@ class ActivityContext:
         """
         Call the sandbox onAction callback.
 
+        The sandbox receives three arguments: the action name, the action
+        value, and a scope dict with the current context identifiers
+        (user_id, course_id, activity_id).
+
         Raise ActionValidationError if action is not valid.
         """
         self.action_checker.validate(action_name, action_value)
         # Call sandbox's onAction if available
         if self.sandbox is not None:
-            action_input = {"name": action_name, "value": action_value}
+            action_input = {
+                "name": action_name,
+                "value": action_value,
+                "scope": {
+                    "user_id": self._user_id,
+                    "course_id": self._course_id,
+                    "activity_id": self._activity_id,
+                },
+            }
             try:
                 self.call_sandbox_function("onAction", action_input)
             except RuntimeError as e:

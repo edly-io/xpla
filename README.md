@@ -302,7 +302,7 @@ logDeleteRange("messages", 0, 50);           // returns count deleted
 
 The sandbox script can export the following functions:
 
-- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`.
+- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The input is a JSON object with three keys: `name` (the action name), `value` (the action payload), and `scope` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context).
 - `getState()`: Called when the activity page loads. Returns a JSON string of fields to send to the client. Use this to filter fields based on the current permission level (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
@@ -317,8 +317,12 @@ function getState() {
 }
 
 function onAction() {
-  const input = JSON.parse(Host.inputString());
-  // Process action...
+  const { name, value, scope } = JSON.parse(Host.inputString());
+  // name: action name (e.g. "answer.submit")
+  // value: action payload
+  // scope.user_id: current user ID
+  // scope.course_id: current course ID
+  // scope.activity_id: current activity instance ID
 }
 
 module.exports = { onAction, getState };
@@ -367,7 +371,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 The exact HTTP API is platform-specific and does not need to follow a standard. The platform must support two types of requests from the frontend:
 
 - **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The action value must be JSON-formatted. The backend validates the action, calls the sandbox's `onAction()` function, collects events emitted during execution, and returns them as JSON.
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The action value must be JSON-formatted. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, and `scope` (a dict with `user_id`, `course_id`, `activity_id`). It collects events emitted during execution and returns them as JSON.
 
 Our implementation exposes these as FastAPI endpoints in [`src/server/app.py`](./src/server/app.py).
 
