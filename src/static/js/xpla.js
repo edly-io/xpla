@@ -84,9 +84,7 @@ export class XPLA extends HTMLElement {
   _connectWebSocket() {
     const activityName = this.getAttribute("name");
     // Cookies are sent automatically on the WebSocket handshake
-    const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${location.host}/api/activity/${activityName}/ws`;
-    this._ws = new WebSocket(url);
+    this._ws = new WebSocket(this._getWebsocketUrl());
     this._ws.onopen = () => {
       this._reconnectDelay = 500;
       this._flushQueue();
@@ -102,14 +100,17 @@ export class XPLA extends HTMLElement {
     };
   }
 
+  _getWebsocketUrl() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${location.host}/api/activity/${activityName}/ws`;
+  }
+
   _setOfflineBanner(visible) {
     var elements = document.getElementsByClassName("offline-banner");
-    if(visible) {
-      for(var element of elements) {
+    for (var element of elements) {
+      if (visible) {
         element.classList.add("offline");
-      }
-    } else {
-      for(var element of elements) {
+      } else {
         element.classList.remove("offline");
       }
     }
@@ -148,9 +149,13 @@ export class XPLA extends HTMLElement {
   }
 
   sendAction(name, value = "") {
+    this._pushAction({ action: name, value });
+  }
+
+  _pushAction(action) {
     const key = this._storageKey();
     const pending = JSON.parse(localStorage.getItem(key) || "[]");
-    pending.push({ action: name, value });
+    pending.push(action);
     localStorage.setItem(key, JSON.stringify(pending));
     if (this._ws.readyState === WebSocket.OPEN) {
       this._flushQueue();
