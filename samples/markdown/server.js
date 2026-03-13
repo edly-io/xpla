@@ -39,7 +39,7 @@ function onAction() {
 }
 
 function getState() {
-  const { permission } = JSON.parse(Host.inputString());
+  const { permission, scope } = JSON.parse(Host.inputString());
   const state = {
     rendered_html: getField("rendered_html"),
   };
