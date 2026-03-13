@@ -8,7 +8,6 @@
 
 import {
   sendEvent,
-  getPermission,
   getField,
   setField,
 } from "../../src/sandbox-lib";
@@ -27,10 +26,10 @@ function getState() {
 
 // Handle incoming actions from frontend
 function onAction() {
-  const { name, value } = JSON.parse(Host.inputString());
+  const { name, value, permission } = JSON.parse(Host.inputString());
 
   if (name === "answer.submit") {
-    if (getPermission() === "view") {
+    if (permission === "view") {
       console.log("answer.submit rejected: permission is view");
       return;
     }

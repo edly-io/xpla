@@ -12,16 +12,10 @@ const {
   log_append,
   log_delete,
   log_delete_range,
-  get_permission,
 } = Host.getFunctions();
 
 export function sendEvent(name, value, scope = {}, permission = "play") {
   send_event(string2memoryOffset(name), data2memoryOffset(value), data2memoryOffset(scope), string2memoryOffset(permission));
-}
-
-// Get the current permission level ("view", "play", or "edit").
-export function getPermission() {
-  return memoryOffset2string(get_permission());
 }
 
 // Get a field (scope resolved from manifest).

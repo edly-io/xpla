@@ -5,9 +5,10 @@
 
 declare module "main" {
   // Handle incoming action from the frontend.
-  // Input: JSON { "name": "...", "value": ..., "scope": { "user_id": "...", "course_id": "...", "activity_id": "..." } }
+  // Input: JSON { "name": "...", "value": ..., "scope": { "user_id": "...", "course_id": "...", "activity_id": "..." }, "permission": "view"|"play"|"edit" }
   export function onAction(): I32;
   // Return state to display to the user.
+  // Input: JSON { "scope": { "user_id": "...", "course_id": "...", "activity_id": "..." }, "permission": "view"|"play"|"edit" }
   // Output: JSON
   export function getState(): I32;
 }
@@ -16,9 +17,6 @@ declare module "extism:host" {
   interface user {
     // LMS functions (require lms capability)
     submit_grade(score: F64): I32;
-
-    // Get current user permission
-    get_permission(): I64;
 
     // Event posting
     send_event(name_ptr: I64, value_ptr: I64, scope_ptr: I64, permission_ptr: I64): I64;

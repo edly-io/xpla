@@ -4,14 +4,14 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/sandbox-lib";
 
 // Handle incoming actions from frontend
 function onAction() {
-  const { name, value } = JSON.parse(Host.inputString());
+  const { name, value, permission } = JSON.parse(Host.inputString());
 
   if (name === "config.save") {
-    handleConfigSave(value);
+    handleConfigSave(value, permission);
   } else if (name === "answer.submit") {
     handleAnswerSubmit(value);
   }
@@ -19,20 +19,21 @@ function onAction() {
 
 // Return state visible to the current user based on permission level.
 function getState() {
+  const { permission } = JSON.parse(Host.inputString());
   const state = {
     question: getField("question"),
     answers: getField("answers"),
   };
-  if (getPermission() === "edit") {
+  if (permission === "edit") {
     state.correct_answers = getField("correct_answers");
   }
   Host.outputString(JSON.stringify(state));
 }
 
 // Save configuration (question, answers, correct_answers)
-function handleConfigSave(config) {
-  if (getPermission() !== "edit") {
-    console.log("config.save rejected: permission is " + getPermission());
+function handleConfigSave(config, permission) {
+  if (permission !== "edit") {
+    console.log("config.save rejected: permission is " + permission);
     return;
   }
   setField("question", config.question);

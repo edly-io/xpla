@@ -7,7 +7,6 @@ import pytest
 
 from xpla.context import ActivityContext, MissingSandboxError
 from xpla.events import EventValidationError
-from xpla.permission import Permission
 from xpla.fields import FieldValidationError
 
 from .utils import create_manifest, setup_activity_dir
@@ -138,7 +137,6 @@ class TestHostFunctions:
 
         function_names = [f.__name__ for f in functions]
         assert function_names == [
-            "get_permission",
             "send_event",
             "get_field",
             "set_field",
@@ -581,39 +579,6 @@ class TestGetAllFields:
         assert result == {"global_setting": "on", "global_pref": "dark"}
 
 
-class TestGetPermission:
-    """Tests for get_permission host function."""
-
-    def test_default_permission(self, tmp_path: Path) -> None:
-        """Should default to 'play' permission."""
-        manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        assert ctx.get_permission() == "play"
-
-    def test_set_permission(self, tmp_path: Path) -> None:
-        """Should return the permission that was set."""
-        manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        ctx.permission = Permission.edit
-        assert ctx.get_permission() == "edit"
-
-        ctx.permission = Permission.play
-        assert ctx.get_permission() == "play"
-
-    def test_in_host_functions(self, tmp_path: Path) -> None:
-        """get_permission should be in the host functions list."""
-        manifest = create_manifest()
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        ctx = ActivityContext(activity_dir)
-
-        function_names = [f.__name__ for f in ctx.host_functions()]
-        assert "get_permission" in function_names
-
-
 class TestScopeAwareGetSetField:
     """Tests for scope-aware get_field/set_field host functions."""
 
@@ -753,7 +718,15 @@ class TestGetState:
         ctx = ActivityContext(activity_dir)
         result = ctx.get_state()
 
-        mock_sandbox.call_function.assert_called_once_with("getState", None)
+        expected_input = {
+            "scope": {
+                "user_id": ActivityContext.DEFAULT_USER_ID,
+                "course_id": ActivityContext.DEFAULT_COURSE_ID,
+                "activity_id": ActivityContext.DEFAULT_ACTIVITY_ID,
+            },
+            "permission": ActivityContext.DEFAULT_PERMISSION.value,
+        }
+        mock_sandbox.call_function.assert_called_once_with("getState", expected_input)
         assert result == {"question": "test"}
 
     @patch("xpla.context.SandboxExecutor")

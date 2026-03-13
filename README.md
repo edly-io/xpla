@@ -178,7 +178,7 @@ Access control is handled at runtime through **permissions** rather than per-fie
 - `"play"`: Active participant (student). Can submit answers.
 - `"edit"`: Course author. Can configure the activity.
 
-The sandbox controls what state to expose to the client via an exported `getState()` function, which can check the current permission level using `getPermission()` from the sandbox library. Similarly, the sandbox can guard actions (e.g. reject submissions when permission is `"view"`).
+The sandbox controls what state to expose to the client via an exported `getState()` function, which receives the current permission level as input. Similarly, the sandbox can guard actions using the `permission` value included in the `onAction` input (e.g. reject submissions when permission is `"view"`).
 
 ##### Actions & Events
 
@@ -263,7 +263,6 @@ A shared library is available at [`src/sandbox-lib/index.js`](./src/sandbox-lib/
 ```javascript
 import {
   sendEvent,
-  getPermission,
   getField, setField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
 } from "../../src/sandbox-lib";
@@ -273,9 +272,6 @@ import {
 //   scope: {} = current activity (default), or e.g. { user_id: "alice" } to target a specific user
 //   permission: minimum permission to receive the event ("view", "play", or "edit")
 sendEvent("answer.result", { correct: true }, {}, "play");
-
-// Get the current permission level ("view", "play", or "edit")
-const permission = getPermission();
 
 // Get/set fields (scope is resolved automatically from manifest)
 const score = getField("correct_answers");
@@ -300,27 +296,29 @@ logDeleteRange("messages", 0, 50);           // returns count deleted
 
 The sandbox script can export the following functions:
 
-- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The input is a JSON object with three keys: `name` (the action name), `value` (the action payload), and `scope` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context).
-- `getState()`: Called when the activity page loads. Returns a JSON string of fields to send to the client. Use this to filter fields based on the current permission level (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
+- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The input is a JSON object with four keys: `name` (the action name), `value` (the action payload), `scope` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"view"`, `"play"`, or `"edit"`).
+- `getState()`: Called when the activity page loads. The input is a JSON object with two keys: `scope` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
-import { getPermission, getField } from "../../src/sandbox-lib";
+import { getField } from "../../src/sandbox-lib";
 
 function getState() {
+  const { permission } = JSON.parse(Host.inputString());
   const state = { question: getField("question") };
-  if (getPermission() === "edit") {
+  if (permission === "edit") {
     state.correct_answers = getField("correct_answers");
   }
   Host.outputString(JSON.stringify(state));
 }
 
 function onAction() {
-  const { name, value, scope } = JSON.parse(Host.inputString());
+  const { name, value, scope, permission } = JSON.parse(Host.inputString());
   // name: action name (e.g. "answer.submit")
   // value: action payload
   // scope.user_id: current user ID
   // scope.course_id: current course ID
   // scope.activity_id: current activity instance ID
+  // permission: "view", "play", or "edit"
 }
 
 module.exports = { onAction, getState };
@@ -369,7 +367,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 The exact API is platform-specific and does not need to follow a standard. The platform must support:
 
 - **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, and `scope` (a dict with `user_id`, `course_id`, `activity_id`).
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, `scope` (a dict with `user_id`, `course_id`, `activity_id`), and `permission` (the current permission level).
 - **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by scope and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
 Our implementation exposes these as FastAPI endpoints in [`src/xplademo/app.py`](./src/xplademo/app.py). Event routing is handled by the [`EventBus`](./src/xpla/event_bus.py).
@@ -378,7 +376,6 @@ Our implementation exposes these as FastAPI endpoints in [`src/xplademo/app.py`]
 
 Plugins can call host functions which are defined in [`src/xpla/context.py`](./src/xpla/context.py):
 
-- `get_permission() -> str`
 - `send_event(name: str, value: str, scope: str, permission: str)`: `scope` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
 - `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
 - `log_append(name: str, value: any, scope: str) -> int`: append to a log field, returns the assigned entry ID

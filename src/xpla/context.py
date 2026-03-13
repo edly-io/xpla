@@ -152,9 +152,9 @@ class ActivityContext:
         """
         Call the sandbox onAction callback.
 
-        The sandbox receives three arguments: the action name, the action
-        value, and a scope dict with the current context identifiers
-        (user_id, course_id, activity_id).
+        The sandbox receives the action name, the action value, a scope dict
+        with the current context identifiers (user_id, course_id, activity_id),
+        and the current permission level.
 
         Raise ActionValidationError if action is not valid.
         """
@@ -169,6 +169,7 @@ class ActivityContext:
                     "course_id": self._course_id,
                     "activity_id": self._activity_id,
                 },
+                "permission": self._permission.value,
             }
             try:
                 self.call_sandbox_function("onAction", action_input)
@@ -315,12 +316,21 @@ class ActivityContext:
     def get_state(self) -> dict[str, FieldType]:
         """Get the activity state to send to the client.
 
-        If the sandbox exports a getState function, calls it and returns the
-        result. Otherwise falls back to returning all fields.
+        If the sandbox exports a getState function, calls it with a
+        ``{scope, permission}`` input dict and returns the result.
+        Otherwise falls back to returning all fields.
         """
         if self.sandbox is not None:
             try:
-                result = self.call_sandbox_function("getState")
+                state_input = {
+                    "scope": {
+                        "user_id": self._user_id,
+                        "course_id": self._course_id,
+                        "activity_id": self._activity_id,
+                    },
+                    "permission": self._permission.value,
+                }
+                result = self.call_sandbox_function("getState", state_input)
                 state: dict[str, FieldType] = json.loads(result)
                 return state
             except RuntimeError:
@@ -338,7 +348,6 @@ class ActivityContext:
         Host functions that will be made available to the sandbox.
         """
         return [
-            self.get_permission,
             self.send_event,
             self.get_field,
             self.set_field,
@@ -350,12 +359,6 @@ class ActivityContext:
             self.http_request,
             self.submit_grade,
         ]
-
-    def get_permission(self) -> str:
-        """
-        Return the current permission level.
-        """
-        return self._permission.value
 
     def send_event(self, name: str, value: str, scope: str, permission: str) -> str:
         """Send an event back to the client.

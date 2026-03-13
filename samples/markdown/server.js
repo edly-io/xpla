@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save markdown_content and render to HTML
 
-import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/sandbox-lib";
 import { Marked } from "marked";
 
 function renderMarkdown(content, headerStartLevel) {
@@ -20,11 +20,11 @@ function renderMarkdown(content, headerStartLevel) {
 }
 
 function onAction() {
-  const { name, value } = JSON.parse(Host.inputString());
+  const { name, value, permission } = JSON.parse(Host.inputString());
 
   if (name === "config.save") {
-    if (getPermission() !== "edit") {
-      console.log("config.save rejected: permission is " + getPermission());
+    if (permission !== "edit") {
+      console.log("config.save rejected: permission is " + permission);
       return;
     }
     const markdownContent = value.markdown_content;
@@ -39,10 +39,11 @@ function onAction() {
 }
 
 function getState() {
+  const { permission } = JSON.parse(Host.inputString());
   const state = {
     rendered_html: getField("rendered_html"),
   };
-  if (getPermission() === "edit") {
+  if (permission === "edit") {
     state.markdown_content = getField("markdown_content");
   }
   Host.outputString(JSON.stringify(state));

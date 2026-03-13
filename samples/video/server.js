@@ -3,14 +3,14 @@
 // Actions handled:
 // - config.save: Save the video_url
 
-import { sendEvent, getField, setField, getPermission } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/sandbox-lib";
 
 function onAction() {
-  const { name, value } = JSON.parse(Host.inputString());
+  const { name, value, permission } = JSON.parse(Host.inputString());
 
   if (name === "config.save") {
-    if (getPermission() !== "edit") {
-      console.log("config.save rejected: permission is " + getPermission());
+    if (permission !== "edit") {
+      console.log("config.save rejected: permission is " + permission);
       return;
     }
     setField("video_url", value.video_url);
