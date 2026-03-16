@@ -1,0 +1,34 @@
+{
+  "name": "slideshow",
+  "client": "client.js",
+  "server": "server.wasm",
+  "capabilities": {},
+  "fields": {
+    "slides_html": {
+      "type": "string",
+      "scope": "activity",
+      "default": ""
+    }
+  },
+  "actions": {
+    "config.save": {
+      "type": "object",
+      "properties": {
+        "slides_html": { "type": "string" }
+      }
+    }
+  },
+  "events": {
+    "fields.change.slides_html": { "type": "string" }
+  },
+  "static": [
+    "static/reveal/reset.css",
+    "static/reveal/reveal.css",
+    "static/reveal/theme/white.css",
+    "static/reveal/reveal.js",
+    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro.css",
+    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro-italic.woff",
+    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro-regular.woff",
+    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro-semibold.woff"
+  ]
+}
