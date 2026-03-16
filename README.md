@@ -383,7 +383,7 @@ Plugins can call host functions which are defined in [`src/xpla/context.py`](./s
 - `log_get_range(name: str, from_id: int, to_id: int, scope: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
 - `log_delete(name: str, entry_id: int, scope: str) -> bool`: delete a single entry, returns whether it existed
 - `log_delete_range(name: str, from_id: int, to_id: int, scope: str) -> int`: delete entries in range, returns count deleted
-- `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])`
+- `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])` → `{"status": int, "headers": [[k,v],...], "body": str}`
 - `submit_grade(score: float)`
 
 ##### Log fields

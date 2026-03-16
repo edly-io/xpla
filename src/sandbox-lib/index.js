@@ -12,6 +12,7 @@ const {
   log_append,
   log_delete,
   log_delete_range,
+  http_request,
 } = Host.getFunctions();
 
 export function sendEvent(name, value, scope = {}, permission = "play") {
@@ -53,6 +54,18 @@ export function logDelete(name, id, scope = {}) {
 // Delete log entries in range [fromId, toId). Returns count deleted.
 export function logDeleteRange(name, fromId, toId, scope = {}) {
   return log_delete_range(string2memoryOffset(name), fromId, toId, data2memoryOffset(scope));
+}
+
+// Make an HTTP request. Returns {status, headers, body}.
+// status=0 indicates a connection or capability error.
+export function httpRequest(url, method, body, headers) {
+  const resultOffset = http_request(
+    string2memoryOffset(url),
+    string2memoryOffset(method),
+    string2memoryOffset(body || ""),
+    data2memoryOffset(headers || []),
+  );
+  return JSON.parse(memoryOffset2string(resultOffset));
 }
 
 function string2memoryOffset(str) {

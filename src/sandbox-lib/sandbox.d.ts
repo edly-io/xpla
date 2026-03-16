@@ -33,6 +33,8 @@ declare module "extism:host" {
     log_delete_range(name_ptr: I64, from_id: I64, to_id: I64, scope_ptr: I64): I64;
 
     // HTTP requests (require http capability)
+    // Returns a JSON string: {"status": int, "headers": [[k,v],...], "body": str}
+    // status=0 indicates a connection or capability error.
     http_request(
       url_ptr: I64,
       method_ptr: I64,

@@ -154,7 +154,7 @@ class TestHttpRequest:
     """Tests for http_request host function."""
 
     def test_error_when_no_http_capability(self, tmp_path: Path) -> None:
-        """Should return error when no HTTP capability declared."""
+        """Should return status=0 when no HTTP capability declared."""
         manifest = create_manifest(capabilities={})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -162,11 +162,12 @@ class TestHttpRequest:
         result = ctx.http_request("https://example.com", "GET", b"", ())
 
         data = json.loads(result)
-        assert "error" in data
-        assert "not declared" in data["error"]
+        assert data["status"] == 0
+        assert data["headers"] == []
+        assert "not declared" in data["body"]
 
     def test_error_when_host_not_allowed(self, tmp_path: Path) -> None:
-        """Should return error when host not in allowed list."""
+        """Should return status=0 when host not in allowed list."""
         manifest = create_manifest(
             capabilities={"http": {"allowed_hosts": ["api.example.com"]}}
         )
@@ -176,14 +177,14 @@ class TestHttpRequest:
         result = ctx.http_request("https://evil.com/hack", "GET", b"", ())
 
         data = json.loads(result)
-        assert "error" in data
-        assert "not allowed" in data["error"]
+        assert data["status"] == 0
+        assert "not allowed" in data["body"]
 
     @patch("xpla.context.urllib.request.urlopen")
     def test_success_when_allowed(
         self, mock_urlopen: MagicMock, tmp_path: Path
     ) -> None:
-        """Should make request and return response when allowed."""
+        """Should return structured response with status, headers, body."""
         manifest = create_manifest(
             capabilities={"http": {"allowed_hosts": ["api.example.com"]}}
         )
@@ -192,6 +193,10 @@ class TestHttpRequest:
 
         mock_response = MagicMock()
         mock_response.read.return_value = b'{"data": "test"}'
+        mock_response.status = 200
+        mock_response.getheaders.return_value = [
+            ("Content-Type", "application/json"),
+        ]
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -203,29 +208,34 @@ class TestHttpRequest:
             (("Content-Type", "application/json"),),
         )
 
-        assert result == '{"data": "test"}'
+        data = json.loads(result)
+        assert data["status"] == 200
+        assert data["body"] == '{"data": "test"}'
+        assert ["Content-Type", "application/json"] in data["headers"]
         mock_urlopen.assert_called_once()
 
     @patch("xpla.context.urllib.request.urlopen")
     def test_handles_http_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
-        """Should return error on HTTPError."""
+        """Should return structured response on HTTPError."""
         manifest = create_manifest(capabilities={"http": {}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
 
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            "https://example.com", 404, "Not Found", None, None  # type: ignore[arg-type]
+        error = urllib.error.HTTPError(
+            "https://example.com", 404, "Not Found", {}, None  # type: ignore[arg-type]
         )
+        error.read = MagicMock(return_value=b"not found")  # type: ignore[method-assign]
+        mock_urlopen.side_effect = error
 
         result = ctx.http_request("https://example.com", "GET", b"", ())
 
         data = json.loads(result)
-        assert "error" in data
-        assert "404" in data["error"]
+        assert data["status"] == 404
+        assert data["body"] == "not found"
 
     @patch("xpla.context.urllib.request.urlopen")
     def test_handles_url_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
-        """Should return error on URLError."""
+        """Should return status=0 on URLError."""
         manifest = create_manifest(capabilities={"http": {}})
         activity_dir = setup_activity_dir(tmp_path, manifest)
         ctx = ActivityContext(activity_dir)
@@ -235,8 +245,8 @@ class TestHttpRequest:
         result = ctx.http_request("https://example.com", "GET", b"", ())
 
         data = json.loads(result)
-        assert "error" in data
-        assert "Connection refused" in data["error"]
+        assert data["status"] == 0
+        assert "Connection refused" in data["body"]
 
     @patch("xpla.context.urllib.request.urlopen")
     def test_permissive_mode_allows_all_hosts(
@@ -249,13 +259,17 @@ class TestHttpRequest:
 
         mock_response = MagicMock()
         mock_response.read.return_value = b"ok"
+        mock_response.status = 200
+        mock_response.getheaders.return_value = []
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
         result = ctx.http_request("https://any-host.com/api", "GET", b"", ())
 
-        assert result == "ok"
+        data = json.loads(result)
+        assert data["status"] == 200
+        assert data["body"] == "ok"
 
 
 class TestLoadField:

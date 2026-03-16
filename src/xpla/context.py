@@ -563,19 +563,17 @@ class ActivityContext:
     ) -> str:
         """Make an HTTP request.
 
-        Expects JSON: {
-            "method": "GET"|"POST"|...,
-            "url": "https://...",
-            "headers": {"...": "..."},
-            "body": "..."
-        }
+        Returns a JSON string: {"status": int, "headers": [[k,v],...], "body": str}
 
-        Returns response body as string, or error message.
+        - 2xx: returns status, headers, body
+        - 4xx/5xx: returns status, headers, error body (no exception)
+        - Connection error: returns status=0, empty headers, error message
+        - Capability error: returns status=0, empty headers, error message
         """
         try:
             self.capability_checker.check_http_request(url)
         except CapabilityError as e:
-            return json.dumps({"error": str(e)})
+            return json.dumps({"status": 0, "headers": [], "body": str(e)})
 
         body_bytes = body or None
 
@@ -588,12 +586,40 @@ class ActivityContext:
 
         try:
             with urllib.request.urlopen(req, timeout=10) as response:
-                content: str = response.read().decode("utf-8")
-                return content
+                resp_headers = list(response.getheaders())
+                resp_body: str = response.read().decode("utf-8")
+                return json.dumps(
+                    {
+                        "status": response.status,
+                        "headers": resp_headers,
+                        "body": resp_body,
+                    }
+                )
         except urllib.error.HTTPError as e:
-            return json.dumps({"error": f"HTTP {e.code}: {e.reason}"})
+            err_body = e.read().decode("utf-8", errors="replace")
+            err_headers = list(e.headers.items()) if e.headers else []
+            logger.warning(
+                "HTTP request error: code=%d reason=%s body=%s",
+                e.code,
+                e.reason,
+                err_body,
+            )
+            return json.dumps(
+                {
+                    "status": e.code,
+                    "headers": err_headers,
+                    "body": err_body,
+                }
+            )
         except urllib.error.URLError as e:
-            return json.dumps({"error": str(e.reason)})
+            logger.warning("HTTP URL error: reason=%s", e.reason)
+            return json.dumps(
+                {
+                    "status": 0,
+                    "headers": [],
+                    "body": str(e.reason),
+                }
+            )
 
     def submit_grade(self, score: float) -> bool:
         # TODO actually submit grade
