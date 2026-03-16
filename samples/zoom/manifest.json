@@ -1,0 +1,68 @@
+{
+  "name": "zoom",
+  "client": "client.js",
+  "server": "server.wasm",
+  "capabilities": {
+    "http": {
+      "allowed_hosts": ["zoom.us", "api.zoom.us"]
+    }
+  },
+  "fields": {
+    "zoom_account_id": { "type": "string", "scope": "course", "default": "" },
+    "zoom_client_id": { "type": "string", "scope": "course", "default": "" },
+    "zoom_client_secret": { "type": "string", "scope": "course", "default": "" },
+    "topic": { "type": "string", "scope": "activity", "default": "" },
+    "start_time": { "type": "string", "scope": "activity", "default": "" },
+    "duration": { "type": "integer", "scope": "activity", "default": 60 },
+    "timezone": { "type": "string", "scope": "activity", "default": "UTC" },
+    "password": { "type": "string", "scope": "activity", "default": "" },
+    "waiting_room": { "type": "boolean", "scope": "activity", "default": false },
+    "join_before_host": { "type": "boolean", "scope": "activity", "default": true },
+    "mute_upon_entry": { "type": "boolean", "scope": "activity", "default": true },
+    "auto_recording": { "type": "string", "scope": "activity", "default": "none" },
+    "meeting_id": { "type": "string", "scope": "activity", "default": "" },
+    "join_url": { "type": "string", "scope": "activity", "default": "" }
+  },
+  "actions": {
+    "credentials.save": {
+      "type": "object",
+      "properties": {
+        "zoom_account_id": { "type": "string" },
+        "zoom_client_id": { "type": "string" },
+        "zoom_client_secret": { "type": "string" }
+      }
+    },
+    "meeting.save": {
+      "type": "object",
+      "properties": {
+        "topic": { "type": "string" },
+        "start_time": { "type": "string" },
+        "duration": { "type": "integer" },
+        "timezone": { "type": "string" },
+        "password": { "type": "string" },
+        "waiting_room": { "type": "boolean" },
+        "join_before_host": { "type": "boolean" },
+        "mute_upon_entry": { "type": "boolean" },
+        "auto_recording": { "type": "string" }
+      }
+    }
+  },
+  "events": {
+    "meeting.updated": {
+      "type": "object",
+      "properties": {
+        "topic": { "type": "string" },
+        "start_time": { "type": "string" },
+        "duration": { "type": "integer" },
+        "timezone": { "type": "string" },
+        "join_url": { "type": "string" }
+      }
+    },
+    "credentials.status": {
+      "type": "object",
+      "properties": {
+        "configured": { "type": "boolean" }
+      }
+    }
+  }
+}
