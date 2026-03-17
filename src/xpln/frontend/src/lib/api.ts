@@ -28,7 +28,7 @@ export const reorderCourses = (course_ids: string[]) => request<void>("/api/cour
 
 // Pages
 export type PageItem = { id: string; title: string; position: number };
-export type Activity = { id: string; page_id: string; activity_type: string; position: number; client_path: string; state: unknown; permission: string };
+export type Activity = { id: string; page_id: string; activity_type: string; position: number; client_path: string; state: unknown; permission: string; scope: { user_id: string; course_id: string; activity_id: string } };
 export type PageDetail = { id: string; title: string; course_id: string; activities: Activity[]; activity_types: string[] };
 
 export const createPage = (courseId: string, title: string) => request<PageItem>(`/api/courses/${courseId}/pages`, json({ title }));

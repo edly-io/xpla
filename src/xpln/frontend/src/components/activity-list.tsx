@@ -36,7 +36,7 @@ export function ActivityList({ activities, onMove, onDelete, onTogglePermission 
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <XplActivity activityId={a.id} activityType={a.activity_type} clientPath={a.client_path} state={a.state} permission={a.permission} />
+            <XplActivity scope={a.scope} clientPath={a.client_path} state={a.state} permission={a.permission} />
           </CardContent>
         </Card>
       ))}

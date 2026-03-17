@@ -3,53 +3,163 @@
 import json
 from typing import Any
 
-from sqlmodel import Field, Session, SQLModel, select
+from sqlmodel import Field, Session, SQLModel, UniqueConstraint, col, select
 
+from xpla.field_store import FieldStore
 from xpla.fields import FieldType
 from xpln.db import engine
 
 
 class FieldEntry(SQLModel, table=True):
-    key: str = Field(primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
+    course_id: str = Field(index=True)
+    activity_name: str = Field(index=True)
+    activity_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    key: str = Field(index=True)
     value: str  # JSON-encoded
+
+    __table_args__ = (
+        UniqueConstraint("course_id", "activity_name", "activity_id", "user_id", "key"),
+    )
 
 
 class FieldLogEntry(SQLModel, table=True):
-    key: str = Field(primary_key=True)
-    entry_id: int = Field(primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
+    course_id: str = Field(index=True)
+    activity_name: str = Field(index=True)
+    activity_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    key: str = Field(index=True)
+    entry_id: int
     value: str  # JSON-encoded
+
+    __table_args__ = (
+        UniqueConstraint(
+            "course_id",
+            "activity_name",
+            "activity_id",
+            "user_id",
+            "key",
+            "entry_id",
+        ),
+    )
 
 
 class FieldLogSeq(SQLModel, table=True):
-    key: str = Field(primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
+    course_id: str = Field(index=True)
+    activity_name: str = Field(index=True)
+    activity_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    key: str = Field(index=True)
     next_id: int = Field(default=0)
 
+    __table_args__ = (
+        UniqueConstraint("course_id", "activity_name", "activity_id", "user_id", "key"),
+    )
 
-class SQLiteFieldStore:
+
+def _key_filter(
+    stmt: Any,
+    model: type[FieldEntry] | type[FieldLogEntry] | type[FieldLogSeq],
+    course_id: str,
+    activity_name: str,
+    activity_id: str,
+    user_id: str,
+    key: str,
+) -> Any:
+    """Apply the 5-column key filter to a statement."""
+    return (
+        stmt.where(col(model.course_id) == course_id)
+        .where(col(model.activity_name) == activity_name)
+        .where(col(model.activity_id) == activity_id)
+        .where(col(model.user_id) == user_id)
+        .where(col(model.key) == key)
+    )
+
+
+class SQLiteFieldStore(FieldStore):
     """FieldStore backed by SQLite via SQLModel."""
 
-    def get(self, key: str) -> FieldType | None:
+    def get(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+    ) -> FieldType | None:
         with Session(engine) as session:
-            entry = session.get(FieldEntry, key)
+            stmt = _key_filter(
+                select(FieldEntry),
+                FieldEntry,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            )
+            entry = session.exec(stmt).first()
             if entry is None:
                 return None
             result: FieldType = json.loads(entry.value)
             return result
 
-    def set(self, key: str, value: FieldType) -> None:
+    def set(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        value: FieldType,
+    ) -> None:
         with Session(engine) as session:
-            entry = session.get(FieldEntry, key)
+            stmt = _key_filter(
+                select(FieldEntry),
+                FieldEntry,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            )
+            entry = session.exec(stmt).first()
             encoded = json.dumps(value)
             if entry is None:
-                entry = FieldEntry(key=key, value=encoded)
+                entry = FieldEntry(
+                    course_id=course_id,
+                    activity_name=activity_name,
+                    activity_id=activity_id,
+                    user_id=user_id,
+                    key=key,
+                    value=encoded,
+                )
             else:
                 entry.value = encoded
             session.add(entry)
             session.commit()
 
-    def delete(self, key: str) -> bool:
+    def delete(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+    ) -> bool:
         with Session(engine) as session:
-            entry = session.get(FieldEntry, key)
+            stmt = _key_filter(
+                select(FieldEntry),
+                FieldEntry,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            )
+            entry = session.exec(stmt).first()
             if entry is None:
                 return False
             session.delete(entry)
@@ -61,57 +171,154 @@ class SQLiteFieldStore:
             entries = session.exec(select(FieldEntry.key)).all()
             return list(entries)
 
-    def log_get(self, key: str, entry_id: int) -> FieldType | None:
+    def log_get(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        entry_id: int,
+    ) -> FieldType | None:
         with Session(engine) as session:
-            entry = session.get(FieldLogEntry, (key, entry_id))
+            stmt = _key_filter(
+                select(FieldLogEntry),
+                FieldLogEntry,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            ).where(col(FieldLogEntry.entry_id) == entry_id)
+            entry = session.exec(stmt).first()
             if entry is None:
                 return None
             result: FieldType = json.loads(entry.value)
             return result
 
-    def log_get_range(self, key: str, from_id: int, to_id: int) -> list[dict[str, Any]]:
+    def log_get_range(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        from_id: int,
+        to_id: int,
+    ) -> list[dict[str, Any]]:
         with Session(engine) as session:
             stmt = (
-                select(FieldLogEntry)
-                .where(FieldLogEntry.key == key)
-                .where(FieldLogEntry.entry_id >= from_id)
-                .where(FieldLogEntry.entry_id < to_id)
-                .order_by(FieldLogEntry.entry_id)  # type: ignore[arg-type]
+                _key_filter(
+                    select(FieldLogEntry),
+                    FieldLogEntry,
+                    course_id,
+                    activity_name,
+                    activity_id,
+                    user_id,
+                    key,
+                )
+                .where(
+                    col(FieldLogEntry.entry_id) >= from_id,
+                    col(FieldLogEntry.entry_id) < to_id,
+                )
+                .order_by(col(FieldLogEntry.entry_id))
             )
             entries = session.exec(stmt).all()
             return [{"id": e.entry_id, "value": json.loads(e.value)} for e in entries]
 
-    def log_append(self, key: str, value: FieldType) -> int:
+    def log_append(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        value: FieldType,
+    ) -> int:
         with Session(engine) as session:
-            seq = session.get(FieldLogSeq, key)
+            stmt = _key_filter(
+                select(FieldLogSeq),
+                FieldLogSeq,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            )
+            seq = session.exec(stmt).first()
             if seq is None:
-                seq = FieldLogSeq(key=key, next_id=0)
-            entry_id = seq.next_id
+                seq = FieldLogSeq(
+                    course_id=course_id,
+                    activity_name=activity_name,
+                    activity_id=activity_id,
+                    user_id=user_id,
+                    key=key,
+                    next_id=0,
+                )
+            entry_id: int = seq.next_id
             seq.next_id = entry_id + 1
             session.add(seq)
             log_entry = FieldLogEntry(
-                key=key, entry_id=entry_id, value=json.dumps(value)
+                course_id=course_id,
+                activity_name=activity_name,
+                activity_id=activity_id,
+                user_id=user_id,
+                key=key,
+                entry_id=entry_id,
+                value=json.dumps(value),
             )
             session.add(log_entry)
             session.commit()
             return entry_id
 
-    def log_delete(self, key: str, entry_id: int) -> bool:
+    def log_delete(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        entry_id: int,
+    ) -> bool:
         with Session(engine) as session:
-            entry = session.get(FieldLogEntry, (key, entry_id))
+            stmt = _key_filter(
+                select(FieldLogEntry),
+                FieldLogEntry,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            ).where(col(FieldLogEntry.entry_id) == entry_id)
+            entry = session.exec(stmt).first()
             if entry is None:
                 return False
             session.delete(entry)
             session.commit()
             return True
 
-    def log_delete_range(self, key: str, from_id: int, to_id: int) -> int:
+    def log_delete_range(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        from_id: int,
+        to_id: int,
+    ) -> int:
         with Session(engine) as session:
-            stmt = (
-                select(FieldLogEntry)
-                .where(FieldLogEntry.key == key)
-                .where(FieldLogEntry.entry_id >= from_id)
-                .where(FieldLogEntry.entry_id < to_id)
+            stmt = _key_filter(
+                select(FieldLogEntry),
+                FieldLogEntry,
+                course_id,
+                activity_name,
+                activity_id,
+                user_id,
+                key,
+            ).where(
+                col(FieldLogEntry.entry_id) >= from_id,
+                col(FieldLogEntry.entry_id) < to_id,
             )
             entries = session.exec(stmt).all()
             count = len(entries)
@@ -120,3 +327,38 @@ class SQLiteFieldStore:
             if count > 0:
                 session.commit()
             return count
+
+    # Bulk delete methods (not on the base class)
+
+    def delete_by_course(self, course_id: str) -> None:
+        """Delete all field data for a given course."""
+        with Session(engine) as session:
+            for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
+                entries = session.exec(
+                    select(model).where(col(model.course_id) == course_id)
+                ).all()
+                for entry in entries:
+                    session.delete(entry)
+            session.commit()
+
+    def delete_by_activity(self, activity_id: str) -> None:
+        """Delete all field data for a given activity instance."""
+        with Session(engine) as session:
+            for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
+                entries = session.exec(
+                    select(model).where(col(model.activity_id) == activity_id)
+                ).all()
+                for entry in entries:
+                    session.delete(entry)
+            session.commit()
+
+    def delete_by_activity_name(self, activity_name: str) -> None:
+        """Delete all field data for a given activity name."""
+        with Session(engine) as session:
+            for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
+                entries = session.exec(
+                    select(model).where(col(model.activity_name) == activity_name)
+                ).all()
+                for entry in entries:
+                    session.delete(entry)
+            session.commit()

@@ -39,7 +39,6 @@ app.mount("/static", StaticFiles(directory=constants.STATIC_DIR), name="static")
 event_bus = EventBus()
 
 USER_ID = "student"
-COURSE_ID = "xpln"
 
 field_store = SQLiteFieldStore()
 
@@ -92,6 +91,7 @@ def list_activity_types() -> list[str]:
 def load_activity(
     activity_type: str,
     activity_id: str,
+    course_id: str,
     permission: Permission,
 ) -> ActivityContext:
     activity_dir = find_activity_dir(activity_type)
@@ -99,16 +99,20 @@ def load_activity(
         activity_dir,
         field_store,
         activity_id=activity_id,
-        course_id=COURSE_ID,
+        course_id=course_id,
         user_id=USER_ID,
         permission=permission,
     )
 
 
 def activity_dict(
-    pa: PageActivity, permission: Permission = Permission.play
+    pa: PageActivity,
+    session: Session,
+    permission: Permission = Permission.play,
 ) -> dict[str, object]:
-    ctx = load_activity(pa.activity_type, pa.id, permission)
+    page = session.get(Page, pa.page_id)
+    course_id = page.course_id if page else ""
+    ctx = load_activity(pa.activity_type, pa.id, course_id, permission)
     return {
         "id": pa.id,
         "page_id": pa.page_id,
@@ -117,6 +121,11 @@ def activity_dict(
         "client_path": ctx.client_path,
         "state": ctx.get_state(),
         "permission": ctx.permission.name,
+        "scope": {
+            "user_id": USER_ID,
+            "course_id": course_id,
+            "activity_id": pa.id,
+        },
     }
 
 
@@ -310,7 +319,7 @@ async def get_page(
         .where(PageActivity.page_id == page_id)
         .order_by(col(PageActivity.position))
     ).all()
-    activities = [activity_dict(pa) for pa in page_activities]
+    activities = [activity_dict(pa, session) for pa in page_activities]
     return JSONResponse(
         {
             "id": page.id,
@@ -342,7 +351,7 @@ async def create_activity(
     session.add(pa)
     session.commit()
     session.refresh(pa)
-    return JSONResponse(activity_dict(pa), status_code=201)
+    return JSONResponse(activity_dict(pa, session), status_code=201)
 
 
 @app.get("/api/activities/{activity_id}/{permission}")
@@ -354,7 +363,7 @@ async def get_activity(
     pa = session.get(PageActivity, activity_id)
     if not pa:
         raise HTTPException(status_code=404, detail="Not found")
-    return JSONResponse(activity_dict(pa, Permission(permission)))
+    return JSONResponse(activity_dict(pa, session, Permission(permission)))
 
 
 @app.delete("/api/activities/{activity_id}", status_code=204)
@@ -404,7 +413,7 @@ async def move_activity(
             .order_by(col(PageActivity.position))
         ).all()
     )
-    return JSONResponse({"activities": [activity_dict(r) for r in refreshed]})
+    return JSONResponse({"activities": [activity_dict(r, session) for r in refreshed]})
 
 
 @app.get("/api/activity-types")
@@ -422,7 +431,9 @@ async def activity_asset(
     pa = session.get(PageActivity, activity_id)
     if pa is None:
         raise HTTPException(status_code=404, detail="Activity not found")
-    ctx = load_activity(pa.activity_type, activity_id, Permission.play)
+    page = session.get(Page, pa.page_id)
+    course_id = page.course_id if page else ""
+    ctx = load_activity(pa.activity_type, activity_id, course_id, Permission.play)
     try:
         full_path = ctx.get_asset_path(file_path)
     except AssetAccessError as e:
@@ -439,6 +450,8 @@ async def activity_ws(
         await websocket.close(code=1008)
         return
     activity_type = pa.activity_type
+    page = session.get(Page, pa.page_id)
+    course_id = page.course_id if page else ""
 
     await websocket.accept()
 
@@ -447,7 +460,7 @@ async def activity_ws(
         websocket,
         USER_ID,
         ActivityContext.DEFAULT_PERMISSION,
-        COURSE_ID,
+        course_id,
         activity_id,
     )
 
@@ -461,7 +474,7 @@ async def activity_ws(
         action_value = data.get("value", "")
         action_permission = Permission(data.get("permission", "play"))
 
-        ctx = load_activity(activity_type, activity_id, action_permission)
+        ctx = load_activity(activity_type, activity_id, course_id, action_permission)
         try:
             ctx.on_action(action_name, action_value)
         except ActionValidationError as e:
