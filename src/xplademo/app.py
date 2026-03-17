@@ -63,7 +63,7 @@ def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityContex
         user_id=user_id,
         permission=permission,
         course_id="democourse",
-        activity_id="activityid",
+        activity_id=activity_type,
     )
     return activity_context
 
@@ -113,12 +113,19 @@ async def activity(request: Request, activity_type: str) -> HTMLResponse:
     activity_context = load_activity(request.cookies, activity_type)
     activity_state = activity_context.get_state()
 
+    scope = {
+        "user_id": activity_context.user_id,
+        "course_id": activity_context.course_id,
+        "activity_id": activity_context.activity_id,
+    }
+
     return templates.TemplateResponse(
         request=request,
         name="activity.html",
         context={
             "activity_context": activity_context,
             "state_json": json.dumps(activity_state),
+            "scope_json": json.dumps(scope),
             "simulated_users": SIMULATED_USERS,
             "current_user": activity_context.user_id,
             "permission_levels": [p.value for p in Permission],
@@ -133,12 +140,19 @@ async def activity_embed(request: Request, activity_type: str) -> HTMLResponse:
     activity_context = load_activity(request.cookies, activity_type)
     activity_state = activity_context.get_state()
 
+    scope = {
+        "user_id": activity_context.user_id,
+        "course_id": activity_context.course_id,
+        "activity_id": activity_context.activity_id,
+    }
+
     return templates.TemplateResponse(
         request=request,
         name="activity_embed.html",
         context={
             "activity_context": activity_context,
             "state_json": json.dumps(activity_state),
+            "scope_json": json.dumps(scope),
             "current_permission": activity_context.permission.value,
         },
     )

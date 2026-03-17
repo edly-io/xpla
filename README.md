@@ -237,9 +237,10 @@ export function setup(activity) {
 The `activity` object exposes the following properties and methods:
 
 - `element`: the DOM element to which this activity is attached.
+- `scope`: An object with `user_id`, `course_id`, and `activity_id` identifying the current context. Parsed from the `data-scope` attribute.
 - `state`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared fields if `getState` is not exported).
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
-- `sendAction(name, value)`: Sends an action to the backend sandbox. Returns the list of events emitted by the sandbox in response. The action name must be declared in `manifest.json`.
+- `sendAction(name, value)`: Sends an action to the backend sandbox. The current `permission` is included in the payload. The action name must be declared in `manifest.json`.
 - `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
 - `onEvent(name, value)`: Override this callback to handle events from the server. Called for every event with the parsed value.
 
@@ -426,9 +427,10 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | Property / Method | Type | Description |
 |---|---|---|
 | `element` | DOM element | The root DOM element where the activity renders its UI. |
+| `scope` | `object` | Context identifying the activity instance: `{ user_id, course_id, activity_id }`. Parsed from the `data-scope` attribute. |
 | `state` | `object` | The activity state, populated by the backend's `getState()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
-| `sendAction(name, value)` | `(string, any) => void` | Sends an action to the backend sandbox via WebSocket. Fire-and-forget: events are delivered asynchronously through the `onEvent` callback. |
+| `sendAction(name, value)` | `(string, any) => void` | Sends an action to the backend sandbox via WebSocket. The current `permission` is included in the payload. Fire-and-forget: events are delivered asynchronously through the `onEvent` callback. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
 | `onEvent(name, value)` | `(string, any) => void` | Callback invoked for every event emitted by the server. Default is a no-op; activity code overrides it. |
 
@@ -445,7 +447,7 @@ Events are delivered in real time via a WebSocket connection established on page
 ##### Recommendations
 
 - **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpl-activity>`), which provides a clean encapsulation boundary and works with any framework. See [`src/static/js/xpla.js`](./src/static/js/xpla.js).
-- **Pass initial state as a data attribute.** We serialize the state JSON into a `data-state` attribute and the permission into `data-permission`. This avoids extra round-trips. See [`src/xplademo/templates/activity.html`](./src/xplademo/templates/activity.html).
+- **Pass initial state as data attributes.** We serialize the scope into `data-scope` (a JSON object with `user_id`, `course_id`, `activity_id`), the state into `data-state`, the permission into `data-permission`, and the client script path into `data-src`. This avoids extra round-trips. See [`src/xplademo/templates/activity.html`](./src/xplademo/templates/activity.html).
 - **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. The `<xpl-activity>` element supports an `embed` attribute that controls how the activity is rendered:
   - **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
   - **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.

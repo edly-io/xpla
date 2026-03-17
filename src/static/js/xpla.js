@@ -1,6 +1,7 @@
 export class XPLA extends HTMLElement {
   constructor() {
     super();
+    this.scope = {};
     this.state = {};
     this.permission = "view";
     this._ws = null;
@@ -8,6 +9,11 @@ export class XPLA extends HTMLElement {
   }
 
   connectedCallback() {
+    const scopeAttr = this.getAttribute("data-scope");
+    if (scopeAttr) {
+      this.scope = JSON.parse(scopeAttr);
+    }
+
     const embedMode = this.getAttribute("embed") || "shadow";
 
     if (embedMode === "native") {
@@ -28,7 +34,7 @@ export class XPLA extends HTMLElement {
 
     this.render();
     this._connectWebSocket();
-    const src = this.getAttribute("src");
+    const src = this.getAttribute("data-src");
     if (src) {
       this.loadScript(src);
     }
@@ -100,9 +106,8 @@ export class XPLA extends HTMLElement {
   }
 
   _getWebsocketUrl() {
-    const activityName = this.getAttribute("name");
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${location.host}/api/activity/${activityName}/ws`;
+    return `${proto}//${location.host}/api/activity/${this.scope.activity_id}/ws`;
   }
 
   _setOfflineBanner(visible) {
@@ -124,7 +129,7 @@ export class XPLA extends HTMLElement {
   }
 
   _storageKey() {
-    return `xpla:pending:${this.getAttribute("name")}`;
+    return `xpla:pending:${this.scope.activity_id}`;
   }
 
   _flushQueue() {
@@ -149,7 +154,7 @@ export class XPLA extends HTMLElement {
   }
 
   sendAction(name, value = "") {
-    this._pushAction({ action: name, value });
+    this._pushAction({ action: name, value, permission: this.permission });
   }
 
   _pushAction(action) {
@@ -163,11 +168,10 @@ export class XPLA extends HTMLElement {
   }
 
   getAssetUrl(path) {
-    return new URL(`/a/${this.getAttribute("name")}/${path}`, location.href).href;
+    return new URL(`/a/${this.scope.activity_id}/${path}`, location.href).href;
   }
 
   onEvent(name, value) {
     // Default no-op. Override in client.js to handle events.
   }
 }
-
