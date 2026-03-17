@@ -1,24 +1,103 @@
-"""FieldStore protocol — abstract interface for field persistence."""
+"""FieldStore — abstract base class for field persistence."""
 
-from typing import Any, Protocol
+from abc import ABC, abstractmethod
+from typing import Any
 
 from xpla.fields import FieldType
 
 
-class FieldStore(Protocol):
-    """Protocol for storing scalar and log field data."""
+class FieldStore(ABC):
+    """Abstract base class for storing scalar and log field data."""
 
     # Scalar fields
-    def get(self, key: str) -> FieldType | None: ...
-    def set(self, key: str, value: FieldType) -> None: ...
-    def delete(self, key: str) -> bool: ...
+    @abstractmethod
+    def get(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+    ) -> FieldType | None: ...
+
+    @abstractmethod
+    def set(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        value: FieldType,
+    ) -> None: ...
+
+    @abstractmethod
+    def delete(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+    ) -> bool: ...
+
+    @abstractmethod
     def keys(self) -> list[str]: ...
 
     # Log fields
-    def log_get(self, key: str, entry_id: int) -> FieldType | None: ...
+    @abstractmethod
+    def log_get(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        entry_id: int,
+    ) -> FieldType | None: ...
+
+    @abstractmethod
     def log_get_range(
-        self, key: str, from_id: int, to_id: int
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        from_id: int,
+        to_id: int,
     ) -> list[dict[str, Any]]: ...
-    def log_append(self, key: str, value: FieldType) -> int: ...
-    def log_delete(self, key: str, entry_id: int) -> bool: ...
-    def log_delete_range(self, key: str, from_id: int, to_id: int) -> int: ...
+
+    @abstractmethod
+    def log_append(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        value: FieldType,
+    ) -> int: ...
+
+    @abstractmethod
+    def log_delete(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        entry_id: int,
+    ) -> bool: ...
+
+    @abstractmethod
+    def log_delete_range(
+        self,
+        course_id: str,
+        activity_name: str,
+        activity_id: str,
+        user_id: str,
+        key: str,
+        from_id: int,
+        to_id: int,
+    ) -> int: ...
