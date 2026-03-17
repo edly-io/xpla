@@ -18,7 +18,7 @@ export function ActivityList({ activities, onMove, onDelete, onTogglePermission 
   return (
     <div>
       {activities.map((a) => (
-        <Card key={a.id} className="mb-4">
+        <Card key={`${a.id}-${a.permission}`} className="mb-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
