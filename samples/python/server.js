@@ -9,7 +9,7 @@ import {
   sendEvent,
   getField,
   setField,
-} from "../../src/sandbox-lib";
+} from "../../src/xpla/lib/sandbox";
 
 function saveUserCode(code) {
   setField("user_code", code);

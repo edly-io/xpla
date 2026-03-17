@@ -11,12 +11,12 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from xpla.context import ActivityContext, AssetAccessError
-from xpla.actions import ActionValidationError
-from xpla.event_bus import EventBus
-from xpla.permission import Permission
-from xplademo import constants
-from xplademo.kv import KVStore, get_default
+from xpla.lib.context import ActivityContext, AssetAccessError
+from xpla.lib.actions import ActionValidationError
+from xpla.lib.event_bus import EventBus
+from xpla.lib.permission import Permission
+from xpla.demo import constants
+from xpla.demo.kv import KVStore, get_default
 
 USER_ID_COOKIE = "xpla_user"
 SIMULATED_USERS = ["alice", "bob", "charlie"]

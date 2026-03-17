@@ -1,6 +1,6 @@
-# xplademo — Demo Server
+# Demo Server
 
-xplademo is a minimal LMS simulation that demonstrates how to integrate [xPLA](../xpla/) activities into a platform. It serves sample activities with a development toolbar for testing different users, permissions, and embedding modes.
+This is a minimal LMS simulation that demonstrates how to integrate [xPLA](../xpla/) activities into a platform. It serves sample activities with a development toolbar for testing different users, permissions, and embedding modes.
 
 ## Running
 
@@ -8,7 +8,7 @@ From the project root:
 
 ```bash
 make samples    # Build all sample activity WASM modules (required once)
-make xplademo   # Start dev server on port 9752
+make demo-server   # Start dev server on port 9752
 ```
 
 Then open http://127.0.0.1:9752 in a browser.

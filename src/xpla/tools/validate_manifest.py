@@ -31,7 +31,9 @@ def parse_args() -> argparse.Namespace:
 
 def load_schema() -> dict[str, object]:
     """Load the JSON schema from the sandbox-lib directory."""
-    schema_path = Path(__file__).parent.parent / "sandbox-lib" / "manifest.schema.json"
+    schema_path = (
+        Path(__file__).parent.parent / "lib" / "sandbox" / "manifest.schema.json"
+    )
     with open(schema_path, encoding="utf-8") as f:
         schema: dict[str, object] = json.load(f)
     return schema

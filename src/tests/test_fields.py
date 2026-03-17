@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from xpla.fields import FieldChecker, FieldValidationError
-from xpla.manifest_types import (
+from xpla.lib.fields import FieldChecker, FieldValidationError
+from xpla.lib.manifest_types import (
     Scope,
     FieldDefinition,
 )

@@ -4,7 +4,7 @@
 // - credentials.save: Store Zoom API credentials (course-scoped)
 // - meeting.save: Save meeting config and create/update via Zoom API
 
-import { sendEvent, getField, setField, httpRequest } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField, httpRequest } from "../../src/xpla/lib/sandbox";
 
 function getZoomToken() {
   const accountId = getField("zoom_account_id");

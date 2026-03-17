@@ -4,7 +4,7 @@
 // - config.save: Save video_id and interactions list
 // - answer.submit: Check if selected answers match correct answers for a given interaction
 
-import { sendEvent, getField, setField } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 
 function onAction() {
   const { name, value, permission } = JSON.parse(Host.inputString());

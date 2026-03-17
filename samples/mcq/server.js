@@ -4,7 +4,7 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { sendEvent, getField, setField } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 
 // Handle incoming actions from frontend
 function onAction() {

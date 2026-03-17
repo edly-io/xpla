@@ -2,11 +2,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from xpla.field_store import FieldStore
-from xpla.fields import FieldType
+from xpla.lib.field_store import FieldStore
+from xpla.lib.fields import FieldType
 
 # Project root's dist/ directory
-DIST_DIR = Path(__file__).parent.parent.parent / "dist"
+DIST_DIR = Path(__file__).parent.parent.parent.parent / "dist"
 
 
 class KVStore(FieldStore):

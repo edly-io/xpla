@@ -4,7 +4,7 @@
 // - doc.update: Merge Yjs update into stored state, broadcast to all
 // - cursor.move: Broadcast cursor position to all clients
 
-import { sendEvent, getField, setField } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 import * as Y from "yjs";
 
 function base64ToBytes(base64) {

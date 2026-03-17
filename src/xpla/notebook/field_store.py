@@ -5,9 +5,9 @@ from typing import Any
 
 from sqlmodel import Field, Session, SQLModel, UniqueConstraint, col, select
 
-from xpla.field_store import FieldStore
-from xpla.fields import FieldType
-from xpln.db import engine
+from xpla.lib.field_store import FieldStore
+from xpla.lib.fields import FieldType
+from xpla.notebook.db import engine
 
 
 class FieldEntry(SQLModel, table=True):

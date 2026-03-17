@@ -10,7 +10,7 @@ import {
   sendEvent,
   getField,
   setField,
-} from "../../src/sandbox-lib";
+} from "../../src/xpla/lib/sandbox";
 
 const { submit_grade } = Host.getFunctions();
 

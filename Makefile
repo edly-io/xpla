@@ -16,22 +16,22 @@ install-samples: $(SAMPLE_MODULES) ## Install dependencies for sample activities
 samples/%/node_modules/.package-lock.json: samples/%/package.json
 	cd samples/$* && npm install
 
-SANDBOX_LIB := $(wildcard src/sandbox-lib/*.js)
+SANDBOX_LIB := $(wildcard src/xpla/lib/sandbox/*.js)
 
-samples/%/server.wasm: samples/%/server.js $(SANDBOX_LIB) src/sandbox-lib/sandbox.d.ts
-	./src/tools/js2wasm.py $< --output $@
+samples/%/server.wasm: samples/%/server.js $(SANDBOX_LIB) src/xpla/lib/sandbox/sandbox.d.ts
+	./src/xpla/tools/js2wasm.py $< --output $@
 
 samples/%/client.bundle.js: samples/%/client.js
-	./src/tools/bundle_client.py $< --output $@
+	./src/xpla/tools/bundle_client.py $< --output $@
 
-xplademo: ## Run a development server for the demo app
-	fastapi dev src/xplademo/app.py --host=127.0.0.1 --port=9752
+demo-server: ## Run a development server for the demo app
+	fastapi dev src/xpla/demo/app.py --host=127.0.0.1 --port=9752
 
-xpln: ## Run the notebook API server (port 9753)
-	fastapi dev src/xpln/app.py --host=127.0.0.1 --port=9753
+notebook-server: ## Run the notebook API server (port 9753)
+	fastapi dev src/xpla/notebook/app.py --host=127.0.0.1 --port=9753
 
-xpln-frontend: ## Run the notebook frontend dev server (port 3000)
-	cd src/xpln/frontend && npm run dev
+notebook-frontend-server: ## Run the notebook frontend dev server (port 3000)
+	cd src/xpla/notebook/frontend && npm run dev
 
 format: ## Format code with black
 	black src/
@@ -51,28 +51,28 @@ test-format: ## Run formatting tests
 	black --check src/
 
 test-manifests: ## Validate all manifest.json files
-	@for f in samples/*/manifest.json; do echo "$$f" && ./src/tools/validate_manifest.py "$$f" || exit 1; done
+	@for f in samples/*/manifest.json; do echo "$$f" && ./src/xpla/tools/validate_manifest.py "$$f" || exit 1; done
 
 test-codegen: ## Make sure that manifest types are up-to-date
 	$(MAKE) --always-make manifest-types CODEGEN_OPTIONS="--check"
 
 # This command must be run every time the schema is updated
 .PHONY: manifest-types
-manifest-types: src/xpla/manifest_types.py ## Generate manifest types based on schema
-src/xpla/manifest_types.py: src/sandbox-lib/manifest.schema.json 
+manifest-types: src/xpla/lib/manifest_types.py ## Generate manifest types based on schema
+src/xpla/lib/manifest_types.py: src/xpla/lib/sandbox/manifest.schema.json
 	datamodel-codegen $(CODEGEN_OPTIONS) \
-		--input=src/sandbox-lib/manifest.schema.json \
+		--input=src/xpla/lib/sandbox/manifest.schema.json \
 		--input-file-type=jsonschema \
 		--use-double-quotes \
 		--formatters black isort \
 		--output-model-type=pydantic_v2.BaseModel \
 		--use-annotated \
-		--output=src/xpla/manifest_types.py \
+		--output=src/xpla/lib/manifest_types.py \
 		--disable-timestamp
 
 ###### Additional commands
 
-ESCAPE = 
+ESCAPE =
 help: ## Print this help
 	@grep -E '^([a-zA-Z_-]+:.*?## .*|######* .+)$$' Makefile \
 		| sed 's/######* \(.*\)/@               $(ESCAPE)[1;31m\1$(ESCAPE)[0m/g' | tr '@' '\n' \

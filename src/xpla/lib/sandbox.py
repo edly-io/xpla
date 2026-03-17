@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable, Any
 
 from extism import host_fn
-from xpla.runtime import PluginRuntime
+from xpla.lib.runtime import PluginRuntime
 
 logger = logging.getLogger(__file__)
 

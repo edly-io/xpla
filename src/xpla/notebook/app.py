@@ -14,14 +14,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
 
-from xpla.actions import ActionValidationError
-from xpla.context import ActivityContext, AssetAccessError
-from xpla.event_bus import EventBus
-from xpla.permission import Permission
-from xpln import constants
-from xpln.db import run_migrations, get_session
-from xpln.field_store import SQLiteFieldStore
-from xpln.models import Course, Page, PageActivity
+from xpla.lib.actions import ActionValidationError
+from xpla.lib.context import ActivityContext, AssetAccessError
+from xpla.lib.event_bus import EventBus
+from xpla.lib.permission import Permission
+from xpla.notebook import constants
+from xpla.notebook.db import run_migrations, get_session
+from xpla.notebook.field_store import SQLiteFieldStore
+from xpla.notebook.models import Course, Page, PageActivity
 
 logger = logging.getLogger(__name__)
 

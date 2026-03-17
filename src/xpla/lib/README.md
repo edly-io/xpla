@@ -97,10 +97,10 @@ my-activity/
 - `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.
 - `static` (optional): An array of explicit file paths that can be served as static assets. Only listed files (plus `client` and `manifest.json`) are accessible. Paths must be relative (no leading `/`) and cannot contain `..`.
 
-The manifest format is defined by a JSON Schema at [`src/sandbox-lib/manifest.schema.json`](../sandbox-lib/manifest.schema.json). To validate a manifest:
+The manifest format is defined by a JSON Schema at [`src/xpla/lib/sandbox/manifest.schema.json`](./sandbox/manifest.schema.json). To validate a manifest:
 
 ```bash
-./src/tools/validate_manifest.py samples/my-activity/manifest.json
+./src/xpla/tools/validate_manifest.py samples/my-activity/manifest.json
 ```
 
 #### Fields
@@ -220,14 +220,14 @@ Sandboxes have access to a standard list of host functions. See [Host functions]
 
 #### Sandbox library
 
-A shared library is available at [`src/sandbox-lib/index.js`](../sandbox-lib/index.js) with helper functions for common host function interactions. This library is here for convenience and is not part of the xPLA standard, though it implements good practices. It makes it easier for Javascript authors to avoid dealing with inconvenient WebAssembly data types.
+A shared library is available at [`src/xpla/lib/sandbox/index.js`](./sandbox/index.js) with helper functions for common host function interactions. This library is here for convenience and is not part of the xPLA standard, though it implements good practices. It makes it easier for Javascript authors to avoid dealing with inconvenient WebAssembly data types.
 
 ```javascript
 import {
   sendEvent,
   getField, setField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
-} from "../../src/sandbox-lib";
+} from "../../src/xpla/lib/sandbox";
 
 // Send an event to all connected clients in the current activity
 // sendEvent(name, value, scope, permission)
@@ -262,7 +262,7 @@ The sandbox script can export the following functions:
 - `getState()`: Called when the activity page loads. The input is a JSON object with two keys: `scope` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
-import { getField } from "../../src/sandbox-lib";
+import { getField } from "../../src/xpla/lib/sandbox";
 
 function getState() {
   const { permission } = JSON.parse(Host.inputString());
@@ -293,7 +293,7 @@ The `onAction` function is called whenever the frontend sends an action via `act
 We provide here a convenience script that makes it easy to build server-side code to WebAssembly.
 
 ```bash
-./src/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
+./src/xpla/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
 ```
 
 This produces `server.wasm` in the specified output path.
@@ -332,7 +332,7 @@ The exact API is platform-specific and does not need to follow a standard. The p
 - **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, `scope` (a dict with `user_id`, `course_id`, `activity_id`), and `permission` (the current permission level).
 - **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by scope and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
-Our reference implementation exposes these as FastAPI endpoints in [xplademo](../xplademo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
+Our reference implementation exposes these as FastAPI endpoints in [the demo application](../demo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
 
 #### Host functions
 
@@ -408,7 +408,7 @@ Events are delivered in real time via a WebSocket connection established on page
 #### Recommendations
 
 - **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpl-activity>`), which provides a clean encapsulation boundary and works with any framework. See [`xpla.js`](../static/js/xpla.js).
-- **Pass initial state as data attributes.** We serialize the scope into `data-scope` (a JSON object with `user_id`, `course_id`, `activity_id`), the state into `data-state`, the permission into `data-permission`, and the client script path into `data-src`. This avoids extra round-trips. See [`activity.html`](../xplademo/templates/activity.html).
+- **Pass initial state as data attributes.** We serialize the scope into `data-scope` (a JSON object with `user_id`, `course_id`, `activity_id`), the state into `data-state`, the permission into `data-permission`, and the client script path into `data-src`. This avoids extra round-trips. See [`activity.html`](../demo/templates/activity.html).
 - **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. The `<xpl-activity>` element supports an `embed` attribute that controls how the activity is rendered:
   - **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
   - **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.

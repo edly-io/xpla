@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from xpla.context import ActivityContext
-from xpla.fields import FieldValidationError
+from xpla.lib.context import ActivityContext
+from xpla.lib.fields import FieldValidationError
 from .utils import (
     create_manifest,
     make_kv_store,

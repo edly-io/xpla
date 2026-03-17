@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from xpla.fields import FieldType
+from xpla.lib.fields import FieldType
 
 
 class FieldStore(ABC):

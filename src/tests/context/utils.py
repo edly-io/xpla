@@ -3,8 +3,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from xpla.context import ActivityContext
-from xplademo.kv import KVStore
+from xpla.lib.context import ActivityContext
+from xpla.demo.kv import KVStore
 
 
 def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-arguments

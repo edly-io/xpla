@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save the slides_html
 
-import { sendEvent, getField, setField } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 
 function onAction() {
   const { name, value, permission } = JSON.parse(Host.inputString());

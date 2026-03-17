@@ -5,9 +5,9 @@ import urllib.error
 
 import pytest
 
-from xpla.context import ActivityContext, MissingSandboxError
-from xpla.events import EventValidationError
-from xpla.fields import FieldValidationError
+from xpla.lib.context import ActivityContext, MissingSandboxError
+from xpla.lib.events import EventValidationError
+from xpla.lib.fields import FieldValidationError
 
 from .utils import (
     create_manifest,
@@ -52,7 +52,7 @@ class TestActivityContextInit:
 
         assert ctx.sandbox is None
 
-    @patch("xpla.context.SandboxExecutor")
+    @patch("xpla.lib.context.SandboxExecutor")
     def test_init_with_sandbox(
         self, mock_sandbox_executor: MagicMock, tmp_path: Path
     ) -> None:
@@ -96,7 +96,7 @@ class TestCallSandboxFunction:
         with pytest.raises(MissingSandboxError):
             ctx.call_sandbox_function("test_fn", "input")
 
-    @patch("xpla.context.SandboxExecutor")
+    @patch("xpla.lib.context.SandboxExecutor")
     def test_calls_sandbox_function(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
@@ -169,7 +169,7 @@ class TestHttpRequest:
         assert data["status"] == 0
         assert "not allowed" in data["body"]
 
-    @patch("xpla.context.urllib.request.urlopen")
+    @patch("xpla.lib.context.urllib.request.urlopen")
     def test_success_when_allowed(
         self, mock_urlopen: MagicMock, tmp_path: Path
     ) -> None:
@@ -202,7 +202,7 @@ class TestHttpRequest:
         assert ["Content-Type", "application/json"] in data["headers"]
         mock_urlopen.assert_called_once()
 
-    @patch("xpla.context.urllib.request.urlopen")
+    @patch("xpla.lib.context.urllib.request.urlopen")
     def test_handles_http_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Should return structured response on HTTPError."""
         manifest = create_manifest(capabilities={"http": {}})
@@ -220,7 +220,7 @@ class TestHttpRequest:
         assert data["status"] == 404
         assert data["body"] == "not found"
 
-    @patch("xpla.context.urllib.request.urlopen")
+    @patch("xpla.lib.context.urllib.request.urlopen")
     def test_handles_url_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Should return status=0 on URLError."""
         manifest = create_manifest(capabilities={"http": {}})
@@ -234,7 +234,7 @@ class TestHttpRequest:
         assert data["status"] == 0
         assert "Connection refused" in data["body"]
 
-    @patch("xpla.context.urllib.request.urlopen")
+    @patch("xpla.lib.context.urllib.request.urlopen")
     def test_permissive_mode_allows_all_hosts(
         self, mock_urlopen: MagicMock, tmp_path: Path
     ) -> None:
@@ -675,7 +675,7 @@ class TestGetState:
         result = ctx.get_state()
         assert result == {"score": 0}
 
-    @patch("xpla.context.SandboxExecutor")
+    @patch("xpla.lib.context.SandboxExecutor")
     def test_calls_sandbox_getState(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
@@ -702,7 +702,7 @@ class TestGetState:
         mock_sandbox.call_function.assert_called_once_with("getState", expected_input)
         assert result == {"question": "test"}
 
-    @patch("xpla.context.SandboxExecutor")
+    @patch("xpla.lib.context.SandboxExecutor")
     def test_fallback_on_runtime_error(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:

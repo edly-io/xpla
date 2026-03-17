@@ -2,7 +2,7 @@
 
 This directory contains reference xPLA activities that demonstrate the standard. Each subdirectory is a self-contained activity with a `manifest.json` and a client-side script. Most also include a server-side script (`server.js`) that is compiled to WebAssembly (`server.wasm`).
 
-For the full specification of the activity format, see the [Activity API Reference](../src/xpla/README.md#activity-api-reference).
+For the full specification of the activity format, see the [Activity API Reference](../src/xpla/lib/README.md#activity-api-reference).
 
 ## Activities
 
@@ -32,7 +32,7 @@ make samples
 To build a single activity:
 
 ```bash
-./src/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
+./src/xpla/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
 ```
 
 ## Creating a New Activity

@@ -5,8 +5,8 @@ import logging
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from xpla.context import PendingEvent
-from xpla.permission import Permission
+from xpla.lib.context import PendingEvent
+from xpla.lib.permission import Permission
 
 logger = logging.getLogger(__name__)
 

@@ -65,7 +65,7 @@ def js_to_wasm(input_js: Path, output_wasm: Path) -> None:
         )
 
         print(f"Compiling -> {output_wasm}")
-        dts_path = Path(__file__).parent.parent / "sandbox-lib" / "sandbox.d.ts"
+        dts_path = Path(__file__).parent.parent / "lib" / "sandbox" / "sandbox.d.ts"
         cmd = [
             "extism-js",
             str(bundled_js),

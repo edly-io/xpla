@@ -50,8 +50,8 @@ The frontend proxies API requests to the backend via Next.js rewrites configured
 From the project root:
 
 ```bash
-make xpln              # Backend: FastAPI dev server on port 9753
-make xpln-frontend     # Frontend: Next.js dev server on port 3000
+make notebook-server              # Backend: FastAPI dev server on port 9753
+make notebook-server-frontend     # Frontend: Next.js dev server on port 3000
 ```
 
 Then open the frontend server at http://localhost:3000.
@@ -62,7 +62,7 @@ Both servers must be running. The frontend proxies `/api/*`, `/a/*`, and `/stati
 
 1. Activity types are discovered by scanning `samples/` for directories containing a `manifest.json`
 2. When a user opens an activity, the backend creates an xPLA `ActivityContext` that loads the manifest and manages sandbox execution
-3. The frontend renders a `<xpl-activity>` custom element (defined in [src/static/js/xpla.js](../static/js/xpla.js)) which connects via WebSocket
+3. The frontend renders a `<xpl-activity>` custom element (defined in [src/xpla/static/js/xpla.js](../static/js/xpla.js)) which connects via WebSocket
 4. Actions and events flow between the client script and the WASM sandbox through the WebSocket, with permission-based filtering via the `EventBus`
 
 Permission levels: **view** (read-only), **play** (interactive, for learners), **edit** (authoring).

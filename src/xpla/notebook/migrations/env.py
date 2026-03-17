@@ -2,11 +2,11 @@
 from alembic import context
 from sqlmodel import SQLModel
 
-from xpln.db import engine
+from xpla.notebook.db import engine
 
 # Import all models so metadata is populated
-from xpln import models as _models  # noqa: F401
-from xpln import field_store as _field_store  # noqa: F401
+from xpla.notebook import models as _models  # noqa: F401
+from xpla.notebook import field_store as _field_store  # noqa: F401
 
 target_metadata = SQLModel.metadata
 

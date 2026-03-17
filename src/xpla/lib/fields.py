@@ -5,7 +5,7 @@ from typing import Any
 
 import jsonschema
 
-from xpla.manifest_types import (
+from xpla.lib.manifest_types import (
     ArrayField,
     ArrayType,
     BooleanField,

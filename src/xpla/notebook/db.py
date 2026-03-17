@@ -5,7 +5,7 @@ from alembic import command
 from alembic.config import Config
 from sqlmodel import Session, create_engine
 
-from xpln.constants import DB_PATH
+from xpla.notebook.constants import DB_PATH
 
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
 

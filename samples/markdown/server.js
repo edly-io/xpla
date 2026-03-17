@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save markdown_content and render to HTML
 
-import { sendEvent, getField, setField } from "../../src/sandbox-lib";
+import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 import { Marked } from "marked";
 
 function renderMarkdown(content, headerStartLevel) {

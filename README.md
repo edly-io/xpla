@@ -13,12 +13,12 @@ Offline mode is supported, with two possible options:
 
 | Directory | Description |
 |-----------|-------------|
-| [src/xpla/](./src/xpla/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/xpla/README.md#activity-api-reference) and [Platform API](./src/xpla/README.md#platform-api-reference) reference documentation. |
-| [src/xplademo/](./src/xplademo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
-| [src/xpln/](./src/xpln/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
+| [src/xpla/lib/](./src/xpla/lib/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/xpla/lib/README.md#activity-api-reference) and [Platform API](./src/xpla/lib/README.md#platform-api-reference) reference documentation. |
+| [src/xpla/demo/](./src/xpla/demo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
+| [src/xpla/notebook/](./src/xpla/notebook/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
 | [samples/](./samples/) | **Sample activities.** Reference xPLA activities (MCQ, quiz, video, chat, etc.) that demonstrate the standard. |
-| [src/sandbox-lib/](./src/sandbox-lib/) | **Sandbox helper library.** JavaScript convenience functions for writing server-side WASM code (field access, event sending, etc.). |
-| [src/static/](./src/static/) | **Shared static files.** The `XPLA` base class ([xpla.js](./src/static/js/xpla.js)) that powers the `<xpl-activity>` web component. |
+| [src/xpla/lib/sandbox/](./src/xpla/lib/sandbox/) | **Sandbox helper library.** JavaScript convenience functions for writing server-side WASM code (field access, event sending, etc.). |
+| [src/xpla/static/](./src/xpla/static/) | **Shared static files.** The `XPLA` base class ([xpla.js](./src/xpla/static/js/xpla.js)) that powers the `<xpl-activity>` web component. |
 
 ## Installation
 
@@ -40,7 +40,7 @@ Build all sample activities with sandboxes:
 
 Launch the demo server:
 
-    make xplademo
+    make demo-server
 
 Then open http://127.0.0.1:9752 in a browser.
 

@@ -1,6 +1,6 @@
 import pytest
-from xpla.actions import ActionChecker, ActionValidationError
-from xpla.manifest_types import TypeSchema
+from xpla.lib.actions import ActionChecker, ActionValidationError
+from xpla.lib.manifest_types import TypeSchema
 
 
 def type_schema(**kwargs: object) -> TypeSchema:
