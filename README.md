@@ -16,6 +16,7 @@ Offline mode is supported, with two possible options:
 | [src/xpla/lib/](./src/xpla/lib/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/xpla/lib/README.md#activity-api-reference) and [Platform API](./src/xpla/lib/README.md#platform-api-reference) reference documentation. Refer to this project for more information about the standard. |
 | [src/xpla/demo/](./src/xpla/demo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
 | [src/xpla/notebook/](./src/xpla/notebook/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
+| [src/xpla/lti/](./src/xpla/lti/) | **LTI 1.3 tool provider.** FastAPI app that exposes xPLA activities as LTI 1.3 tools for embedding in Open edX, Canvas, or any LMS. Includes platform registration admin and deep linking support. |
 | [samples/](./samples/) | **Sample activities.** Reference xPLA activities (MCQ, quiz, video, chat, etc.) that demonstrate the standard. |
 | [src/xpla/lib/sandbox/](./src/xpla/lib/sandbox/) | **Sandbox definition.** WIT interface and JSON Schema for the WASM Component Model sandbox. |
 | [src/xpla/static/](./src/xpla/static/) | **Shared static files.** The `XPLA` base class ([xpla.js](./src/xpla/static/js/xpla.js)) that powers the `<xpl-activity>` web component. |
@@ -43,6 +44,12 @@ Launch the demo server:
     make demo-server
 
 Then open http://127.0.0.1:9752 in a browser.
+
+Launch the LTI server:
+
+    make lti-server
+
+Then configure your LMS to connect to http://127.0.0.1:9754.
 
 ## Development
 

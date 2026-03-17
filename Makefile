@@ -11,6 +11,9 @@ samples: ## Build all sample activities
 demo-server: ## Run a development server for the demo app
 	fastapi dev src/xpla/demo/app.py --host=127.0.0.1 --port=9752
 
+lti-server: ## Run the LTI tool provider server (port 9754)
+	python -m xpla.lti --host=0.0.0.0
+
 notebook-server: ## Run the notebook server (port 9753) — build frontend first with notebook-frontend-build
 	fastapi dev src/xpla/notebook/app.py --host=127.0.0.1 --port=9753
 

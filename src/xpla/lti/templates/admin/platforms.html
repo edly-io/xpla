@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}LTI Platforms{% endblock %}
+
+{% block body %}
+<h1>Registered Platforms</h1>
+<p><a class="btn" href="/admin/platforms/new">Add Platform</a></p>
+
+{% if platforms %}
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Issuer</th>
+            <th>Client ID</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in platforms %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.issuer }}</td>
+            <td>{{ p.client_id }}</td>
+            <td>
+                <a href="/admin/platforms/{{ p.id }}/edit">Edit</a>
+                <form method="post" action="/admin/platforms/{{ p.id }}/delete" style="display:inline">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No platforms registered yet.</p>
+{% endif %}
+
+<hr>
+<h2>Tool Configuration</h2>
+<p>Use these URLs when registering this tool in your LMS:</p>
+<table>
+    <tr><th>Login URL</th><td>{{ base_url }}/auth/login</td></tr>
+    <tr><th>Redirect URI</th><td>{{ base_url }}/auth/callback</td></tr>
+    <tr><th>JWKS URL</th><td>{{ base_url }}/.well-known/jwks.json</td></tr>
+</table>
+{% endblock %}

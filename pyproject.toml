@@ -12,6 +12,9 @@ dependencies = [
     # for markdown activity
     "markdown",
     "componentize-py",
+    # LTI
+    "PyJWT[crypto]",
+    "jwcrypto",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +26,8 @@ dev = [
     "pylint",
     "pytest",
     "types-markdown",
+    # LTI
+    "responses",
 ]
 
 [tool.setuptools.packages.find]
@@ -38,14 +43,21 @@ ignore-paths=[
 disable=[
     "duplicate-code",
     "fixme",
+    "import-outside-toplevel",
     "invalid-name",
     "line-too-long",
     "missing-docstring",
+    "protected-access",
+    "redefined-outer-name",
     "too-few-public-methods",
-    "too-many-public-methods",
-    "too-many-instance-attributes",
     "too-many-arguments",
+    "too-many-instance-attributes",
+    "too-many-locals",
     "too-many-positional-arguments",
+    "too-many-public-methods",
+    "ungrouped-imports",
+    "unused-argument",
+    "wrong-import-order",
 ]
 
 [tool.mypy]

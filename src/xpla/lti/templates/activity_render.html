@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{ activity_context.name }}{% endblock %}
+
+{% block body %}
+<script type="module">
+import { XPLA } from "{{ url_for('static', path='js/xpla.js') }}";
+customElements.define("xpl-activity", XPLA);
+</script>
+<xpl-activity
+    data-scope="{{ scope_json | escape }}"
+    data-src="{{ url_for('activity_asset', token=token, file_path=activity_context.client_path) }}"
+    data-state="{{ state_json | escape }}"
+    data-permission="{{ permission }}"
+    data-action-url="{{ url_for('send_action', token=token, action_name='__NAME__') }}"
+    data-ws-url="ws://{{ request.headers.get('host', 'localhost:9754') }}/activity/{{ token }}/ws"
+></xpl-activity>
+{% endblock %}

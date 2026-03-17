@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit" if platform else "New" }} Platform{% endblock %}
+
+{% block body %}
+<h1>{{ "Edit" if platform else "New" }} Platform</h1>
+<form method="post" action="{{ action }}">
+    <label>Name
+        <input type="text" name="name" value="{{ platform.name if platform else '' }}" required>
+    </label>
+    <label>Issuer
+        <input type="url" name="issuer" value="{{ platform.issuer if platform else '' }}" required>
+    </label>
+    <label>Client ID
+        <input type="text" name="client_id" value="{{ platform.client_id if platform else '' }}" required>
+    </label>
+    <label>OIDC Auth URL
+        <input type="url" name="oidc_auth_url" value="{{ platform.oidc_auth_url if platform else '' }}" required>
+    </label>
+    <label>JWKS URL
+        <input type="url" name="jwks_url" value="{{ platform.jwks_url if platform else '' }}" required>
+    </label>
+    <label>Access Token URL (optional)
+        <input type="url" name="access_token_url" value="{{ platform.access_token_url if platform else '' }}">
+    </label>
+    <p>
+        <button type="submit" class="btn">Save</button>
+        <a href="/admin/platforms">Cancel</a>
+    </p>
+</form>
+{% endblock %}
