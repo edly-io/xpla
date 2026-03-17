@@ -1,6 +1,6 @@
 # Cross-Platform Learning Activities (xPLA)
 
-This is a proof-of-concept for xPLA (temporary name), an upcoming standard which aims at being an improvement over other similar standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability) or [XBlock](https://github.com/openedx/xblock).
+xPLA is an upcoming standard for online learning activities. It aims at improving other standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability), [H5P](https://h5p.org) or [XBlock](https://github.com/openedx/xblock).
 
 As a high-level overview: the xPLA standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe xPLA capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
 
@@ -13,7 +13,7 @@ Offline mode is supported, with two possible options:
 
 | Directory | Description |
 |-----------|-------------|
-| [src/xpla/lib/](./src/xpla/lib/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/xpla/lib/README.md#activity-api-reference) and [Platform API](./src/xpla/lib/README.md#platform-api-reference) reference documentation. |
+| [src/xpla/lib/](./src/xpla/lib/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/xpla/lib/README.md#activity-api-reference) and [Platform API](./src/xpla/lib/README.md#platform-api-reference) reference documentation. Refer to this project for more information about the standard. |
 | [src/xpla/demo/](./src/xpla/demo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
 | [src/xpla/notebook/](./src/xpla/notebook/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
 | [samples/](./samples/) | **Sample activities.** Reference xPLA activities (MCQ, quiz, video, chat, etc.) that demonstrate the standard. |
