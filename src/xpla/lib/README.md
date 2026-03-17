@@ -59,6 +59,10 @@ In addition, WASM modules built with Javascript take around 2 MB of space each. 
 
 We have not yet defined a standard to import and export activity instances. We would need to export all activity fields, with the exception of fields that are scoped to users or the platform. Actually, it would be up to the platform to decide whether to export activity fields that are scoped to the course, depending on whether we export a single instance or an entire course.
 
+### Current WASM implementation is not runtime-agnostic
+
+The current implementation assumes that sandboxed code was compiled with and executed by [Extism](https://extism.org/), but we should support other runtimes as well. This should be made possible thanks to the [WebAssembly Component Model](https://github.com/WebAssembly/component-model). More R&D is required.
+
 ## Activity API Reference
 
 This reference is aimed at course authors to create new xPLA packages. We suggest to leverage generative AI to create new packages: when this documentation and sample activities are provided as context, coding LLM typically generate working xPLA in a single shot.
