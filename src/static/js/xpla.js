@@ -82,7 +82,6 @@ export class XPLA extends HTMLElement {
   }
 
   _connectWebSocket() {
-    const activityName = this.getAttribute("name");
     // Cookies are sent automatically on the WebSocket handshake
     this._ws = new WebSocket(this._getWebsocketUrl());
     this._ws.onopen = () => {
@@ -101,6 +100,7 @@ export class XPLA extends HTMLElement {
   }
 
   _getWebsocketUrl() {
+    const activityName = this.getAttribute("name");
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${location.host}/api/activity/${activityName}/ws`;
   }
