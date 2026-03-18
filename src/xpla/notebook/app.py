@@ -1,10 +1,15 @@
 import logging
+import re
+import shutil
+import tempfile
+import zipfile
 from pathlib import Path
 
 from fastapi import (
     Depends,
     FastAPI,
     HTTPException,
+    UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
@@ -15,6 +20,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
 
 from xpla.lib.actions import ActionValidationError
+from xpla.lib.manifest_types import XplaActivityManifest
 from xpla.lib.runtime import ActivityRuntime, AssetAccessError
 from xpla.lib.event_bus import EventBus
 from xpla.lib.permission import Permission
@@ -76,7 +82,17 @@ class MoveActivityBody(BaseModel):
 
 
 def find_activity_dir(activity_type: str) -> Path:
-    activity_dir = constants.SAMPLES_DIR / activity_type
+    if activity_type.startswith("@"):
+        # Format: @<user_id>/<name>
+        parts = activity_type[1:].split("/", 1)
+        if len(parts) != 2:
+            raise HTTPException(
+                status_code=404, detail=f"Activity '{activity_type}' not found"
+            )
+        user_id, name = parts
+        activity_dir = constants.ACTIVITIES_DIR / user_id / name
+    else:
+        activity_dir = constants.SAMPLES_DIR / activity_type
     if not (activity_dir / "manifest.json").exists():
         raise HTTPException(
             status_code=404, detail=f"Activity '{activity_type}' not found"
@@ -84,8 +100,15 @@ def find_activity_dir(activity_type: str) -> Path:
     return activity_dir
 
 
-def list_activity_types() -> list[str]:
-    return sorted(d.name for d in constants.SAMPLES_DIR.iterdir() if d.is_dir())
+def list_activity_types(user_id: str) -> list[str]:
+    samples = sorted(d.name for d in constants.SAMPLES_DIR.iterdir() if d.is_dir())
+    user_dir = constants.ACTIVITIES_DIR / user_id
+    user_uploads: list[str] = []
+    if user_dir.is_dir():
+        user_uploads = sorted(
+            f"@{user_id}/{d.name}" for d in user_dir.iterdir() if d.is_dir()
+        )
+    return samples + user_uploads
 
 
 def load_activity(
@@ -326,7 +349,7 @@ async def get_page(
             "title": page.title,
             "course_id": page.course_id,
             "activities": activities,
-            "activity_types": list_activity_types(),
+            "activity_types": list_activity_types(USER_ID),
         }
     )
 
@@ -418,7 +441,108 @@ async def move_activity(
 
 @app.get("/api/activity-types")
 async def get_activity_types() -> JSONResponse:
-    return JSONResponse(list_activity_types())
+    return JSONResponse(list_activity_types(USER_ID))
+
+
+ACTIVITY_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+# ---- user activity upload API ----
+
+
+@app.get("/api/my-activities")
+async def list_my_activities() -> JSONResponse:
+    user_dir = constants.ACTIVITIES_DIR / USER_ID
+    if not user_dir.is_dir():
+        return JSONResponse([])
+    return JSONResponse(sorted(d.name for d in user_dir.iterdir() if d.is_dir()))
+
+
+@app.post("/api/my-activities", status_code=201)
+async def upload_activity(
+    name: str,
+    file: UploadFile,
+) -> JSONResponse:
+    if not ACTIVITY_NAME_RE.match(name):
+        raise HTTPException(
+            status_code=400,
+            detail="Name must match ^[a-z0-9][a-z0-9_-]*$",
+        )
+
+    content = await file.read()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        zip_path = tmp_path / "upload.zip"
+        zip_path.write_bytes(content)
+
+        if not zipfile.is_zipfile(zip_path):
+            raise HTTPException(
+                status_code=400, detail="Uploaded file is not a valid zip"
+            )
+        extract_dir = tmp_path / "extracted"
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(extract_dir)
+
+        manifest_path = extract_dir / "manifest.json"
+        if not manifest_path.exists():
+            raise HTTPException(
+                status_code=400, detail="manifest.json not found in zip"
+            )
+
+        try:
+            manifest = XplaActivityManifest.model_validate_json(
+                manifest_path.read_text()
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid manifest: {e}") from e
+
+        if not (extract_dir / manifest.client).exists():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Client file '{manifest.client}' not found in zip",
+            )
+
+        if manifest.server and not (extract_dir / manifest.server).exists():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Server file '{manifest.server}' not found in zip",
+            )
+
+        for static_item in manifest.static or []:
+            static_path = static_item.root
+            if not (extract_dir / static_path).exists():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Static file '{static_path}' not found in zip",
+                )
+
+        target_dir = constants.ACTIVITIES_DIR / USER_ID / name
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(extract_dir), str(target_dir))
+
+    return JSONResponse({"name": name}, status_code=201)
+
+
+@app.delete("/api/my-activities/{name}", status_code=204)
+async def delete_my_activity(
+    name: str,
+    session: Session = Depends(get_session),
+) -> None:
+    activity_type_str = f"@{USER_ID}/{name}"
+    activities = session.exec(
+        select(PageActivity).where(PageActivity.activity_type == activity_type_str)
+    ).all()
+    for pa in activities:
+        field_store.delete_by_activity(pa.id)
+        session.delete(pa)
+    session.commit()
+
+    target_dir = constants.ACTIVITIES_DIR / USER_ID / name
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
 
 
 # ---- activity runtime routes ----

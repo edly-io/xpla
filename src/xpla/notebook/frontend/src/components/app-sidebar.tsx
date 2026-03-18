@@ -96,6 +96,14 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={pathname === "/activities"}
+              render={<Link href="/activities" />}
+            >
+              My Activities
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           {courses.map((course) => (
             <SidebarMenuItem key={course.id}>
               <SidebarMenuButton
