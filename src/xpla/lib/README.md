@@ -269,7 +269,7 @@ The sandbox script can export the following functions:
 import { getField } from "../../src/xpla/lib/sandbox";
 
 function getState() {
-  const { permission } = JSON.parse(Host.inputString());
+  const { context, permission } = JSON.parse(Host.inputString());
   const state = { question: getField("question") };
   if (permission === "edit") {
     state.correct_answers = getField("correct_answers");

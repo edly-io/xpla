@@ -72,7 +72,7 @@ function sendEventToAllViewers(name, value) {
 }
 
 function getState() {
-  const { scope, permission } = JSON.parse(Host.inputString());
+  const { context, permission } = JSON.parse(Host.inputString());
   const state = {
     doc_state: getField("doc_state"),
     content: getField("content"),

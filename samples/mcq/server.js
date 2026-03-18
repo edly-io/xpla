@@ -19,7 +19,7 @@ function onAction() {
 
 // Return state visible to the current user based on permission level.
 function getState() {
-  const { permission, scope } = JSON.parse(Host.inputString());
+  const { permission, context } = JSON.parse(Host.inputString());
   const state = {
     question: getField("question"),
     answers: getField("answers"),
