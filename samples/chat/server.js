@@ -6,10 +6,10 @@
 import { sendEvent, logAppend, logGetRange } from "../../src/xpla/lib/sandbox";
 
 function onAction() {
-  const { name, value, scope } = JSON.parse(Host.inputString());
+  const { name, value, context } = JSON.parse(Host.inputString());
 
   if (name === "chat.post") {
-    const user = scope.user_id;
+    const user = context.user_id;
     const entry = { user, text: value.text };
     const id = logAppend("messages", entry);
     sendEvent("chat.new", { id, user, text: value.text }, {}, "play");

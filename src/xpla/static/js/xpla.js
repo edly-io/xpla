@@ -1,7 +1,7 @@
 export class XPLA extends HTMLElement {
   constructor() {
     super();
-    this.scope = {};
+    this.context = {};
     this.state = {};
     this.permission = "view";
     this._ws = null;
@@ -9,9 +9,9 @@ export class XPLA extends HTMLElement {
   }
 
   connectedCallback() {
-    const scopeAttr = this.getAttribute("data-scope");
-    if (scopeAttr) {
-      this.scope = JSON.parse(scopeAttr);
+    const contextAttr = this.getAttribute("data-context");
+    if (contextAttr) {
+      this.context = JSON.parse(contextAttr);
     }
 
     const embedMode = this.getAttribute("embed") || "shadow";
@@ -110,7 +110,7 @@ export class XPLA extends HTMLElement {
 
   _getWebsocketUrl() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${location.host}/api/activity/${this.scope.activity_id}/ws`;
+    return `${proto}//${location.host}/api/activity/${this.context.activity_id}/ws`;
   }
 
   _setOfflineBanner(visible) {
@@ -132,7 +132,7 @@ export class XPLA extends HTMLElement {
   }
 
   _storageKey() {
-    return `xpla:pending:${this.scope.activity_id}`;
+    return `xpla:pending:${this.context.activity_id}`;
   }
 
   _flushQueue() {
@@ -171,7 +171,7 @@ export class XPLA extends HTMLElement {
   }
 
   getAssetUrl(path) {
-    return new URL(`/a/${this.scope.activity_id}/${path}`, location.href).href;
+    return new URL(`/a/${this.context.activity_id}/${path}`, location.href).href;
   }
 
   onEvent(name, value) {

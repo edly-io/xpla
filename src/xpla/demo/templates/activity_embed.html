@@ -15,7 +15,7 @@ customElements.define("xpl-activity", XPLA);
 </script>
 <xpl-activity
     embed="native"
-    data-scope="{{ scope_json | escape }}"
+    data-context="{{ context_json | escape }}"
     data-src="{{ url_for('activity_asset', activity_type=activity_context.name, file_path=activity_context.client_path) }}"
     data-state="{{ state_json | escape }}"
     data-permission="{{ current_permission }}"

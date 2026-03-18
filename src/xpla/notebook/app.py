@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
 
 from xpla.lib.actions import ActionValidationError
-from xpla.lib.context import ActivityContext, AssetAccessError
+from xpla.lib.runtime import ActivityRuntime, AssetAccessError
 from xpla.lib.event_bus import EventBus
 from xpla.lib.permission import Permission
 from xpla.notebook import constants
@@ -93,9 +93,9 @@ def load_activity(
     activity_id: str,
     course_id: str,
     permission: Permission,
-) -> ActivityContext:
+) -> ActivityRuntime:
     activity_dir = find_activity_dir(activity_type)
-    return ActivityContext(
+    return ActivityRuntime(
         activity_dir,
         field_store,
         activity_id=activity_id,
@@ -121,7 +121,7 @@ def activity_dict(
         "client_path": ctx.client_path,
         "state": ctx.get_state(),
         "permission": ctx.permission.name,
-        "scope": {
+        "context": {
             "user_id": USER_ID,
             "course_id": course_id,
             "activity_id": pa.id,

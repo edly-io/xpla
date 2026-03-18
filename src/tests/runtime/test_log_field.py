@@ -2,18 +2,18 @@ from pathlib import Path
 
 import pytest
 
-from xpla.lib.context import ActivityContext
+from xpla.lib.runtime import ActivityRuntime
 from xpla.lib.fields import FieldValidationError
 from xpla.lib.permission import Permission
 from .utils import (
     create_manifest,
     make_kv_store,
     setup_activity_dir,
-    make_activity_context,
+    make_activity_runtime,
 )
 
 
-def make_ctx(tmp_path: Path) -> ActivityContext:
+def make_ctx(tmp_path: Path) -> ActivityRuntime:
     manifest = create_manifest(
         fields={
             "messages": {
@@ -30,7 +30,7 @@ def make_ctx(tmp_path: Path) -> ActivityContext:
         }
     )
     activity_dir = setup_activity_dir(tmp_path, manifest)
-    return ActivityContext(
+    return ActivityRuntime(
         activity_dir,
         make_kv_store(),
         "activityid",
@@ -120,7 +120,7 @@ class TestLogFieldFunctions:
                 }
             }
         )
-        ctx = make_activity_context(tmp_path, manifest)
+        ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
         ctx.log_append("messages", "alice msg", {})
@@ -145,7 +145,7 @@ class TestLogFieldFunctions:
                 "count": {"type": "integer", "scope": "activity"},
             }
         )
-        ctx = make_activity_context(tmp_path, manifest)
+        ctx = make_activity_runtime(tmp_path, manifest)
         result = ctx.get_all_fields()
         assert "count" in result
         assert "messages" not in result

@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from xpla.lib.context import ActivityContext, AssetAccessError
+from xpla.lib.runtime import ActivityRuntime, AssetAccessError
 from xpla.lib.actions import ActionValidationError
 from xpla.lib.event_bus import EventBus
 from xpla.lib.permission import Permission
@@ -49,7 +49,7 @@ class ActivityNotFound(Exception):
     """Raised when an activity cannot be found."""
 
 
-def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityContext:
+def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityRuntime:
     """Load an activity by ID from the samples directory."""
     try:
         activity_dir = find_activity_dir(activity_type)
@@ -57,7 +57,7 @@ def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityContex
         raise HTTPException(status_code=404, detail=str(e)) from e
 
     user_id, permission = get_simulation_params(cookies)
-    activity_context = ActivityContext(
+    activity_context = ActivityRuntime(
         activity_dir,
         kv_store,
         activity_id=activity_type,
@@ -109,7 +109,7 @@ async def activity(request: Request, activity_type: str) -> HTMLResponse:
     activity_context = load_activity(request.cookies, activity_type)
     activity_state = activity_context.get_state()
 
-    scope = {
+    context = {
         "user_id": activity_context.user_id,
         "course_id": activity_context.course_id,
         "activity_id": activity_context.activity_id,
@@ -121,7 +121,7 @@ async def activity(request: Request, activity_type: str) -> HTMLResponse:
         context={
             "activity_context": activity_context,
             "state_json": json.dumps(activity_state),
-            "scope_json": json.dumps(scope),
+            "context_json": json.dumps(context),
             "simulated_users": SIMULATED_USERS,
             "current_user": activity_context.user_id,
             "permission_levels": [p.value for p in Permission],
@@ -136,7 +136,7 @@ async def activity_embed(request: Request, activity_type: str) -> HTMLResponse:
     activity_context = load_activity(request.cookies, activity_type)
     activity_state = activity_context.get_state()
 
-    scope = {
+    context = {
         "user_id": activity_context.user_id,
         "course_id": activity_context.course_id,
         "activity_id": activity_context.activity_id,
@@ -148,7 +148,7 @@ async def activity_embed(request: Request, activity_type: str) -> HTMLResponse:
         context={
             "activity_context": activity_context,
             "state_json": json.dumps(activity_state),
-            "scope_json": json.dumps(scope),
+            "context_json": json.dumps(context),
             "current_permission": activity_context.permission.value,
         },
     )

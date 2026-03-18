@@ -6,20 +6,20 @@ This is the core runtime library for the xPLA (Cross-Platform Learning Activitie
 
 Key modules:
 
-- [context.py](./context.py) — `ActivityContext`: central orchestrator that loads manifests, executes sandboxed code, and provides host functions
+- [runtime.py](./runtime.py) — `ActivityRuntime`: central orchestrator that loads manifests, executes sandboxed code, and provides host functions
 - [sandbox.py](./sandbox.py) — `SandboxExecutor`: Extism-based WebAssembly plugin runtime
 - [fields.py](./fields.py) — `FieldChecker`: validates field types and scopes against the manifest
 - [actions.py](./actions.py) — `ActionChecker`: validates client-to-server actions
 - [events.py](./events.py) — `EventChecker`: validates server-to-client events
 - [capabilities.py](./capabilities.py) — `CapabilityChecker`: enforces declared capabilities (HTTP, AI, etc.)
-- [event_bus.py](./event_bus.py) — `EventBus`: in-memory pub/sub for WebSocket event broadcasting with scope/permission filtering
+- [event_bus.py](./event_bus.py) — `EventBus`: in-memory pub/sub for WebSocket event broadcasting with context/permission filtering
 - [field_store.py](./field_store.py) — `FieldStore`: abstract base class for field persistence (scalar and log fields)
 - [kv.py](./kv.py) — `KVFieldStore`: simple JSON-file-backed `FieldStore` implementation
 - [permission.py](./permission.py) — `Permission` enum: `view`, `play`, `edit`
 
 ## Execution Flow
 
-1. `ActivityContext(activity_dir, field_store, ...)` loads `manifest.json` from the activity directory
+1. `ActivityRuntime(activity_dir, field_store, ...)` loads `manifest.json` from the activity directory
 2. If `manifest.server` is declared, the WASM module is loaded and host functions are registered
 3. On page load, the sandbox's `getState()` is called (or all declared fields are returned)
 4. When the client sends an action, `on_action()` validates it against the manifest, then calls the sandbox's `onAction()`. Events emitted by the sandbox are buffered and published via `EventBus`
@@ -202,7 +202,7 @@ export function setup(activity) {
 The `activity` object exposes the following properties and methods:
 
 - `element`: the DOM element to which this activity is attached.
-- `scope`: An object with `user_id`, `course_id`, and `activity_id` identifying the current context. Parsed from the `data-scope` attribute.
+- `context`: An object with `user_id`, `course_id`, and `activity_id` identifying the current context. Parsed from the `data-context` attribute.
 - `state`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared fields if `getState` is not exported).
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. The current `permission` is included in the payload. The action name must be declared in `manifest.json`.
@@ -234,8 +234,8 @@ import {
 } from "../../src/xpla/lib/sandbox";
 
 // Send an event to all connected clients in the current activity
-// sendEvent(name, value, scope, permission)
-//   scope: {} = current activity (default), or e.g. { user_id: "alice" } to target a specific user
+// sendEvent(name, value, context, permission)
+//   context: {} = current activity (default), or e.g. { user_id: "alice" } to target a specific user
 //   permission: minimum permission to receive the event ("view", "play", or "edit")
 sendEvent("answer.result", { correct: true }, {}, "play");
 
@@ -246,7 +246,7 @@ setField("correct_answers", score + 1);
 const question = getField("question");
 setField("question", "What is 2+2?");
 
-// Get/set fields for a different user via scope overrides
+// Get/set fields for a different user via context overrides
 const studentScore = getField("score", { user_id: "student123" });
 setField("score", studentScore + 1, { user_id: "student123" });
 
@@ -262,8 +262,8 @@ logDeleteRange("messages", 0, 50);           // returns count deleted
 
 The sandbox script can export the following functions:
 
-- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The input is a JSON object with four keys: `name` (the action name), `value` (the action payload), `scope` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"view"`, `"play"`, or `"edit"`).
-- `getState()`: Called when the activity page loads. The input is a JSON object with two keys: `scope` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
+- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The input is a JSON object with four keys: `name` (the action name), `value` (the action payload), `context` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"view"`, `"play"`, or `"edit"`).
+- `getState()`: Called when the activity page loads. The input is a JSON object with two keys: `context` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
 import { getField } from "../../src/xpla/lib/sandbox";
@@ -278,19 +278,19 @@ function getState() {
 }
 
 function onAction() {
-  const { name, value, scope, permission } = JSON.parse(Host.inputString());
+  const { name, value, context, permission } = JSON.parse(Host.inputString());
   // name: action name (e.g. "answer.submit")
   // value: action payload
-  // scope.user_id: current user ID
-  // scope.course_id: current course ID
-  // scope.activity_id: current activity instance ID
+  // context.user_id: current user ID
+  // context.course_id: current course ID
+  // context.activity_id: current activity instance ID
   // permission: "view", "play", or "edit"
 }
 
 module.exports = { onAction, getState };
 ```
 
-The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, scope, permission)` (which calls the `send_event` host function). The `scope` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
+The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, context, permission)` (which calls the `send_event` host function). The `context` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
 
 ### Building
 
@@ -320,7 +320,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 2. **Sandbox execution.** Load the WebAssembly module declared in `manifest.server` and execute its exported functions (`getState`, `onAction`). We recommend using [Extism](https://extism.org/), which provides plugin runtimes for many host languages (Python, Go, Rust, Java, etc.).
 
-3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`context.py`](./context.py).
+3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`runtime.py`](./runtime.py).
 
 4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`actions.py`](./actions.py) (actions), [`events.py`](./events.py) (events), [`fields.py`](./fields.py) (fields).
 
@@ -333,22 +333,22 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 The exact API is platform-specific and does not need to follow a standard. The platform must support:
 
 - **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, `scope` (a dict with `user_id`, `course_id`, `activity_id`), and `permission` (the current permission level).
-- **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by scope and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, `context` (a dict with `user_id`, `course_id`, `activity_id`), and `permission` (the current permission level).
+- **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by context and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
 Our reference implementation exposes these as FastAPI endpoints in [the demo application](../demo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
 
 #### Host functions
 
-Plugins can call host functions which are defined in [`context.py`](./context.py):
+Plugins can call host functions which are defined in [`runtime.py`](./runtime.py):
 
-- `send_event(name: str, value: str, scope: str, permission: str)`: `scope` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
-- `get_field(name: str, scope: str)` / `set_field(name: str, value: str, scope: str)`: scope resolved from manifest; the `scope` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
-- `log_append(name: str, value: any, scope: str) -> int`: append to a log field, returns the assigned entry ID
-- `log_get(name: str, entry_id: int, scope: str) -> any | null`: get a single log entry by ID
-- `log_get_range(name: str, from_id: int, to_id: int, scope: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
-- `log_delete(name: str, entry_id: int, scope: str) -> bool`: delete a single entry, returns whether it existed
-- `log_delete_range(name: str, from_id: int, to_id: int, scope: str) -> int`: delete entries in range, returns count deleted
+- `send_event(name: str, value: str, context: str, permission: str)`: `context` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
+- `get_field(name: str, context: str)` / `set_field(name: str, value: str, context: str)`: scope resolved from manifest; the `context` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
+- `log_append(name: str, value: any, context: str) -> int`: append to a log field, returns the assigned entry ID
+- `log_get(name: str, entry_id: int, context: str) -> any | null`: get a single log entry by ID
+- `log_get_range(name: str, from_id: int, to_id: int, context: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
+- `log_delete(name: str, entry_id: int, context: str) -> bool`: delete a single entry, returns whether it existed
+- `log_delete_range(name: str, from_id: int, to_id: int, context: str) -> int`: delete entries in range, returns count deleted
 - `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])` → `{"status": int, "headers": [[k,v],...], "body": str}`
 - `submit_grade(score: float)`
 
@@ -392,7 +392,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | Property / Method | Type | Description |
 |---|---|---|
 | `element` | DOM element | The root DOM element where the activity renders its UI. |
-| `scope` | `object` | Context identifying the activity instance: `{ user_id, course_id, activity_id }`. Parsed from the `data-scope` attribute. |
+| `context` | `object` | Context identifying the activity instance: `{ user_id, course_id, activity_id }`. Parsed from the `data-context` attribute. |
 | `state` | `object` | The activity state, populated by the backend's `getState()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
 | `sendAction(name, value)` | `(string, any) => void` | Sends an action to the backend sandbox via WebSocket. The current `permission` is included in the payload. Fire-and-forget: events are delivered asynchronously through the `onEvent` callback. |
@@ -407,12 +407,12 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 
 #### Event processing
 
-Events are delivered in real time via a WebSocket connection established on page load. When the server broadcasts an event (filtered by scope and permission), the runtime calls `activity.onEvent(name, parsedValue)`. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.state` or performing any other side effects as needed. This enables multi-user scenarios (e.g. chat) where actions by one user produce events visible to all connected clients.
+Events are delivered in real time via a WebSocket connection established on page load. When the server broadcasts an event (filtered by context and permission), the runtime calls `activity.onEvent(name, parsedValue)`. All events are treated uniformly — the activity's `onEvent` handler is responsible for updating `activity.state` or performing any other side effects as needed. This enables multi-user scenarios (e.g. chat) where actions by one user produce events visible to all connected clients.
 
 #### Recommendations
 
 - **Use a custom element.** Our implementation uses a [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) (`<xpl-activity>`), which provides a clean encapsulation boundary and works with any framework. See [`xpla.js`](../static/js/xpla.js).
-- **Pass initial state as data attributes.** We serialize the scope into `data-scope` (a JSON object with `user_id`, `course_id`, `activity_id`), the state into `data-state`, the permission into `data-permission`, and the client script path into `data-src`. This avoids extra round-trips. See [`activity.html`](../demo/templates/activity.html).
+- **Pass initial state as data attributes.** We serialize the context into `data-context` (a JSON object with `user_id`, `course_id`, `activity_id`), the state into `data-state`, the permission into `data-permission`, and the client script path into `data-src`. This avoids extra round-trips. See [`activity.html`](../demo/templates/activity.html).
 - **Support both shadow DOM and iframe embedding.** Shadow DOM provides style encapsulation with lower overhead; iframes provide full isolation. The `<xpl-activity>` element supports an `embed` attribute that controls how the activity is rendered:
   - **`shadow`** (default): The activity runs inside a closed shadow DOM. This provides style encapsulation — activity CSS won't leak into the host page and vice versa — but doesn't fully isolate the activity from the parent document.
   - **`native`**: No shadow DOM. The activity renders directly into a wrapper `<div>`. Intended for use inside iframes, where the iframe boundary provides full isolation. In this mode, `adoptedStyleSheets` on `activity.element` is shimmed to delegate to `document.adoptedStyleSheets`, so activity code (e.g. Plyr CSS injection) works without changes.

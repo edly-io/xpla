@@ -39,4 +39,4 @@ The server is a single FastAPI application. Key files:
 - [kv.py](./kv.py) — `KVFieldStore`: JSON-file-backed field persistence (stores at `dist/kv.json`)
 - [templates/](./templates/) — Jinja2 templates (home page, activity page, iframe embed page)
 
-For each request, the server creates an xPLA `ActivityContext` that loads the manifest, executes the WASM sandbox, and routes events through the `EventBus`.
+For each request, the server creates an xPLA `ActivityRuntime` that loads the manifest, executes the WASM sandbox, and routes events through the `EventBus`.

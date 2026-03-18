@@ -10,7 +10,7 @@ xPLN is a courseware management application built on top of the [xPLA](../xpla/)
 │   (port 3000)        │  /api, /a,       │   (port 9753)        │
 │                      │  /static         │                      │
 │  React + shadcn/ui   │                  │  SQLite + Alembic    │
-│  Tailwind CSS        │                  │  xPLA ActivityContext │
+│  Tailwind CSS        │                  │  xPLA ActivityRuntime │
 │  @dnd-kit            │                  │  WebSocket EventBus  │
 └──────────────────────┘                  └──────────────────────┘
 ```
@@ -61,7 +61,7 @@ Both servers must be running. The frontend proxies `/api/*`, `/a/*`, and `/stati
 ## How Activities Work
 
 1. Activity types are discovered by scanning `samples/` for directories containing a `manifest.json`
-2. When a user opens an activity, the backend creates an xPLA `ActivityContext` that loads the manifest and manages sandbox execution
+2. When a user opens an activity, the backend creates an xPLA `ActivityRuntime` that loads the manifest and manages sandbox execution
 3. The frontend renders a `<xpl-activity>` custom element (defined in [src/xpla/static/js/xpla.js](../static/js/xpla.js)) which connects via WebSocket
 4. Actions and events flow between the client script and the WASM sandbox through the WebSocket, with permission-based filtering via the `EventBus`
 

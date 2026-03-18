@@ -13,7 +13,7 @@ export async function registerXplActivity(): Promise<void> {
         location.port === "3000"
           ? location.hostname + ":9753"
           : location.host;
-      return `${proto}//${host}/api/activity/${this.scope.activity_id}/${this.permission}/ws`;
+      return `${proto}//${host}/api/activity/${this.context.activity_id}/${this.permission}/ws`;
     }
 
     getAssetUrl(path: string): string {
@@ -21,7 +21,7 @@ export async function registerXplActivity(): Promise<void> {
         location.port === "3000"
           ? location.hostname + ":9753"
           : location.host;
-      return `${location.protocol}//${host}/a/${this.scope.activity_id}/${path}`;
+      return `${location.protocol}//${host}/a/${this.context.activity_id}/${path}`;
     }
   }
 

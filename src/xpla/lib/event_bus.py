@@ -5,7 +5,7 @@ import logging
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from xpla.lib.context import PendingEvent
+from xpla.lib.runtime import PendingEvent
 from xpla.lib.permission import Permission
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class Subscriber:
 
 
 class EventBus:
-    """Manages WebSocket subscribers and broadcasts events with scope/permission filtering."""
+    """Manages WebSocket subscribers and broadcasts events with context/permission filtering."""
 
     def __init__(self) -> None:
         self._subscribers: dict[str, list[Subscriber]] = {}
@@ -62,10 +62,10 @@ class EventBus:
     async def publish(self, activity_type: str, events: list[PendingEvent]) -> None:
         subscribers = self._subscribers.get(activity_type, [])
         for event in events:
-            event_scope = event["scope"]
+            event_context = event["context"]
             event_permission = event["permission"]
             for sub in subscribers:
-                if not _matches_scope(sub, event_scope):
+                if not _matches_context(sub, event_context):
                     continue
                 if not _has_permission(sub, event_permission):
                     continue
@@ -80,13 +80,13 @@ class EventBus:
                     logger.warning("Failed to send event to subscriber %s", sub.user_id)
 
 
-def _matches_scope(subscriber: Subscriber, event_scope: dict[str, str]) -> bool:
-    """Check if a subscriber matches the event scope.
+def _matches_context(subscriber: Subscriber, event_context: dict[str, str]) -> bool:
+    """Check if a subscriber matches the event context.
 
-    Each dimension present in the event scope must match the subscriber's value.
+    Each dimension present in the event context must match the subscriber's value.
     Missing dimensions mean "any" (broader broadcast).
     """
-    for key, value in event_scope.items():
+    for key, value in event_context.items():
         if key == "activity_id" and subscriber.activity_id != value:
             return False
         if key == "course_id" and subscriber.course_id != value:

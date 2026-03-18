@@ -1,4 +1,4 @@
-"""Tests for EventBus scope/permission matching and event routing."""
+"""Tests for EventBus context/permission matching and event routing."""
 
 import asyncio
 from unittest.mock import AsyncMock
@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 from xpla.lib.event_bus import (
     EventBus,
     _has_permission,
-    _matches_scope,
+    _matches_context,
     Subscriber,
 )
 from xpla.lib.permission import Permission
@@ -28,46 +28,46 @@ def _make_subscriber(
     )
 
 
-class TestMatchesScope:
-    """Tests for scope matching logic."""
+class TestMatchesContext:
+    """Tests for context matching logic."""
 
-    def test_empty_scope_matches_all(self) -> None:
+    def test_empty_context_matches_all(self) -> None:
         sub = _make_subscriber()
-        assert _matches_scope(sub, {})
+        assert _matches_context(sub, {})
 
     def test_matching_activity_id(self) -> None:
         sub = _make_subscriber(activity_id="act1")
-        assert _matches_scope(sub, {"activity_id": "act1"})
+        assert _matches_context(sub, {"activity_id": "act1"})
 
     def test_non_matching_activity_id(self) -> None:
         sub = _make_subscriber(activity_id="act1")
-        assert not _matches_scope(sub, {"activity_id": "act2"})
+        assert not _matches_context(sub, {"activity_id": "act2"})
 
     def test_matching_course_id(self) -> None:
         sub = _make_subscriber(course_id="c1")
-        assert _matches_scope(sub, {"course_id": "c1"})
+        assert _matches_context(sub, {"course_id": "c1"})
 
     def test_non_matching_course_id(self) -> None:
         sub = _make_subscriber(course_id="c1")
-        assert not _matches_scope(sub, {"course_id": "c2"})
+        assert not _matches_context(sub, {"course_id": "c2"})
 
     def test_matching_user_id(self) -> None:
         sub = _make_subscriber(user_id="alice")
-        assert _matches_scope(sub, {"user_id": "alice"})
+        assert _matches_context(sub, {"user_id": "alice"})
 
     def test_non_matching_user_id(self) -> None:
         sub = _make_subscriber(user_id="alice")
-        assert not _matches_scope(sub, {"user_id": "bob"})
+        assert not _matches_context(sub, {"user_id": "bob"})
 
     def test_multiple_dimensions_all_match(self) -> None:
         sub = _make_subscriber(activity_id="a1", course_id="c1", user_id="alice")
-        assert _matches_scope(
+        assert _matches_context(
             sub, {"activity_id": "a1", "course_id": "c1", "user_id": "alice"}
         )
 
     def test_multiple_dimensions_partial_mismatch(self) -> None:
         sub = _make_subscriber(activity_id="a1", course_id="c1", user_id="alice")
-        assert not _matches_scope(sub, {"activity_id": "a1", "user_id": "bob"})
+        assert not _matches_context(sub, {"activity_id": "a1", "user_id": "bob"})
 
 
 class TestHasPermission:
@@ -129,7 +129,7 @@ class TestEventBus:
                     {
                         "name": "chat.new",
                         "value": '"hello"',
-                        "scope": {"activity_id": "a1"},
+                        "context": {"activity_id": "a1"},
                         "permission": "play",
                     }
                 ],
@@ -143,7 +143,7 @@ class TestEventBus:
             {"name": "chat.new", "value": '"hello"'}
         )
 
-    def test_publish_filters_by_scope(self) -> None:
+    def test_publish_filters_by_context(self) -> None:
         bus = EventBus()
         ws_alice = AsyncMock()
         ws_bob = AsyncMock()
@@ -157,7 +157,7 @@ class TestEventBus:
                     {
                         "name": "result",
                         "value": '"ok"',
-                        "scope": {"activity_id": "a1", "user_id": "alice"},
+                        "context": {"activity_id": "a1", "user_id": "alice"},
                         "permission": "play",
                     }
                 ],
@@ -181,7 +181,7 @@ class TestEventBus:
                     {
                         "name": "config.saved",
                         "value": "{}",
-                        "scope": {"activity_id": "a1"},
+                        "context": {"activity_id": "a1"},
                         "permission": "edit",
                     }
                 ],
@@ -199,7 +199,7 @@ class TestEventBus:
                     {
                         "name": "test",
                         "value": '""',
-                        "scope": {},
+                        "context": {},
                         "permission": "play",
                     }
                 ],
