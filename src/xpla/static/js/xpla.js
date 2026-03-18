@@ -100,8 +100,11 @@ export class XPLA extends HTMLElement {
       this.onEvent(event.name, JSON.parse(event.value));
     };
     this._ws.onclose = () => {
-      this._setOfflineBanner(true);
-      this._scheduleReconnect();
+      if (this.isConnected) {
+        // Only attempt to reconnect when the activity is in the DOM
+        this._setOfflineBanner(true);
+        this._scheduleReconnect();
+      }
     };
   }
 
@@ -173,5 +176,12 @@ export class XPLA extends HTMLElement {
 
   onEvent(name, value) {
     // Default no-op. Override in client.js to handle events.
+  }
+
+  disconnectedCallback() {
+    if (this._ws) {
+      // Disconnect from websocket on removal from DOM
+      this._ws.close();
+    }
   }
 }
