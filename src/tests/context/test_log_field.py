@@ -4,6 +4,7 @@ import pytest
 
 from xpla.lib.context import ActivityContext
 from xpla.lib.fields import FieldValidationError
+from xpla.lib.permission import Permission
 from .utils import (
     create_manifest,
     make_kv_store,
@@ -29,7 +30,14 @@ def make_ctx(tmp_path: Path) -> ActivityContext:
         }
     )
     activity_dir = setup_activity_dir(tmp_path, manifest)
-    return ActivityContext(activity_dir, field_store=make_kv_store())
+    return ActivityContext(
+        activity_dir,
+        make_kv_store(),
+        "activityid",
+        "courseid",
+        "userid",
+        Permission.play,
+    )
 
 
 class TestLogFieldFunctions:

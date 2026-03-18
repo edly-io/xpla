@@ -60,10 +60,10 @@ def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityContex
     activity_context = ActivityContext(
         activity_dir,
         kv_store,
+        activity_id=activity_type,
+        course_id="democourse",
         user_id=user_id,
         permission=permission,
-        course_id="democourse",
-        activity_id=activity_type,
     )
     return activity_context
 
@@ -87,14 +87,10 @@ def get_simulation_params(cookies: dict[str, str]) -> tuple[str, Permission]:
     """Read simulated user/permission from cookies, with validation and fallback."""
     user_id = cookies.get(USER_ID_COOKIE)
     if user_id not in SIMULATED_USERS:
-        user_id = ActivityContext.DEFAULT_USER_ID
+        user_id = SIMULATED_USERS[0]
 
     permission_str = cookies.get("xpla_permission")
-    permission = (
-        Permission(permission_str)
-        if permission_str
-        else ActivityContext.DEFAULT_PERMISSION
-    )
+    permission = Permission(permission_str) if permission_str else Permission.play
 
     return user_id, permission
 

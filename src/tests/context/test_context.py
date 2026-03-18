@@ -8,6 +8,7 @@ import pytest
 from xpla.lib.context import ActivityContext, MissingSandboxError
 from xpla.lib.events import EventValidationError
 from xpla.lib.fields import FieldValidationError
+from xpla.lib.permission import Permission
 
 from .utils import (
     create_manifest,
@@ -61,7 +62,14 @@ class TestActivityContextInit:
         activity_dir = setup_activity_dir(tmp_path, manifest)
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
-        ctx = ActivityContext(activity_dir, make_kv_store())
+        ctx = ActivityContext(
+            activity_dir,
+            make_kv_store(),
+            "activityid",
+            "courseid",
+            "userid",
+            Permission.play,
+        )
 
         mock_sandbox_executor.assert_called_once()
         assert ctx.sandbox is not None
@@ -109,7 +117,14 @@ class TestCallSandboxFunction:
         mock_sandbox.call_function.return_value = b"result"
         mock_sandbox_class.return_value = mock_sandbox
 
-        ctx = ActivityContext(activity_dir, make_kv_store())
+        ctx = ActivityContext(
+            activity_dir,
+            make_kv_store(),
+            "activityid",
+            "courseid",
+            "userid",
+            Permission.play,
+        )
         result = ctx.call_sandbox_function("my_function", "input_data")
 
         mock_sandbox.call_function.assert_called_once_with("my_function", "input_data")
@@ -688,16 +703,23 @@ class TestGetState:
         mock_sandbox.call_function.return_value = b'{"question": "test"}'
         mock_sandbox_class.return_value = mock_sandbox
 
-        ctx = ActivityContext(activity_dir, make_kv_store())
+        ctx = ActivityContext(
+            activity_dir,
+            make_kv_store(),
+            "myactivity",
+            "mycourse",
+            "myuser",
+            Permission.play,
+        )
         result = ctx.get_state()
 
         expected_input = {
             "scope": {
-                "user_id": ActivityContext.DEFAULT_USER_ID,
-                "course_id": ActivityContext.DEFAULT_COURSE_ID,
-                "activity_id": ActivityContext.DEFAULT_ACTIVITY_ID,
+                "user_id": "myuser",
+                "course_id": "mycourse",
+                "activity_id": "myactivity",
             },
-            "permission": ActivityContext.DEFAULT_PERMISSION.value,
+            "permission": "play",
         }
         mock_sandbox.call_function.assert_called_once_with("getState", expected_input)
         assert result == {"question": "test"}
@@ -724,8 +746,14 @@ class TestGetState:
         mock_sandbox.call_function.side_effect = RuntimeError("getState not found")
         mock_sandbox_class.return_value = mock_sandbox
 
-        ctx = ActivityContext(activity_dir, make_kv_store())
-        ctx.user_id = "alice"
+        ctx = ActivityContext(
+            activity_dir,
+            make_kv_store(),
+            "activityid",
+            "courseid",
+            "alice",
+            Permission.play,
+        )
         result = ctx.get_state()
 
         assert result == {"score": 0}

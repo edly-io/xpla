@@ -99,8 +99,8 @@ def load_activity(
         activity_dir,
         field_store,
         activity_id=activity_id,
-        course_id=course_id,
         user_id=USER_ID,
+        course_id=course_id,
         permission=permission,
     )
 
@@ -441,26 +441,39 @@ async def activity_asset(
     return FileResponse(full_path)
 
 
-@app.websocket("/api/activity/{activity_id}/ws")
+@app.websocket("/api/activity/{activity_id}/{permission}/ws")
 async def activity_ws(
-    websocket: WebSocket, activity_id: str, session: Session = Depends(get_session)
+    websocket: WebSocket,
+    activity_id: str,
+    permission: str,
+    session: Session = Depends(get_session),
 ) -> None:
+
+    # Check arguments
+    # https://websocket.org/reference/close-codes/
+    policy_violation_code = 1008
     pa = session.get(PageActivity, activity_id)
-    if pa is None:
-        await websocket.close(code=1008)
+    if not pa:
+        await websocket.close(code=policy_violation_code)
         return
-    activity_type = pa.activity_type
+    try:
+        activity_permission = Permission(permission)
+    except ValueError:
+        await websocket.close(code=policy_violation_code)
+        return
     page = session.get(Page, pa.page_id)
-    course_id = page.course_id if page else ""
+    if not page:
+        await websocket.close(code=policy_violation_code)
+        return
 
     await websocket.accept()
 
     subscriber = event_bus.subscribe(
-        activity_type,
+        pa.activity_type,
         websocket,
         USER_ID,
-        ActivityContext.DEFAULT_PERMISSION,
-        course_id,
+        activity_permission,
+        page.course_id,
         activity_id,
     )
 
@@ -468,13 +481,14 @@ async def activity_ws(
         try:
             data = await websocket.receive_json()
         except WebSocketDisconnect:
-            event_bus.unsubscribe(activity_type, subscriber)
+            event_bus.unsubscribe(pa.activity_type, subscriber)
             return
         action_name = data.get("action", "")
         action_value = data.get("value", "")
-        action_permission = Permission(data.get("permission", "play"))
 
-        ctx = load_activity(activity_type, activity_id, course_id, action_permission)
+        ctx = load_activity(
+            pa.activity_type, activity_id, page.course_id, activity_permission
+        )
         try:
             ctx.on_action(action_name, action_value)
         except ActionValidationError as e:
@@ -482,4 +496,4 @@ async def activity_ws(
             continue
 
         events = ctx.clear_pending_events()
-        await event_bus.publish(activity_type, events)
+        await event_bus.publish(pa.activity_type, events)

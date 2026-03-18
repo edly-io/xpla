@@ -43,21 +43,15 @@ class AssetAccessError(Exception):
 
 
 class ActivityContext:
-    # TODO actually set these parameters in a real-life scenario
-    DEFAULT_COURSE_ID = "democourse"
-    DEFAULT_ACTIVITY_ID = "activityid"
-    DEFAULT_PERMISSION = Permission.play
-    DEFAULT_USER_ID = "alice"
 
     def __init__(
         self,
         activity_dir: Path,
         field_store: FieldStore,
-        # TODO make these arguments positional, and not optional
-        activity_id: str = DEFAULT_ACTIVITY_ID,
-        course_id: str = DEFAULT_COURSE_ID,
-        user_id: str = DEFAULT_USER_ID,
-        permission: Permission = DEFAULT_PERMISSION,
+        activity_id: str,
+        course_id: str,
+        user_id: str,
+        permission: Permission,
     ) -> None:
         self._activity_dir = activity_dir
         self._user_id: str = user_id
