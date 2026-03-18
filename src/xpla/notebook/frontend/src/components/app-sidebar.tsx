@@ -16,6 +16,8 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { getCourses, getCourse, reorderPages, type CourseItem, type PageItem } from "@/lib/api";
 
 function SortablePage({ page, isActive }: { page: PageItem; isActive: boolean }) {
@@ -92,18 +94,18 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link href="/" className="px-2 py-1 text-xl font-bold">xPLN</Link>
+        <div className="flex items-center justify-between">
+          <Link href="/" className="px-2 py-1 text-xl font-bold">xPLN</Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>⋯</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem render={<Link href="/activities" />}>My Activities</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={pathname === "/activities"}
-              render={<Link href="/activities" />}
-            >
-              My Activities
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           {courses.map((course) => (
             <SidebarMenuItem key={course.id}>
               <SidebarMenuButton

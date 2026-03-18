@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import (
     Depends,
     FastAPI,
+    Form,
     HTTPException,
     UploadFile,
     WebSocket,
@@ -155,21 +156,23 @@ def activity_dict(
 # ---- course API ----
 
 
-@app.get("/api/courses")
+@app.get("/api/courses", summary="List all courses")
 async def list_courses(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Return all courses ordered by position."""
     courses = session.exec(select(Course).order_by(col(Course.position))).all()
     return JSONResponse(
         [{"id": c.id, "title": c.title, "position": c.position} for c in courses]
     )
 
 
-@app.post("/api/courses", status_code=201)
+@app.post("/api/courses", status_code=201, summary="Create a course")
 async def create_course(
     body: TitleBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Create a new course. It is appended at the end of the list."""
     max_pos = session.exec(
         select(Course.position).order_by(desc(col(Course.position)))
     ).first()
@@ -183,12 +186,13 @@ async def create_course(
     )
 
 
-@app.patch("/api/courses/{course_id}")
+@app.patch("/api/courses/{course_id}", summary="Rename a course")
 async def update_course(
     course_id: str,
     body: TitleBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Update the title of an existing course."""
     course = session.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Not found")
@@ -201,11 +205,12 @@ async def update_course(
     )
 
 
-@app.delete("/api/courses/{course_id}", status_code=204)
+@app.delete("/api/courses/{course_id}", status_code=204, summary="Delete a course")
 async def delete_course(
     course_id: str,
     session: Session = Depends(get_session),
 ) -> None:
+    """Delete a course and all its pages and activity instances."""
     course = session.get(Course, course_id)
     if course:
         pages = session.exec(select(Page).where(Page.course_id == course_id)).all()
@@ -220,11 +225,12 @@ async def delete_course(
         session.commit()
 
 
-@app.post("/api/courses/reorder")
+@app.post("/api/courses/reorder", summary="Reorder courses")
 async def reorder_courses(
     body: ReorderCoursesBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Set course positions from the given ordered list of IDs."""
     for i, course_id in enumerate(body.course_ids):
         course = session.get(Course, course_id)
         if course:
@@ -237,11 +243,12 @@ async def reorder_courses(
 # ---- course detail + page API ----
 
 
-@app.get("/api/courses/{course_id}")
+@app.get("/api/courses/{course_id}", summary="Get a course with its pages")
 async def get_course(
     course_id: str,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Return course details including the ordered list of pages."""
     course = session.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Not found")
@@ -259,12 +266,17 @@ async def get_course(
     )
 
 
-@app.post("/api/courses/{course_id}/pages", status_code=201)
+@app.post(
+    "/api/courses/{course_id}/pages",
+    status_code=201,
+    summary="Create a page in a course",
+)
 async def create_page(
     course_id: str,
     body: TitleBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Create a new page appended at the end of the course."""
     max_pos = session.exec(
         select(Page.position)
         .where(Page.course_id == course_id)
@@ -280,12 +292,13 @@ async def create_page(
     )
 
 
-@app.patch("/api/pages/{page_id}")
+@app.patch("/api/pages/{page_id}", summary="Rename a page")
 async def update_page(
     page_id: str,
     body: TitleBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Update the title of an existing page."""
     page = session.get(Page, page_id)
     if not page:
         raise HTTPException(status_code=404, detail="Not found")
@@ -296,11 +309,12 @@ async def update_page(
     return JSONResponse({"id": page.id, "title": page.title, "position": page.position})
 
 
-@app.delete("/api/pages/{page_id}", status_code=204)
+@app.delete("/api/pages/{page_id}", status_code=204, summary="Delete a page")
 async def delete_page(
     page_id: str,
     session: Session = Depends(get_session),
 ) -> None:
+    """Delete a page and all its activity instances."""
     page = session.get(Page, page_id)
     if page:
         activities = session.exec(
@@ -312,11 +326,12 @@ async def delete_page(
         session.commit()
 
 
-@app.post("/api/pages/reorder")
+@app.post("/api/pages/reorder", summary="Reorder pages")
 async def reorder_pages(
     body: ReorderPagesBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Set page positions from the given ordered list of IDs."""
     for i, page_id in enumerate(body.page_ids):
         page = session.get(Page, page_id)
         if page:
@@ -329,11 +344,12 @@ async def reorder_pages(
 # ---- page detail + activity API ----
 
 
-@app.get("/api/pages/{page_id}")
+@app.get("/api/pages/{page_id}", summary="Get a page with its activities")
 async def get_page(
     page_id: str,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Return page details, its activity instances, and available activity types."""
     page = session.get(Page, page_id)
     if not page:
         raise HTTPException(status_code=404, detail="Not found")
@@ -354,12 +370,17 @@ async def get_page(
     )
 
 
-@app.post("/api/pages/{page_id}/activities", status_code=201)
+@app.post(
+    "/api/pages/{page_id}/activities",
+    status_code=201,
+    summary="Add an activity to a page",
+)
 async def create_activity(
     page_id: str,
     body: ActivityTypeBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Create a new activity instance of the given type on the page."""
     find_activity_dir(body.activity_type)
     max_pos = session.exec(
         select(PageActivity.position)
@@ -377,35 +398,48 @@ async def create_activity(
     return JSONResponse(activity_dict(pa, session), status_code=201)
 
 
-@app.get("/api/activities/{activity_id}/{permission}")
+@app.get(
+    "/api/activities/{activity_id}/{permission}",
+    summary="Get an activity instance",
+)
 async def get_activity(
     activity_id: str,
     permission: str,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Return activity state and metadata for the given permission level."""
     pa = session.get(PageActivity, activity_id)
     if not pa:
         raise HTTPException(status_code=404, detail="Not found")
     return JSONResponse(activity_dict(pa, session, Permission(permission)))
 
 
-@app.delete("/api/activities/{activity_id}", status_code=204)
+@app.delete(
+    "/api/activities/{activity_id}",
+    status_code=204,
+    summary="Delete an activity instance",
+)
 async def delete_activity(
     activity_id: str,
     session: Session = Depends(get_session),
 ) -> None:
+    """Remove an activity instance from its page."""
     pa = session.get(PageActivity, activity_id)
     if pa:
         session.delete(pa)
         session.commit()
 
 
-@app.post("/api/activities/{activity_id}/move")
+@app.post(
+    "/api/activities/{activity_id}/move",
+    summary="Move an activity up or down",
+)
 async def move_activity(
     activity_id: str,
     body: MoveActivityBody,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
+    """Swap the activity with its neighbor in the given direction."""
     pa = session.get(PageActivity, activity_id)
     if not pa:
         raise HTTPException(status_code=404, detail="Not found")
@@ -439,30 +473,39 @@ async def move_activity(
     return JSONResponse({"activities": [activity_dict(r, session) for r in refreshed]})
 
 
-@app.get("/api/activity-types")
-async def get_activity_types() -> JSONResponse:
-    return JSONResponse(list_activity_types(USER_ID))
-
-
 ACTIVITY_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
-# ---- user activity upload API ----
+# ---- activity type API ----
 
 
-@app.get("/api/my-activities")
-async def list_my_activities() -> JSONResponse:
-    user_dir = constants.ACTIVITIES_DIR / USER_ID
-    if not user_dir.is_dir():
-        return JSONResponse([])
-    return JSONResponse(sorted(d.name for d in user_dir.iterdir() if d.is_dir()))
+@app.get("/api/activity-types", summary="List available activity types")
+async def get_activity_types() -> JSONResponse:
+    """Return all activity types: built-in samples and current user's uploads.
+
+    Built-in samples are returned as simple names (e.g. ``quiz``).
+    User uploads are prefixed with ``@<user_id>/`` (e.g. ``@student/my-quiz``).
+    """
+    return JSONResponse(list_activity_types(USER_ID))
 
 
-@app.post("/api/my-activities", status_code=201)
-async def upload_activity(
-    name: str,
+@app.post(
+    "/api/activity-types",
+    status_code=201,
+    summary="Upload a custom activity type",
+)
+async def upload_activity_type(
     file: UploadFile,
+    name: str = Form(),
 ) -> JSONResponse:
+    """Upload a zip archive as a new activity type for the current user.
+
+    The zip must contain a valid ``manifest.json`` at its root, along with
+    the client file (and optionally server/static files) declared in the
+    manifest.  The resulting activity type will be available as
+    ``@<user_id>/<name>``.  Re-uploading the same name overwrites the
+    previous version.
+    """
     if not ACTIVITY_NAME_RE.match(name):
         raise HTTPException(
             status_code=400,
@@ -526,11 +569,18 @@ async def upload_activity(
     return JSONResponse({"name": name}, status_code=201)
 
 
-@app.delete("/api/my-activities/{name}", status_code=204)
-async def delete_my_activity(
+@app.delete(
+    "/api/activity-types/{name}",
+    status_code=204,
+    summary="Delete a custom activity type",
+)
+async def delete_activity_type(
     name: str,
     session: Session = Depends(get_session),
 ) -> None:
+    """Delete a user-uploaded activity type and cascade-remove all activity
+    instances and field data that reference it.
+    """
     activity_type_str = f"@{USER_ID}/{name}"
     activities = session.exec(
         select(PageActivity).where(PageActivity.activity_type == activity_type_str)
@@ -548,7 +598,10 @@ async def delete_my_activity(
 # ---- activity runtime routes ----
 
 
-@app.get("/a/{activity_id}/{file_path:path}")
+@app.get(
+    "/a/{activity_id}/{file_path:path}",
+    summary="Serve an activity static asset",
+)
 async def activity_asset(
     activity_id: str, file_path: str, session: Session = Depends(get_session)
 ) -> FileResponse:

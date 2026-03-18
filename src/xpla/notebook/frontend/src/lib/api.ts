@@ -44,12 +44,11 @@ export const deleteActivity = (id: string) => request<void>(`/api/activities/${i
 export const moveActivity = (id: string, direction: string, page_id: string) => request<{ activities: Activity[] }>(`/api/activities/${id}/move`, json({ direction, page_id }));
 export const getActivityTypes = () => request<string[]>("/api/activity-types");
 
-// My Activities
-export const getMyActivities = () => request<string[]>("/api/my-activities");
-export const deleteMyActivity = (name: string) => request<void>(`/api/my-activities/${name}`, { method: "DELETE" });
-export const uploadActivity = (name: string, file: File) => {
+// Activity type management
+export const deleteActivityType = (name: string) => request<void>(`/api/activity-types/${name}`, { method: "DELETE" });
+export const uploadActivityType = (name: string, file: File) => {
   const fd = new FormData();
   fd.append("name", name);
   fd.append("file", file);
-  return request<void>("/api/my-activities", { method: "POST", body: fd });
+  return request<void>("/api/activity-types", { method: "POST", body: fd });
 };

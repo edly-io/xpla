@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getMyActivities, deleteMyActivity, uploadActivity } from "@/lib/api";
+import { getActivityTypes, deleteActivityType, uploadActivityType } from "@/lib/api";
 
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<string[]>([]);
@@ -10,7 +10,8 @@ export default function ActivitiesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
-    setActivities(await getMyActivities());
+    const all = await getActivityTypes();
+    setActivities(all.filter((t) => t.startsWith("@")));
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -21,7 +22,7 @@ export default function ActivitiesPage() {
     const file = fileRef.current?.files?.[0];
     if (!file || !name) return;
     try {
-      await uploadActivity(name, file);
+      await uploadActivityType(name, file);
       setName("");
       if (fileRef.current) fileRef.current.value = "";
       await refresh();
@@ -30,8 +31,10 @@ export default function ActivitiesPage() {
     }
   }
 
-  async function handleDelete(activityName: string) {
-    await deleteMyActivity(activityName);
+  async function handleDelete(activityType: string) {
+    // activityType is "@user/name", extract name part
+    const name = activityType.split("/").slice(1).join("/");
+    await deleteActivityType(name);
     await refresh();
   }
 
