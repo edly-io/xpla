@@ -76,7 +76,7 @@ function getState() {
   const state = {
     doc_state: getField("doc_state"),
     content: getField("content"),
-    user_id: scope.user_id,
+    user_id: context.user_id,
     render_markdown: getField("render_markdown") || 0,
   };
   Host.outputString(JSON.stringify(state));
