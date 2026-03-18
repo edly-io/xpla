@@ -22,7 +22,7 @@ from xpla.lib.field_store import FieldStore
 from xpla.lib.permission import Permission
 from xpla.lib.fields import FieldChecker, FieldType, FieldValidationError
 from xpla.lib.manifest_types import LogField, Scope, XplaActivityManifest
-from xpla.lib.sandbox import SandboxExecutor
+from xpla.lib.sandbox import SandboxExecutor, SandboxRuntimeError, get_sandbox_executor
 
 logger = logging.getLogger(__file__)
 
@@ -32,10 +32,6 @@ class PendingEvent(TypedDict):
     value: str
     context: dict[str, str]
     permission: str
-
-
-class MissingSandboxError(Exception):
-    """Raised when a sandbox function is called but no wasm file exists."""
 
 
 class AssetAccessError(Exception):
@@ -79,7 +75,7 @@ class ActivityRuntime:
         if server_path is not None:
             # Note: we know that this is a safe path thanks to path constraints in the manifests
             wasm_path = self._activity_dir / server_path
-            self.sandbox = SandboxExecutor(wasm_path, self.host_functions())
+            self.sandbox = get_sandbox_executor(wasm_path, self.host_functions())
 
     @property
     def user_id(self) -> str:
@@ -167,22 +163,10 @@ class ActivityRuntime:
                 "permission": self._permission.value,
             }
             try:
-                self.call_sandbox_function("onAction", action_input)
-            except RuntimeError as e:
-                # onAction not defined in sandbox - log warning and continue
-                # TODO how to capture errors related to sandbox code? Should we raise a 500?
-                logger.warning(
-                    "Activity '%s' has no onAction handler: %s", self.activity_id, e
-                )
-
-    def call_sandbox_function(
-        self, function_name: str, input_data: Any = None
-    ) -> bytes:
-        if self.sandbox is None:
-            raise MissingSandboxError()
-
-        # TODO catch errors?
-        return self.sandbox.call_function(function_name, input_data)
+                self.sandbox.call_function("onAction", action_input)
+            except SandboxRuntimeError as e:
+                # TODO It's OK to ignore onAction errors, but we should report errors to the frontend
+                logger.exception(e)
 
     def load_field(
         self, course_id: str, activity_id: str, user_id: str, name: str
@@ -304,22 +288,24 @@ class ActivityRuntime:
         ``{context, permission}`` input dict and returns the result.
         Otherwise falls back to returning all fields.
         """
-        if self.sandbox is not None:
-            try:
-                state_input = {
-                    "context": {
-                        "user_id": self._user_id,
-                        "course_id": self._course_id,
-                        "activity_id": self._activity_id,
-                    },
-                    "permission": self._permission.value,
-                }
-                result = self.call_sandbox_function("getState", state_input)
-                state: dict[str, FieldType] = json.loads(result)
-                return state
-            except RuntimeError:
-                pass
-        return self.get_all_fields()
+        if self.sandbox is None:
+            return self.get_all_fields()
+        state_input = {
+            "context": {
+                "user_id": self._user_id,
+                "course_id": self._course_id,
+                "activity_id": self._activity_id,
+            },
+            "permission": self._permission.value,
+        }
+        try:
+            result = self.sandbox.call_function("getState", state_input)
+        except SandboxRuntimeError as e:
+            # TODO we should prevent displaying the activity in the frontend
+            logger.exception(e)
+            raise
+        state: dict[str, FieldType] = json.loads(result)
+        return state
 
     def clear_pending_events(self) -> list[PendingEvent]:
         """Return and clear all pending events."""

@@ -5,7 +5,7 @@ import urllib.error
 
 import pytest
 
-from xpla.lib.runtime import ActivityRuntime, MissingSandboxError
+from xpla.lib.runtime import ActivityRuntime
 from xpla.lib.events import EventValidationError
 from xpla.lib.fields import FieldValidationError
 from xpla.lib.permission import Permission
@@ -53,11 +53,11 @@ class TestActivityRuntimeInit:
 
         assert ctx.sandbox is None
 
-    @patch("xpla.lib.runtime.SandboxExecutor")
+    @patch("xpla.lib.runtime.SandboxWasmExecutor")
     def test_init_with_sandbox(
         self, mock_sandbox_executor: MagicMock, tmp_path: Path
     ) -> None:
-        """Should create SandboxExecutor when server is declared in manifest."""
+        """Should create SandboxWasmExecutor when server is declared in manifest."""
         manifest = create_manifest(server="server.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
@@ -91,44 +91,6 @@ class TestActivityRuntimeProperties:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         assert ctx.client_path == "src/my-client.js"
-
-
-class TestCallSandboxFunction:
-    """Tests for call_sandbox_function method."""
-
-    def test_raises_when_no_sandbox(self, tmp_path: Path) -> None:
-        """Should raise MissingSandboxError when sandbox is None."""
-        manifest = create_manifest()
-        ctx = make_activity_runtime(tmp_path, manifest)
-
-        with pytest.raises(MissingSandboxError):
-            ctx.call_sandbox_function("test_fn", "input")
-
-    @patch("xpla.lib.runtime.SandboxExecutor")
-    def test_calls_sandbox_function(
-        self, mock_sandbox_class: MagicMock, tmp_path: Path
-    ) -> None:
-        """Should delegate to sandbox.call_function."""
-        manifest = create_manifest(server="server.wasm")
-        activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
-
-        mock_sandbox = MagicMock()
-        mock_sandbox.call_function.return_value = b"result"
-        mock_sandbox_class.return_value = mock_sandbox
-
-        ctx = ActivityRuntime(
-            activity_dir,
-            make_kv_store(),
-            "activityid",
-            "courseid",
-            "userid",
-            Permission.play,
-        )
-        result = ctx.call_sandbox_function("my_function", "input_data")
-
-        mock_sandbox.call_function.assert_called_once_with("my_function", "input_data")
-        assert result == b"result"
 
 
 class TestHostFunctions:
@@ -690,7 +652,7 @@ class TestGetState:
         result = ctx.get_state()
         assert result == {"score": 0}
 
-    @patch("xpla.lib.runtime.SandboxExecutor")
+    @patch("xpla.lib.runtime.SandboxWasmExecutor")
     def test_calls_sandbox_getState(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
@@ -724,7 +686,7 @@ class TestGetState:
         mock_sandbox.call_function.assert_called_once_with("getState", expected_input)
         assert result == {"question": "test"}
 
-    @patch("xpla.lib.runtime.SandboxExecutor")
+    @patch("xpla.lib.runtime.SandboxWasmExecutor")
     def test_fallback_on_runtime_error(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:

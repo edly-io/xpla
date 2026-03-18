@@ -7,7 +7,7 @@ This is the core runtime library for the xPLA (Cross-Platform Learning Activitie
 Key modules:
 
 - [runtime.py](./runtime.py) — `ActivityRuntime`: central orchestrator that loads manifests, executes sandboxed code, and provides host functions
-- [sandbox.py](./sandbox.py) — `SandboxExecutor`: Extism-based WebAssembly plugin runtime
+- [sandbox.py](./sandbox.py) — `SandboxWasmExecutor`: Extism-based WebAssembly plugin runtime
 - [fields.py](./fields.py) — `FieldChecker`: validates field types and scopes against the manifest
 - [actions.py](./actions.py) — `ActionChecker`: validates client-to-server actions
 - [events.py](./events.py) — `EventChecker`: validates server-to-client events

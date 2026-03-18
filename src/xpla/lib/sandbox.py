@@ -13,57 +13,64 @@ extism.set_log_file("/dev/stdout", "info")
 logger = logging.getLogger(__file__)
 
 
-class SandboxRuntime:
-    """Manages an Extism plugin instance for xPLA."""
-
-    def __init__(
-        self,
-        wasm_path: Path,
-        host_functions: list[Any] | None = None,
-    ) -> None:
-        if not wasm_path.exists():
-            raise FileNotFoundError(f"Plugin not found: {wasm_path}")
-
-        self._wasm_path = wasm_path
-        self._host_functions = host_functions or []
-        self._plugin: extism.Plugin | None = None
-
-    def load(self) -> None:
-        """Load the plugin into memory."""
-        manifest = {"wasm": [{"path": str(self._wasm_path)}]}
-        self._plugin = extism.Plugin(
-            manifest,
-            wasi=True,
-            functions=self._host_functions if self._host_functions else None,
-        )
-
-    def call(self, function_name: str, input_data: bytes) -> bytes:
-        if self._plugin is None:
-            raise RuntimeError("Plugin not loaded. Call load() first.")
-        result = self._plugin.call(function_name, input_data)
-        return bytes(result)
+class SandboxRuntimeError(RuntimeError):
+    """
+    Raised whenever there is an error in a sandbox executor at runtime.
+    """
 
 
 class SandboxExecutor:
     """
-    Sandboxed Exism code execution.
+    Abstract base class implementation for all sandbox executors.
     """
 
     def __init__(
         self, plugin_path: Path, host_functions: list[Callable[..., Any]]
     ) -> None:
+        self._plugin_path = plugin_path
+        self._host_functions = host_functions
 
-        extism_host_functions = [host_fn()(func) for func in host_functions]
-        self.wasm_runtime = SandboxRuntime(
-            plugin_path, host_functions=extism_host_functions
+    def call_function(self, function_name: str, data: Any) -> bytes:
+        raise NotImplementedError
+
+
+class SandboxWasmExecutor(SandboxExecutor):
+    """
+    Sandboxed Extism code execution.
+    """
+
+    def __init__(
+        self, plugin_path: Path, host_functions: list[Callable[..., Any]]
+    ) -> None:
+        super().__init__(plugin_path, host_functions)
+        extism_host_functions = [host_fn()(func) for func in self._host_functions]
+        self._plugin = extism.Plugin(
+            {"wasm": [{"path": str(self._plugin_path)}]},
+            wasi=True,
+            functions=extism_host_functions or None,
         )
-        self.wasm_runtime.load()
 
-    # TODO exception management: not implemented error?
-    def call_function(self, name: str, arg: Any) -> bytes:
+    def call_function(self, function_name: str, data: Any) -> bytes:
         """
         Call a function that is exposed in the sandbox. Input data will be
         JSON-formatted.
         """
-        arg_bytes = b"" if arg is None else json.dumps(arg).encode("utf8")
-        return self.wasm_runtime.call(name, arg_bytes)
+        data_bytes = b"" if data is None else json.dumps(data).encode("utf8")
+        try:
+            result = self._plugin.call(function_name, data_bytes)
+        except extism.Error as e:
+            raise SandboxRuntimeError(
+                f"Extism plugin {self._plugin_path}: error running sandbox function '{function_name}': {e.args[0]}"
+            ) from e
+        return bytes(result)
+
+
+def get_sandbox_executor(
+    plugin_path: Path, host_functions: list[Callable[..., Any]]
+) -> SandboxExecutor:
+    """
+    Return the right executor for this plugin
+
+    For now we only support Wasm executor, but this could change in the future.
+    """
+    return SandboxWasmExecutor(plugin_path, host_functions)
