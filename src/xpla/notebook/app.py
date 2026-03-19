@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 import logging
 import re
 import shutil
@@ -32,7 +34,16 @@ from xpla.notebook.models import Course, Page, PageActivity
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="xPLN", version="0.1.0")
+
+@asynccontextmanager
+async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Startup
+    run_migrations()
+    yield
+    # shutdown: noop
+
+
+app = FastAPI(title="xPLN", version="0.1.0", lifespan=app_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,11 +59,6 @@ event_bus = EventBus()
 USER_ID = "student"
 
 field_store = SQLiteFieldStore()
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    run_migrations()
 
 
 # ---- request bodies ----
