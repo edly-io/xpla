@@ -42,7 +42,7 @@ test-lint: ## Run pylint tests
 	pylint src/
 
 test-unit: ## Run unit tests
-	pytest src/tests
+	pytest src/
 
 test-types: ## Run mypy tests
 	mypy src/

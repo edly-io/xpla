@@ -79,6 +79,11 @@ class MoveActivityBody(BaseModel):
     page_id: str
 
 
+class ActivityAction(BaseModel):
+    name: str
+    value: object
+
+
 # ---- helpers ----
 
 
@@ -404,14 +409,14 @@ async def create_activity(
 )
 async def get_activity(
     activity_id: str,
-    permission: str,
+    permission: Permission,
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Return activity state and metadata for the given permission level."""
     pa = session.get(PageActivity, activity_id)
     if not pa:
         raise HTTPException(status_code=404, detail="Not found")
-    return JSONResponse(activity_dict(pa, session, Permission(permission)))
+    return JSONResponse(activity_dict(pa, session, permission))
 
 
 @app.delete(
@@ -618,11 +623,38 @@ async def activity_asset(
     return FileResponse(full_path)
 
 
+@app.post(
+    "/api/activity/{activity_id}/{permission}/actions",
+    summary="Trigger an action",
+)
+async def activity_actions(
+    activity_id: str,
+    permission: Permission,
+    action: ActivityAction,
+    session: Session = Depends(get_session),
+) -> None:
+    """
+    Trigger an activity action, similar to actions that are sent via a websocket.
+    """
+    activity = session.get(PageActivity, activity_id)
+    if not activity:
+        raise HTTPException(status_code=404, detail="Invalid activity ID")
+    page = session.get(Page, activity.page_id)
+    if not page:
+        raise HTTPException(status_code=404, detail="Parent page could not be found")
+
+    ctx = load_activity(activity.activity_type, activity_id, page.course_id, permission)
+    try:
+        ctx.on_action(action.name, action.value)
+    except ActionValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid action: {e}") from e
+
+
 @app.websocket("/api/activity/{activity_id}/{permission}/ws")
 async def activity_ws(
     websocket: WebSocket,
     activity_id: str,
-    permission: str,
+    permission: Permission,
     session: Session = Depends(get_session),
 ) -> None:
 
@@ -631,11 +663,6 @@ async def activity_ws(
     policy_violation_code = 1008
     pa = session.get(PageActivity, activity_id)
     if not pa:
-        await websocket.close(code=policy_violation_code)
-        return
-    try:
-        activity_permission = Permission(permission)
-    except ValueError:
         await websocket.close(code=policy_violation_code)
         return
     page = session.get(Page, pa.page_id)
@@ -649,7 +676,7 @@ async def activity_ws(
         pa.activity_type,
         websocket,
         USER_ID,
-        activity_permission,
+        permission,
         page.course_id,
         activity_id,
     )
@@ -660,15 +687,19 @@ async def activity_ws(
         except WebSocketDisconnect:
             event_bus.unsubscribe(pa.activity_type, subscriber)
             return
-        action_name = data.get("action", "")
-        action_value = data.get("value", "")
 
-        ctx = load_activity(
-            pa.activity_type, activity_id, page.course_id, activity_permission
-        )
+        try:
+            action_name = data["action"]
+            action_value = data["value"]
+        except KeyError:
+            # TODO raise error?
+            continue
+
+        ctx = load_activity(pa.activity_type, activity_id, page.course_id, permission)
         try:
             ctx.on_action(action_name, action_value)
         except ActionValidationError as e:
+            # TODO should we return an error to the frontend?
             logger.warning("WS action validation error: %s", e)
             continue
 
