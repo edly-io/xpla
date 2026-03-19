@@ -54,7 +54,7 @@ class TestActivityRuntimeInit:
 
         assert ctx.sandbox is None
 
-    @patch("xpla.lib.runtime.SandboxWasmExecutor")
+    @patch("xpla.lib.sandbox.SandboxWasmExecutor")
     def test_init_with_sandbox(
         self, mock_sandbox_executor: MagicMock, tmp_path: Path
     ) -> None:
@@ -653,7 +653,7 @@ class TestGetState:
         result = ctx.get_state()
         assert result == {"score": 0}
 
-    @patch("xpla.lib.runtime.SandboxWasmExecutor")
+    @patch("xpla.lib.sandbox.SandboxWasmExecutor")
     def test_calls_sandbox_getState(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
@@ -687,11 +687,11 @@ class TestGetState:
         mock_sandbox.call_function.assert_called_once_with("getState", expected_input)
         assert result == {"question": "test"}
 
-    @patch("xpla.lib.runtime.SandboxWasmExecutor")
-    def test_fallback_on_runtime_error(
+    @patch("xpla.lib.sandbox.SandboxWasmExecutor")
+    def test_no_fallback_on_runtime_error(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
-        """Should fall back to get_all_fields when getState raises RuntimeError."""
+        """Should raise error when getState raises SandboxRuntimeError."""
         manifest = create_manifest(
             server="server.wasm",
             fields={
@@ -706,20 +706,19 @@ class TestGetState:
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
-        mock_sandbox.call_function.side_effect = RuntimeError("getState not found")
+        mock_sandbox.call_function.side_effect = SandboxRuntimeError("getState not found")
         mock_sandbox_class.return_value = mock_sandbox
 
         ctx = ActivityRuntime(
             activity_dir,
-            make_kv_store(),
+            make_field_store(),
             "activityid",
             "courseid",
             "alice",
             Permission.play,
         )
-        result = ctx.get_state()
-
-        assert result == {"score": 0}
+        with pytest.raises(SandboxRuntimeError, match="getState not found"):
+            ctx.get_state()
 
 
 class TestSendEvent:
