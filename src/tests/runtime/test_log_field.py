@@ -7,7 +7,7 @@ from xpla.lib.fields import FieldValidationError
 from xpla.lib.permission import Permission
 from .utils import (
     create_manifest,
-    make_kv_store,
+    make_field_store,
     setup_activity_dir,
     make_activity_runtime,
 )
@@ -32,7 +32,7 @@ def make_ctx(tmp_path: Path) -> ActivityRuntime:
     activity_dir = setup_activity_dir(tmp_path, manifest)
     return ActivityRuntime(
         activity_dir,
-        make_kv_store(),
+        make_field_store(),
         "activityid",
         "courseid",
         "userid",

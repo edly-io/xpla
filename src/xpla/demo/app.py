@@ -14,14 +14,15 @@ from fastapi.templating import Jinja2Templates
 from xpla.lib.runtime import ActivityRuntime, AssetAccessError
 from xpla.lib.actions import ActionValidationError
 from xpla.lib.event_bus import EventBus
+from xpla.lib.field_store import FieldStore
 from xpla.lib.permission import Permission
 from xpla.demo import constants
-from xpla.demo.kv import KVStore, get_default
+from xpla.demo.kv import get_default
 
 USER_ID_COOKIE = "xpla_user"
 SIMULATED_USERS = ["alice", "bob", "charlie"]
 
-kv_store: KVStore = get_default()
+field_store: FieldStore = get_default()
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityRuntim
     user_id, permission = get_simulation_params(cookies)
     activity_context = ActivityRuntime(
         activity_dir,
-        kv_store,
+        field_store,
         activity_id=activity_type,
         course_id="democourse",
         user_id=user_id,

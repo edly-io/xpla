@@ -43,7 +43,7 @@ def setup_activity_dir(tmp_path: Path, manifest: dict[str, Any]) -> Path:
     return activity_dir
 
 
-def make_kv_store() -> KVStore:
+def make_field_store() -> KVStore:
     """Create a temporary KVStore for tests."""
     tmpdir = tempfile.mkdtemp()
     return KVStore(Path(tmpdir) / "kv.json")
@@ -54,7 +54,7 @@ def make_activity_runtime(tmp_path: Path, manifest: dict[str, Any]) -> ActivityR
     activity_dir = setup_activity_dir(tmp_path, manifest)
     return ActivityRuntime(
         activity_dir,
-        make_kv_store(),
+        make_field_store(),
         "activityid",
         "courseid",
         "userid",

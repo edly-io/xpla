@@ -56,7 +56,7 @@ class ActivityRuntime:
         self._activity_id: str = activity_id
 
         # Field storage backend
-        self.kv_store: FieldStore = field_store
+        self.field_store: FieldStore = field_store
 
         # Events posted by sandbox during execution
         self._pending_events: list[PendingEvent] = []
@@ -181,7 +181,7 @@ class ActivityRuntime:
         # Check that field is declared (raises if not)
         default = self.field_checker.get_default(name)
 
-        stored = self.kv_store.get(course_id, self.name, activity_id, user_id, name)
+        stored = self.field_store.get(course_id, self.name, activity_id, user_id, name)
         if stored is None:
             return default
         return stored
@@ -202,7 +202,7 @@ class ActivityRuntime:
         # Validate against manifest definition
         self.field_checker.validate(name, value)
 
-        self.kv_store.set(course_id, self.name, activity_id, user_id, name, value)
+        self.field_store.set(course_id, self.name, activity_id, user_id, name, value)
 
     # Valid override keys for each scope
     _VALID_SCOPE_KEYS: dict[Scope, set[str]] = {
@@ -425,7 +425,7 @@ class ActivityRuntime:
         Returns the value if found, None otherwise.
         """
         course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        return self.kv_store.log_get(
+        return self.field_store.log_get(
             course_id, self.name, activity_id, user_id, name, entry_id
         )
 
@@ -441,7 +441,7 @@ class ActivityRuntime:
         Returns a list of {id, value} dicts.
         """
         course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        return self.kv_store.log_get_range(
+        return self.field_store.log_get_range(
             course_id, self.name, activity_id, user_id, name, from_id, to_id
         )
 
@@ -454,7 +454,7 @@ class ActivityRuntime:
         """Append a value to a log field. Returns the assigned id."""
         course_id, activity_id, user_id = self._log_scope_segments(name, context)
         self.field_checker.validate_log_item(name, value)
-        return self.kv_store.log_append(
+        return self.field_store.log_append(
             course_id, self.name, activity_id, user_id, name, value
         )
 
@@ -466,7 +466,7 @@ class ActivityRuntime:
     ) -> bool:
         """Delete a single log entry by id. Returns True if the entry existed."""
         course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        return self.kv_store.log_delete(
+        return self.field_store.log_delete(
             course_id, self.name, activity_id, user_id, name, entry_id
         )
 
@@ -479,7 +479,7 @@ class ActivityRuntime:
     ) -> int:
         """Delete log entries in range [from_id, to_id). Returns count deleted."""
         course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        return self.kv_store.log_delete_range(
+        return self.field_store.log_delete_range(
             course_id, self.name, activity_id, user_id, name, from_id, to_id
         )
 

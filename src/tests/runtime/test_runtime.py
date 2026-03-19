@@ -6,13 +6,14 @@ import urllib.error
 import pytest
 
 from xpla.lib.runtime import ActivityRuntime
+from xpla.lib.sandbox import SandboxRuntimeError
 from xpla.lib.events import EventValidationError
 from xpla.lib.fields import FieldValidationError
 from xpla.lib.permission import Permission
 
 from .utils import (
     create_manifest,
-    make_kv_store,
+    make_field_store,
     setup_activity_dir,
     make_activity_runtime,
 )
@@ -21,12 +22,12 @@ from .utils import (
 class TestActivityRuntimeInit:
     """Tests for ActivityRuntime initialization."""
 
-    def test_init_creates_kv_store(self, tmp_path: Path) -> None:
+    def test_init_creates_field_store(self, tmp_path: Path) -> None:
         """Should create a KV store at the expected path."""
         manifest = create_manifest()
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.kv_store is not None
+        assert ctx.field_store is not None
 
     def test_init_loads_manifest(self, tmp_path: Path) -> None:
         """Should load manifest from activity directory."""
@@ -64,7 +65,7 @@ class TestActivityRuntimeInit:
 
         ctx = ActivityRuntime(
             activity_dir,
-            make_kv_store(),
+            make_field_store(),
             "activityid",
             "courseid",
             "userid",
@@ -667,7 +668,7 @@ class TestGetState:
 
         ctx = ActivityRuntime(
             activity_dir,
-            make_kv_store(),
+            make_field_store(),
             "myactivity",
             "mycourse",
             "myuser",
