@@ -5,7 +5,7 @@ import { getCourses, createCourse, reorderCourses, type CourseItem } from "@/lib
 import { CourseList } from "@/components/course-list";
 import { AddForm } from "@/components/add-form";
 
-export default function HomePage() {
+export function HomePage() {
   const [courses, setCourses] = useState<CourseItem[]>([]);
 
   const refresh = useCallback(async () => { setCourses(await getCourses()); }, []);

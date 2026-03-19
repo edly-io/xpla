@@ -5,19 +5,23 @@ xPLN is a courseware management application built on top of the [xPLA](../xpla/)
 ## Architecture
 
 ```
-┌──────────────────────┐      proxy       ┌──────────────────────┐
-│   Next.js frontend   │  ──────────────► │   FastAPI backend    │
-│   (port 3000)        │  /api, /a,       │   (port 9753)        │
-│                      │  /static         │                      │
-│  React + shadcn/ui   │                  │  SQLite + Alembic    │
-│  Tailwind CSS        │                  │  xPLA ActivityRuntime │
-│  @dnd-kit            │                  │  WebSocket EventBus  │
-└──────────────────────┘                  └──────────────────────┘
+┌──────────────────────────────────────────────┐
+│            FastAPI server (port 9753)         │
+│                                              │
+│  /api/*          REST + WebSocket endpoints  │
+│  /a/*            Activity asset serving      │
+│  /static/*       Shared static files         │
+│  /_next/*        Built frontend assets       │
+│  /*              SPA fallback (index.html)   │
+│                                              │
+│  SQLite + Alembic   │  xPLA ActivityRuntime  │
+│  React (static)     │  WebSocket EventBus    │
+└──────────────────────────────────────────────┘
 ```
 
-**Backend** ([app.py](./app.py)): FastAPI server handling CRUD operations, activity execution, and WebSocket connections.
+**Backend** ([app.py](./app.py)): FastAPI server handling CRUD operations, activity execution, WebSocket connections, and serving the built frontend.
 
-**Frontend** ([frontend/](./frontend/)): Next.js app providing the UI — course/page/activity management with drag-and-drop reordering.
+**Frontend** ([frontend/](./frontend/)): Next.js app (static export) providing the UI — course/page/activity management with drag-and-drop reordering. Built to `frontend/out/` and served by FastAPI.
 
 **Database** ([db.py](./db.py)): SQLite database at `dist/xpln.db`, with Alembic migrations in [migrations/](./migrations/). Migrations run automatically on startup.
 
@@ -39,24 +43,22 @@ The REST API and WebSocket endpoint are defined in [app.py](./app.py).
 
 The Next.js app lives in [frontend/](./frontend/). Key areas:
 
-- **Routes** ([frontend/src/app/](./frontend/src/app/)): home (courses list), course detail (pages), page detail (activities)
+- **Routes** ([frontend/src/app/](./frontend/src/app/)): single catch-all route with client-side routing to home (courses list), course detail (pages), page detail (activities), and activities management
 - **Components** ([frontend/src/components/](./frontend/src/components/)): course/page/activity lists, sidebar navigation, `<xpl-activity>` web component wrapper
 - **API client** ([frontend/src/lib/api.ts](./frontend/src/lib/api.ts)): typed fetch wrappers for all backend endpoints
-
-The frontend proxies API requests to the backend via Next.js rewrites configured in [next.config.ts](./frontend/next.config.ts).
 
 ## Running
 
 From the project root:
 
 ```bash
-make notebook-server              # Backend: FastAPI dev server on port 9753
-make notebook-server-frontend     # Frontend: Next.js dev server on port 3000
+make notebook-frontend-build   # Build the frontend static export
+make notebook-server            # FastAPI server on port 9753
 ```
 
-Then open the frontend server at http://localhost:3000.
+Then open http://localhost:9753.
 
-Both servers must be running. The frontend proxies `/api/*`, `/a/*`, and `/static/*` to the backend.
+For active frontend development with HMR, you can run `cd src/xpla/notebook/frontend && npm run dev` alongside the FastAPI server.
 
 ## How Activities Work
 

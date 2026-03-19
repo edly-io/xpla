@@ -27,11 +27,11 @@ samples/%/client.bundle.js: samples/%/client.js
 demo-server: ## Run a development server for the demo app
 	fastapi dev src/xpla/demo/app.py --host=127.0.0.1 --port=9752
 
-notebook-server: ## Run the notebook API server (port 9753)
+notebook-server: ## Run the notebook server (port 9753) — build frontend first with notebook-frontend-build
 	fastapi dev src/xpla/notebook/app.py --host=127.0.0.1 --port=9753
 
-notebook-frontend-server: ## Run the notebook frontend dev server (port 3000)
-	cd src/xpla/notebook/frontend && NEXT_PUBLIC_API_URL=http://localhost:9753 npm run dev
+notebook-frontend-build: ## Build the notebook frontend static export
+	cd src/xpla/notebook/frontend && npm run build
 
 format: ## Format code with black
 	black src/

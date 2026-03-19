@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getPage, getActivity, createActivity, updatePage, deletePage, deleteActivity, moveActivity, type PageDetail, type Activity } from "@/lib/api";
 import { ActivityList } from "@/components/activity-list";
 import { AddForm } from "@/components/add-form";
 import { ItemActions } from "@/components/item-actions";
 
-export default function PageDetailPage() {
-  const { pageId } = useParams<{ pageId: string }>();
+export function PageDetailPage({ pageId }: { pageId: string }) {
   const router = useRouter();
   const [page, setPage] = useState<PageDetail | null>(null);
 

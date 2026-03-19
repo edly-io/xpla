@@ -9,4 +9,6 @@ if not DIST_DIR.exists():
 
 ACTIVITIES_DIR = DIST_DIR / "xpln" / "activities"
 
+FRONTEND_DIR = CURRENT_DIR / "frontend" / "out"
+
 DB_PATH = DIST_DIR / "xpln.db"

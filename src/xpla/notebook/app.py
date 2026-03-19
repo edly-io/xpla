@@ -18,8 +18,12 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
@@ -48,14 +52,14 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="xPLN", version="0.1.0", lifespan=app_lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.mount("/static", StaticFiles(directory=constants.STATIC_DIR), name="static")
+
+if constants.FRONTEND_DIR.is_dir():
+    app.mount(
+        "/_next",
+        StaticFiles(directory=constants.FRONTEND_DIR / "_next"),
+        name="next-assets",
+    )
 
 event_bus = EventBus()
 
@@ -764,3 +768,18 @@ async def activity_ws(
 
         events = ctx.clear_pending_events()
         await event_bus.publish(pa.activity_type, events)
+
+
+# ---- SPA fallback ----
+
+
+@app.get("/{path:path}", include_in_schema=False)
+async def spa_fallback(path: str) -> HTMLResponse:  # pylint: disable=unused-argument
+    """Serve the frontend index.html for any unmatched GET request (SPA fallback)."""
+    index = constants.FRONTEND_DIR / "index.html"
+    if not index.is_file():
+        return HTMLResponse(
+            "<h1>Frontend not built</h1><p>Run <code>make notebook-frontend-build</code></p>",
+            status_code=503,
+        )
+    return HTMLResponse(index.read_text())

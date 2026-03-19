@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getActivityTypes, deleteActivityType, uploadActivityType } from "@/lib/api";
 
-export default function ActivitiesPage() {
+export function ActivitiesPage() {
   const [activities, setActivities] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);

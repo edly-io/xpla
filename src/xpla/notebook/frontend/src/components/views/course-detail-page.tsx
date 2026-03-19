@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getCourse, createPage, updateCourse, deleteCourse, reorderPages, type CourseDetail } from "@/lib/api";
 import { PageList } from "@/components/page-list";
 import { AddForm } from "@/components/add-form";
 import { ItemActions } from "@/components/item-actions";
 
-export default function CourseDetailPage() {
-  const { courseId } = useParams<{ courseId: string }>();
+export function CourseDetailPage({ courseId }: { courseId: string }) {
   const router = useRouter();
   const [course, setCourse] = useState<CourseDetail | null>(null);
 
