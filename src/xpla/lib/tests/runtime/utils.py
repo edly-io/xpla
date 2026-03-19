@@ -1,14 +1,13 @@
 import json
-import tempfile
 from pathlib import Path
 from typing import Any
 
 from xpla.lib.runtime import ActivityRuntime
 from xpla.lib.permission import Permission
-from xpla.demo.kv import KVStore
+from xpla.lib.field_store import FieldStore, MemoryKVStore
 
 
-def create_manifest(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def create_manifest(
     name: str = "test-activity",
     capabilities: dict[str, Any] | None = None,
     fields: dict[str, Any] | None = None,
@@ -43,10 +42,9 @@ def setup_activity_dir(tmp_path: Path, manifest: dict[str, Any]) -> Path:
     return activity_dir
 
 
-def make_field_store() -> KVStore:
-    """Create a temporary KVStore for tests."""
-    tmpdir = tempfile.mkdtemp()
-    return KVStore(Path(tmpdir) / "kv.json")
+def make_field_store() -> FieldStore:
+    """Create a temporary field store for tests."""
+    return MemoryKVStore()
 
 
 def make_activity_runtime(tmp_path: Path, manifest: dict[str, Any]) -> ActivityRuntime:

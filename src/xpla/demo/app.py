@@ -17,12 +17,12 @@ from xpla.lib.event_bus import EventBus
 from xpla.lib.field_store import FieldStore
 from xpla.lib.permission import Permission
 from xpla.demo import constants
-from xpla.demo.kv import get_default
+from xpla.demo.kv import load_field_store
 
 USER_ID_COOKIE = "xpla_user"
 SIMULATED_USERS = ["alice", "bob", "charlie"]
 
-field_store: FieldStore = get_default()
+field_store: FieldStore = load_field_store()
 
 logger = logging.getLogger(__name__)
 
