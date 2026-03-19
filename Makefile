@@ -31,7 +31,7 @@ notebook-server: ## Run the notebook API server (port 9753)
 	fastapi dev src/xpla/notebook/app.py --host=127.0.0.1 --port=9753
 
 notebook-frontend-server: ## Run the notebook frontend dev server (port 3000)
-	cd src/xpla/notebook/frontend && npm run dev
+	cd src/xpla/notebook/frontend && NEXT_PUBLIC_API_URL=http://localhost:9753 npm run dev
 
 format: ## Format code with black
 	black src/

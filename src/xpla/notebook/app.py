@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import json
 import logging
 import re
 import shutil
@@ -12,12 +13,13 @@ from fastapi import (
     FastAPI,
     Form,
     HTTPException,
+    Request,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
@@ -31,6 +33,7 @@ from xpla.notebook import constants
 from xpla.notebook.db import run_migrations, get_session
 from xpla.notebook.field_store import SQLiteFieldStore
 from xpla.notebook.models import Course, Page, PageActivity
+from xpla.notebook import llms
 
 logger = logging.getLogger(__name__)
 
@@ -441,6 +444,52 @@ async def delete_activity(
         session.commit()
 
 
+@app.get(
+    "/api/activities/{activity_id}/{permission}/llms.txt",
+    summary="Activity info for AI agents",
+)
+async def activity_llms_txt(
+    activity_id: str,
+    permission: Permission,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> PlainTextResponse:
+    activity = session.get(PageActivity, activity_id)
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    page = session.get(Page, activity.page_id)
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+    runtime = load_activity(
+        activity.activity_type, activity_id, page.course_id, permission
+    )
+    base_url = str(request.base_url).rstrip("/")
+
+    # Parse activity actions
+    manifest_actions = {}
+    if runtime.manifest.actions:
+        manifest_actions = {
+            name: action.model_dump()
+            for name, action in runtime.manifest.actions.items()
+        }
+
+    # Get current state
+    state = runtime.get_state()
+
+    information = llms.get_activity_information().format(
+        base_url=base_url,
+        course_id=page.course_id,
+        permission=permission.value,
+        manifest_actions=json.dumps(manifest_actions, indent=2),
+        activity_id=activity_id,
+        activity_state=json.dumps(state, indent=2),
+        activity_type=activity.activity_type,
+        page_id=activity.page_id,
+    )
+    return PlainTextResponse(information)
+
+
 @app.post(
     "/api/activities/{activity_id}/move",
     summary="Move an activity up or down",
@@ -640,7 +689,11 @@ async def activity_actions(
     session: Session = Depends(get_session),
 ) -> None:
     """
-    Trigger an activity action, similar to actions that are sent via a websocket.
+    Trigger an activity action
+
+    This will mimic the behaviour of users interacting with a learning activity from the
+    frontend. Actions that are sent via this endpoint *must* match the format that is
+    documented in the activity manifest.
     """
     activity = session.get(PageActivity, activity_id)
     if not activity:
