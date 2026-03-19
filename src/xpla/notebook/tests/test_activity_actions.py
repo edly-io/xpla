@@ -50,7 +50,9 @@ def activity_fixture(session: Session) -> PageActivity:
     return pa
 
 
-def post_action(client: TestClient, activity_id: str, permission: str = "edit") -> Response:
+def post_action(
+    client: TestClient, activity_id: str, permission: str = "edit"
+) -> Response:
     return client.post(
         f"/api/activity/{activity_id}/{permission}/actions",
         json={"name": "config.save", "value": {"markdown_content": "hello"}},
@@ -81,4 +83,6 @@ def test_action_success(client: TestClient, activity: PageActivity) -> None:
     with patch("xpla.notebook.app.load_activity", return_value=mock_ctx):
         response = post_action(client, activity.id)
     assert response.status_code == 200
-    mock_ctx.on_action.assert_called_once_with("config.save", {"markdown_content": "hello"})
+    mock_ctx.on_action.assert_called_once_with(
+        "config.save", {"markdown_content": "hello"}
+    )

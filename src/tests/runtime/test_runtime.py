@@ -706,7 +706,9 @@ class TestGetState:
         (activity_dir / "server.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
-        mock_sandbox.call_function.side_effect = SandboxRuntimeError("getState not found")
+        mock_sandbox.call_function.side_effect = SandboxRuntimeError(
+            "getState not found"
+        )
         mock_sandbox_class.return_value = mock_sandbox
 
         ctx = ActivityRuntime(
