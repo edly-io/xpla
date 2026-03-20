@@ -33,14 +33,14 @@ def fixtures_samples_dir(
             "name": "test-activity",
             "client": "client.js",
             "capabilities": {},
-            "static": ["index.html"],
+            "assets": ["index.html"],
         }
         (activity_path / "manifest.json").write_text(json.dumps(manifest))
 
         # Create index.html
         (activity_path / "index.html").write_text("<html><body>Test</body></html>")
 
-        # Create a file not declared in static
+        # Create a file not declared in assets
         (activity_path / "secret.txt").write_text("secret")
 
         # Patch SAMPLES_DIR
@@ -81,7 +81,7 @@ class TestStaticFiles:
         assert "xpla" in response.text.lower() or "xPLA" in response.text
 
     def test_undeclared_asset_returns_404(self, client: TestClient) -> None:
-        """Should return 404 for files not declared in static."""
+        """Should return 404 for files not declared in assets."""
         response = client.get("/a/test-activity/secret.txt")
         assert response.status_code == 404
 

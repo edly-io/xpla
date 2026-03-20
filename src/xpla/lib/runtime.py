@@ -131,7 +131,7 @@ class ActivityRuntime:
 
         # Only serve files declared in manifest
         if file_path not in (self.manifest.client, "manifest.json"):
-            if file_path not in [item.root for item in (self.manifest.static or [])]:
+            if file_path not in [item.root for item in (self.manifest.assets or [])]:
                 raise AssetAccessError("Undeclared asset")
 
         if not full_path.exists() or not full_path.is_file():

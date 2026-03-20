@@ -99,7 +99,7 @@ my-activity/
 - `fields` (optional, defaults to `{}`): Declares activity fields with type and scope. Fields are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
 - `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.
-- `static` (optional): An array of explicit file paths that can be served as static assets. Only listed files (plus `client` and `manifest.json`) are accessible. Paths must be relative (no leading `/`) and cannot contain `..`.
+- `assets` (optional): An array of explicit file paths that can be served as static assets. Only listed files (plus `client` and `manifest.json`) are accessible. Paths must be relative (no leading `/`) and cannot contain `..`.
 
 The manifest format is defined by a JSON Schema at [`src/xpla/lib/sandbox/manifest.schema.json`](./sandbox/manifest.schema.json). To validate a manifest:
 
@@ -206,7 +206,7 @@ The `activity` object exposes the following properties and methods:
 - `state`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared fields if `getState` is not exported).
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. The current `permission` is included in the payload. The action name must be declared in `manifest.json`.
-- `getAssetUrl(path)`: Returns the URL for a static file in the activity directory (served by the `activity_asset` endpoint).
+- `getAssetUrl(path)`: Returns the URL for an asset in the activity directory (served by the `activity_asset` endpoint).
 - `onEvent(name, value)`: Override this callback to handle events from the server. Called for every event with the parsed value.
 
 The `XPLA` class is implemented in [`xpla.js`](../static/js/xpla.js).
@@ -326,7 +326,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 5. **Key-value store.** Activity fields are persisted in a key-value store, scoped by activity name and (for user-scoped fields) user ID. The store must support `get` and `set` operations. Our implementation: [`kv.py`](./kv.py).
 
-6. **Static asset serving.** Serve files declared in the manifest's `static` array (plus `client` and `manifest.json`). Paths must be validated to prevent directory traversal.
+6. **Static asset serving.** Serve files declared in the manifest's `assets` array (plus `client` and `manifest.json`). Paths must be validated to prevent directory traversal.
 
 #### Endpoints
 

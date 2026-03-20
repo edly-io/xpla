@@ -37,7 +37,7 @@ class Capabilities(BaseModel):
     ai: Annotated[Ai | None, Field(description="AI model access capability.")] = None
 
 
-class StaticItem(RootModel[str]):
+class Asset(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -141,8 +141,8 @@ class XplaActivityManifest(BaseModel):
         dict[str, TypeSchema] | None,
         Field(description="Events the server sandbox can emit to the client."),
     ] = None
-    static: Annotated[
-        list[StaticItem] | None,
+    assets: Annotated[
+        list[Asset] | None,
         Field(
             description="Static file paths that can be served as assets. Must be relative (no leading '/') and cannot contain '..'."
         ),

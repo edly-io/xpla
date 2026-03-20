@@ -69,7 +69,7 @@
       "description": "Events the server sandbox can emit to the client.",
       "additionalProperties": { "$ref": "#/$defs/typeSchema" }
     },
-    "static": {
+    "assets": {
       "type": "array",
       "items": {
         "type": "string",

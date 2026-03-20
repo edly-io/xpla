@@ -63,11 +63,11 @@
     "fields.change.test_code": { "type": "string" },
     "fields.change.starter_code": { "type": "string" }
   },
-  "static": [
-    "static/pyodide/pyodide.mjs",
-    "static/pyodide/pyodide-lock.json",
-    "static/pyodide/pyodide.asm.wasm",
-    "static/pyodide/pyodide.asm.js",
-    "static/pyodide/python_stdlib.zip"
+  "assets": [
+    "assets/pyodide/pyodide.mjs",
+    "assets/pyodide/pyodide-lock.json",
+    "assets/pyodide/pyodide.asm.wasm",
+    "assets/pyodide/pyodide.asm.js",
+    "assets/pyodide/python_stdlib.zip"
   ]
 }

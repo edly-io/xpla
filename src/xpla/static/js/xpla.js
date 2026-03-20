@@ -36,7 +36,7 @@ export class XPLA extends HTMLElement {
     this._connectWebSocket();
     const src = this.getAttribute("data-src");
     if (src) {
-      this.loadScript(src);
+      this._loadScript(src);
     }
   }
 
@@ -145,7 +145,7 @@ export class XPLA extends HTMLElement {
     }
   }
 
-  async loadScript(url) {
+  async _loadScript(url) {
     try {
       const module = await import(url);
       if (typeof module.setup === "function") {

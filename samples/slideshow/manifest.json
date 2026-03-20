@@ -21,14 +21,14 @@
   "events": {
     "fields.change.slides_html": { "type": "string" }
   },
-  "static": [
-    "static/reveal/reset.css",
-    "static/reveal/reveal.css",
-    "static/reveal/theme/white.css",
-    "static/reveal/reveal.js",
-    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro.css",
-    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro-italic.woff",
-    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro-regular.woff",
-    "static/reveal/theme/fonts/source-sans-pro/source-sans-pro-semibold.woff"
+  "assets": [
+    "assets/reveal/reset.css",
+    "assets/reveal/reveal.css",
+    "assets/reveal/theme/white.css",
+    "assets/reveal/reveal.js",
+    "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro.css",
+    "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro-italic.woff",
+    "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro-regular.woff",
+    "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro-semibold.woff"
   ]
 }

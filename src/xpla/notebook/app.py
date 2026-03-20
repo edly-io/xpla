@@ -616,12 +616,12 @@ async def upload_activity_type(
                 detail=f"Server file '{manifest.server}' not found in zip",
             )
 
-        for static_item in manifest.static or []:
-            static_path = static_item.root
-            if not (extract_dir / static_path).exists():
+        for asset in manifest.assets or []:
+            asset_path = asset.root
+            if not (extract_dir / asset_path).exists():
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Static file '{static_path}' not found in zip",
+                    detail=f"Static file '{asset_path}' not found in zip",
                 )
 
         target_dir = constants.ACTIVITIES_DIR / USER_ID / name
