@@ -72,12 +72,14 @@ function sendEventToAllViewers(name, value) {
 }
 
 function getState() {
-  const { context, permission } = JSON.parse(Host.inputString());
+  const { permission } = JSON.parse(Host.inputString());
   const state = {
-    doc_state: getField("doc_state"),
-    content: getField("content"),
-    render_markdown: getField("render_markdown") || 0,
+    render_markdown: getField("render_markdown") || 0
   };
+  if (permission === "play" || permission == "play") {
+    state.doc_state = getField("doc_state");
+    state.content = getField("content");
+  }
   Host.outputString(JSON.stringify(state));
 }
 
