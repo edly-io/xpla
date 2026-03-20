@@ -25,8 +25,8 @@ function bytesToBase64(bytes) {
 }
 
 function onAction() {
-  const { name, value, scope, permission } = JSON.parse(Host.inputString());
-  const user = scope.user_id;
+  const { name, value, context, permission } = JSON.parse(Host.inputString());
+  const user = context.user_id;
 
   if (name === "config.save") {
     if (permission !== "edit") {
@@ -76,7 +76,6 @@ function getState() {
   const state = {
     doc_state: getField("doc_state"),
     content: getField("content"),
-    user_id: context.user_id,
     render_markdown: getField("render_markdown") || 0,
   };
   Host.outputString(JSON.stringify(state));

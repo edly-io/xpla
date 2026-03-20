@@ -187,7 +187,7 @@ export function setup(activity) {
     }
     if (name === "cursor.move") {
       const userId = value.user;
-      if (userId === activity.state.user_id) return;
+      if (userId === activity.context.user_id) return;
       const color = getUserColor(userId);
       remoteCursors.set(userId, { index: value.index, length: value.length, color });
       renderRemoteCursors();
