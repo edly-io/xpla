@@ -72,7 +72,7 @@ src/xpla/lib/manifest_types.py: src/xpla/lib/sandbox/manifest.schema.json
 
 ###### Additional commands
 
-ESCAPE =
+ESCAPE = 
 help: ## Print this help
 	@grep -E '^([a-zA-Z_-]+:.*?## .*|######* .+)$$' Makefile \
 		| sed 's/######* \(.*\)/@               $(ESCAPE)[1;31m\1$(ESCAPE)[0m/g' | tr '@' '\n' \
