@@ -16,26 +16,26 @@ declare module "main" {
 declare module "extism:host" {
   interface user {
     // LMS functions (require lms capability)
-    submit_grade(score: F64): I32;
+    submitGrade(score: F64): I32;
 
     // Event posting
-    send_event(name_ptr: I64, value_ptr: I64, context_ptr: I64, permission_ptr: I64): I64;
+    sendEvent(name_ptr: I64, value_ptr: I64, context_ptr: I64, permission_ptr: I64): I64;
 
     // Get/Set field (scope resolved from manifest)
-    get_field(name_ptr: I64, context_ptr: I64): I64;
-    set_field(name_ptr: I64, value_ptr: I64, context_ptr: I64): I32;
+    getField(name_ptr: I64, context_ptr: I64): I64;
+    setField(name_ptr: I64, value_ptr: I64, context_ptr: I64): I32;
 
     // Log field operations
     log_get(name_ptr: I64, id: I64, context_ptr: I64): I64;
-    log_get_range(name_ptr: I64, from_id: I64, to_id: I64, context_ptr: I64): I64;
-    log_append(name_ptr: I64, value_ptr: I64, context_ptr: I64): I64;
-    log_delete(name_ptr: I64, id: I64, context_ptr: I64): I32;
-    log_delete_range(name_ptr: I64, from_id: I64, to_id: I64, context_ptr: I64): I64;
+    logGetRange(name_ptr: I64, from_id: I64, to_id: I64, context_ptr: I64): I64;
+    logAppend(name_ptr: I64, value_ptr: I64, context_ptr: I64): I64;
+    logDelete(name_ptr: I64, id: I64, context_ptr: I64): I32;
+    logDeleteRange(name_ptr: I64, from_id: I64, to_id: I64, context_ptr: I64): I64;
 
     // HTTP requests (require http capability)
     // Returns a JSON string: {"status": int, "headers": [[k,v],...], "body": str}
     // status=0 indicates a connection or capability error.
-    http_request(
+    httpRequest(
       url_ptr: I64,
       method_ptr: I64,
       body_ptr: I64,

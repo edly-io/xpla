@@ -122,7 +122,7 @@ Each field must have a `type` and `scope`. An optional `default` can be provided
 }
 ```
 
-**Types:** `integer`, `number`, `string`, `boolean`, `array`, `object`, `log`. For `array` and `log`, specify an `items` field with a type schema. For `object`, specify a `properties` field. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`, `[]`, `{}`. Log fields have no default and are not included in `get_field`/`set_field` or `get_all_fields` — they are accessed exclusively via the [log host functions](#log-fields).
+**Types:** `integer`, `number`, `string`, `boolean`, `array`, `object`, `log`. For `array` and `log`, specify an `items` field with a type schema. For `object`, specify a `properties` field. If no `default` is provided, type-specific defaults are used: `0`, `0.0`, `""`, `false`, `[]`, `{}`. Log fields have no default and are not included in `getField`/`setField` or `get_all_fields` — they are accessed exclusively via the [log host functions](#log-fields).
 
 **Scopes:**
 
@@ -290,7 +290,7 @@ function onAction() {
 module.exports = { onAction, getState };
 ```
 
-The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, context, permission)` (which calls the `send_event` host function). The `context` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
+The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, context, permission)` (which calls the `sendEvent` host function). The `context` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
 
 ### Building
 
@@ -334,7 +334,7 @@ The exact API is platform-specific and does not need to follow a standard. The p
 
 - **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
 - **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, `context` (a dict with `user_id`, `course_id`, `activity_id`), and `permission` (the current permission level).
-- **Event delivery**: events emitted by the sandbox (via `send_event`) are broadcast to connected clients via WebSocket, filtered by context and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
+- **Event delivery**: events emitted by the sandbox (via `sendEvent`) are broadcast to connected clients via WebSocket, filtered by context and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
 Our reference implementation exposes these as FastAPI endpoints in [the demo application](../demo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
 
@@ -342,19 +342,22 @@ Our reference implementation exposes these as FastAPI endpoints in [the demo app
 
 Plugins can call host functions which are defined in [`runtime.py`](./runtime.py):
 
-- `send_event(name: str, value: str, context: str, permission: str)`: `context` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
-- `get_field(name: str, context: str)` / `set_field(name: str, value: str, context: str)`: scope resolved from manifest; the `context` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
-- `log_append(name: str, value: any, context: str) -> int`: append to a log field, returns the assigned entry ID
+- `sendEvent(name: str, value: str, context: str, permission: str)`: `context` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
+- `getField(name: str, context: str)` / `setField(name: str, value: str, context: str)`: scope resolved from manifest; the `context` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
+- `logAppend(name: str, value: any, context: str) -> int`: append to a log field, returns the assigned entry ID
 - `log_get(name: str, entry_id: int, context: str) -> any | null`: get a single log entry by ID
-- `log_get_range(name: str, from_id: int, to_id: int, context: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
-- `log_delete(name: str, entry_id: int, context: str) -> bool`: delete a single entry, returns whether it existed
-- `log_delete_range(name: str, from_id: int, to_id: int, context: str) -> int`: delete entries in range, returns count deleted
-- `http_request(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])` → `{"status": int, "headers": [[k,v],...], "body": str}`
-- `submit_grade(score: float)`
+- `logGetRange(name: str, from_id: int, to_id: int, context: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
+- `logDelete(name: str, entry_id: int, context: str) -> bool`: delete a single entry, returns whether it existed
+- `logDeleteRange(name: str, from_id: int, to_id: int, context: str) -> int`: delete entries in range, returns count deleted
+
+Optional host functions for which access must be granted via the "capabilities" field:
+
+- `httpRequest(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])` → `{"status": int, "headers": [[k,v],...], "body": str}`
+- `submitGrade(score: float)`: to be defined.
 
 #### Log fields
 
-The `log` type provides append-only ordered storage with auto-incrementing IDs, suitable for chat messages, event histories, and similar use cases. Unlike other field types, log fields are not accessible via `get_field`/`set_field` and are not included in `get_all_fields` — they have dedicated host functions (`log_append`, `log_get`, `log_get_range`, `log_delete`, `log_delete_range`).
+The `log` type provides append-only ordered storage with auto-incrementing IDs, suitable for chat messages, event histories, and similar use cases. Unlike other field types, log fields are not accessible via `getField`/`setField` and are not included in `get_all_fields` — they have dedicated host functions (`logAppend`, `log_get`, `logGetRange`, `logDelete`, `logDeleteRange`).
 
 Log fields cannot be nested: the `items` type schema uses the same types as other fields (`integer`, `number`, `string`, `boolean`, `array`, `object`) but not `log`.
 
@@ -371,7 +374,7 @@ CREATE TABLE xpla_log_entries (
 );
 ```
 
-With this table, `log_append` becomes an `INSERT` with a `SELECT max(entry_id) + 1`, `log_get` is a simple `SELECT ... WHERE entry_id = ?`, `log_get_range` is `SELECT ... WHERE entry_id >= ? AND entry_id < ? ORDER BY entry_id`, and `log_delete`/`log_delete_range` are `DELETE` statements. A separate sequence or `max + 1` query provides the next ID. This representation scales well and supports efficient range queries via the primary key index.
+With this table, `logAppend` becomes an `INSERT` with a `SELECT max(entry_id) + 1`, `log_get` is a simple `SELECT ... WHERE entry_id = ?`, `logGetRange` is `SELECT ... WHERE entry_id >= ? AND entry_id < ? ORDER BY entry_id`, and `logDelete`/`logDeleteRange` are `DELETE` statements. A separate sequence or `max + 1` query provides the next ID. This representation scales well and supports efficient range queries via the primary key index.
 
 See the [`samples/chat`](../../samples/chat) activity for a working example.
 

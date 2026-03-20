@@ -106,28 +106,28 @@ class TestHostFunctions:
 
         function_names = [f.__name__ for f in functions]
         assert function_names == [
-            "send_event",
-            "get_field",
-            "set_field",
+            "sendEvent",
+            "getField",
+            "setField",
             "log_get",
-            "log_get_range",
-            "log_append",
-            "log_delete",
-            "log_delete_range",
-            "http_request",
-            "submit_grade",
+            "logGetRange",
+            "logAppend",
+            "logDelete",
+            "logDeleteRange",
+            "httpRequest",
+            "submitGrade",
         ]
 
 
 class TestHttpRequest:
-    """Tests for http_request host function."""
+    """Tests for httpRequest host function."""
 
     def test_error_when_no_http_capability(self, tmp_path: Path) -> None:
         """Should return status=0 when no HTTP capability declared."""
         manifest = create_manifest(capabilities={})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        result = ctx.http_request("https://example.com", "GET", b"", ())
+        result = ctx.httpRequest("https://example.com", "GET", b"", ())
 
         data = json.loads(result)
         assert data["status"] == 0
@@ -141,7 +141,7 @@ class TestHttpRequest:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        result = ctx.http_request("https://evil.com/hack", "GET", b"", ())
+        result = ctx.httpRequest("https://evil.com/hack", "GET", b"", ())
 
         data = json.loads(result)
         assert data["status"] == 0
@@ -167,7 +167,7 @@ class TestHttpRequest:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = ctx.http_request(
+        result = ctx.httpRequest(
             "https://api.example.com/data",
             "POST",
             b"body",
@@ -192,7 +192,7 @@ class TestHttpRequest:
         error.read = MagicMock(return_value=b"not found")  # type: ignore[method-assign]
         mock_urlopen.side_effect = error
 
-        result = ctx.http_request("https://example.com", "GET", b"", ())
+        result = ctx.httpRequest("https://example.com", "GET", b"", ())
 
         data = json.loads(result)
         assert data["status"] == 404
@@ -206,7 +206,7 @@ class TestHttpRequest:
 
         mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
 
-        result = ctx.http_request("https://example.com", "GET", b"", ())
+        result = ctx.httpRequest("https://example.com", "GET", b"", ())
 
         data = json.loads(result)
         assert data["status"] == 0
@@ -228,7 +228,7 @@ class TestHttpRequest:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = ctx.http_request("https://any-host.com/api", "GET", b"", ())
+        result = ctx.httpRequest("https://any-host.com/api", "GET", b"", ())
 
         data = json.loads(result)
         assert data["status"] == 200
@@ -539,7 +539,7 @@ class TestGetAllFields:
 
 
 class TestScopeAwareGetSetField:
-    """Tests for scope-aware get_field/set_field host functions."""
+    """Tests for scope-aware getField/setField host functions."""
 
     def test_activity_scope(self, tmp_path: Path) -> None:
         """Should get/set activity-scoped fields."""
@@ -548,9 +548,9 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.get_field("question", {}) == ""
-        ctx.set_field("question", "What is 2+2?", {})
-        assert ctx.get_field("question", {}) == "What is 2+2?"
+        assert ctx.getField("question", {}) == ""
+        ctx.setField("question", "What is 2+2?", {})
+        assert ctx.getField("question", {}) == "What is 2+2?"
 
     def test_user_activity_scope(self, tmp_path: Path) -> None:
         """Should get/set user,activity-scoped fields."""
@@ -562,9 +562,9 @@ class TestScopeAwareGetSetField:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        assert ctx.get_field("score", {}) == 0
-        ctx.set_field("score", 42, {})
-        assert ctx.get_field("score", {}) == 42
+        assert ctx.getField("score", {}) == 0
+        ctx.setField("score", 42, {})
+        assert ctx.getField("score", {}) == 42
 
     def test_course_scope(self, tmp_path: Path) -> None:
         """Should get/set course-scoped fields."""
@@ -573,9 +573,9 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.get_field("total", {}) == 0
-        ctx.set_field("total", 99, {})
-        assert ctx.get_field("total", {}) == 99
+        assert ctx.getField("total", {}) == 0
+        ctx.setField("total", 99, {})
+        assert ctx.getField("total", {}) == 99
 
     def test_user_course_scope(self, tmp_path: Path) -> None:
         """Should get/set user,course-scoped fields."""
@@ -585,9 +585,9 @@ class TestScopeAwareGetSetField:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        assert ctx.get_field("grade", {}) == 0
-        ctx.set_field("grade", 85, {})
-        assert ctx.get_field("grade", {}) == 85
+        assert ctx.getField("grade", {}) == 0
+        ctx.setField("grade", 85, {})
+        assert ctx.getField("grade", {}) == 85
 
     def test_global_scope(self, tmp_path: Path) -> None:
         """Should get/set global-scoped fields."""
@@ -596,9 +596,9 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.get_field("setting", {}) == ""
-        ctx.set_field("setting", "dark", {})
-        assert ctx.get_field("setting", {}) == "dark"
+        assert ctx.getField("setting", {}) == ""
+        ctx.setField("setting", "dark", {})
+        assert ctx.getField("setting", {}) == "dark"
 
     def test_user_global_scope(self, tmp_path: Path) -> None:
         """Should get/set user,global-scoped fields."""
@@ -608,9 +608,9 @@ class TestScopeAwareGetSetField:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        assert ctx.get_field("pref", {}) == ""
-        ctx.set_field("pref", "en", {})
-        assert ctx.get_field("pref", {}) == "en"
+        assert ctx.getField("pref", {}) == ""
+        ctx.setField("pref", "en", {})
+        assert ctx.getField("pref", {}) == "en"
 
     def test_different_scopes_isolated(self, tmp_path: Path) -> None:
         """Fields with different scopes should not collide."""
@@ -626,11 +626,11 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.set_field("count_activity", 10, {})
-        ctx.set_field("count_course", 20, {})
+        ctx.setField("count_activity", 10, {})
+        ctx.setField("count_course", 20, {})
 
-        assert ctx.get_field("count_activity", {}) == 10
-        assert ctx.get_field("count_course", {}) == 20
+        assert ctx.getField("count_activity", {}) == 10
+        assert ctx.getField("count_course", {}) == 20
 
 
 class TestGetState:
@@ -724,14 +724,14 @@ class TestGetState:
 
 
 class TestSendEvent:
-    """Tests for send_event host function."""
+    """Tests for sendEvent host function."""
 
     def test_appends_event_to_pending(self, tmp_path: Path) -> None:
         """Should append event to pending events list with scope and permission."""
         manifest = create_manifest(events={"test.event": {"type": "string"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.send_event("test.event", '"some value"', "{}", "play")
+        ctx.sendEvent("test.event", '"some value"', "{}", "play")
 
         events = ctx.clear_pending_events()
         assert len(events) == 1
@@ -751,8 +751,8 @@ class TestSendEvent:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.send_event("event1", '"value1"', "{}", "play")
-        ctx.send_event("event2", '"value2"', "{}", "edit")
+        ctx.sendEvent("event1", '"value1"', "{}", "play")
+        ctx.sendEvent("event2", '"value2"', "{}", "edit")
 
         events = ctx.clear_pending_events()
         assert len(events) == 2
@@ -766,7 +766,7 @@ class TestSendEvent:
         manifest = create_manifest(events={"test": {"type": "string"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        result = ctx.send_event("test", '"value"', "{}", "play")
+        result = ctx.sendEvent("test", '"value"', "{}", "play")
 
         assert result == ""
 
@@ -775,7 +775,7 @@ class TestSendEvent:
         manifest = create_manifest(events={"fields.change.score": {"type": "integer"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.send_event("fields.change.score", "42", "{}", "play")
+        ctx.sendEvent("fields.change.score", "42", "{}", "play")
 
         events = ctx.clear_pending_events()
         assert len(events) == 1
@@ -788,14 +788,14 @@ class TestSendEvent:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(EventValidationError, match="not declared"):
-            ctx.send_event("unknown.event", '"value"', "{}", "play")
+            ctx.sendEvent("unknown.event", '"value"', "{}", "play")
 
     def test_explicit_scope_preserved(self, tmp_path: Path) -> None:
         """Should preserve explicit scope without filling defaults."""
         manifest = create_manifest(events={"test": {"type": "string"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.send_event("test", '"val"', '{"user_id": "bob"}', "view")
+        ctx.sendEvent("test", '"val"', '{"user_id": "bob"}', "view")
 
         events = ctx.clear_pending_events()
         assert events[0]["context"] == {"user_id": "bob"}
@@ -811,8 +811,8 @@ class TestClearPendingEvents:
             events={"event1": {"type": "string"}, "event2": {"type": "string"}}
         )
         ctx = make_activity_runtime(tmp_path, manifest)
-        ctx.send_event("event1", '"value1"', "{}", "play")
-        ctx.send_event("event2", '"value2"', "{}", "play")
+        ctx.sendEvent("event1", '"value1"', "{}", "play")
+        ctx.sendEvent("event2", '"value2"', "{}", "play")
 
         result = ctx.clear_pending_events()
 
@@ -829,9 +829,9 @@ class TestClearPendingEvents:
 
 
 class TestFieldScopeOverrides:
-    """Tests for get_field/set_field with scope overrides."""
+    """Tests for getField/setField with scope overrides."""
 
-    def test_get_field_with_user_override(self, tmp_path: Path) -> None:
+    def test_getField_with_user_override(self, tmp_path: Path) -> None:
         """Should read another user's user,activity field via scope override."""
         manifest = create_manifest(
             fields={
@@ -842,14 +842,14 @@ class TestFieldScopeOverrides:
         ctx.user_id = "alice"
 
         # Set a field for bob via scope override
-        ctx.set_field("score", 42, {"user_id": "bob"})
+        ctx.setField("score", 42, {"user_id": "bob"})
 
         # Read bob's field via scope override
-        assert ctx.get_field("score", {"user_id": "bob"}) == 42
+        assert ctx.getField("score", {"user_id": "bob"}) == 42
         # Alice's own field is still the default
-        assert ctx.get_field("score", {}) == 0
+        assert ctx.getField("score", {}) == 0
 
-    def test_set_field_with_user_override(self, tmp_path: Path) -> None:
+    def test_setField_with_user_override(self, tmp_path: Path) -> None:
         """Should write another user's user,activity field via scope override."""
         manifest = create_manifest(
             fields={
@@ -859,11 +859,11 @@ class TestFieldScopeOverrides:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        ctx.set_field("score", 99, {"user_id": "bob"})
+        ctx.setField("score", 99, {"user_id": "bob"})
 
-        assert ctx.get_field("score", {"user_id": "bob"}) == 99
+        assert ctx.getField("score", {"user_id": "bob"}) == 99
         # Alice's field unchanged
-        assert ctx.get_field("score", {}) == 0
+        assert ctx.getField("score", {}) == 0
 
     def test_scope_override_invalid_key_raises(self, tmp_path: Path) -> None:
         """Should raise FieldValidationError for invalid override key on course-scoped field."""
@@ -873,7 +873,7 @@ class TestFieldScopeOverrides:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
-            ctx.get_field("total", {"instance_id": "other"})
+            ctx.getField("total", {"instance_id": "other"})
 
     def test_scope_override_user_id_on_non_user_scoped_raises(
         self, tmp_path: Path
@@ -885,4 +885,4 @@ class TestFieldScopeOverrides:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
-            ctx.get_field("question", {"user_id": "bob"})
+            ctx.getField("question", {"user_id": "bob"})

@@ -318,19 +318,19 @@ class ActivityRuntime:
         Host functions that will be made available to the sandbox.
         """
         return [
-            self.send_event,
-            self.get_field,
-            self.set_field,
+            self.sendEvent,
+            self.getField,
+            self.setField,
             self.log_get,
-            self.log_get_range,
-            self.log_append,
-            self.log_delete,
-            self.log_delete_range,
-            self.http_request,
-            self.submit_grade,
+            self.logGetRange,
+            self.logAppend,
+            self.logDelete,
+            self.logDeleteRange,
+            self.httpRequest,
+            self.submitGrade,
         ]
 
-    def send_event(self, name: str, value: str, context: str, permission: str) -> str:
+    def sendEvent(self, name: str, value: str, context: str, permission: str) -> str:
         """Send an event back to the client.
 
         Called by sandbox code to send events (e.g., field changes) to the frontend.
@@ -363,7 +363,7 @@ class ActivityRuntime:
         )
         return ""
 
-    def get_field(
+    def getField(
         self, name: str, context: Annotated[dict[str, str], extism.Json]
     ) -> Annotated[FieldType, extism.Json]:
         """Get a field, resolving scope from manifest.
@@ -377,14 +377,14 @@ class ActivityRuntime:
         """
         if isinstance(self.field_checker.get_definition(name), LogField):
             raise FieldValidationError(
-                f"Field '{name}' is of type 'log'; use log_get/log_get_range instead"
+                f"Field '{name}' is of type 'log'; use log_get/logGetRange instead"
             )
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, context)
         value = self.load_field(course_id, activity_id, user_id, name)
         return value
 
-    def set_field(
+    def setField(
         self,
         name: str,
         value: Annotated[FieldType, extism.Json],
@@ -399,7 +399,7 @@ class ActivityRuntime:
         """
         if isinstance(self.field_checker.get_definition(name), LogField):
             raise FieldValidationError(
-                f"Field '{name}' is of type 'log'; use log_append instead"
+                f"Field '{name}' is of type 'log'; use logAppend instead"
             )
         field_scope = self.field_checker.get_scope(name)
         course_id, activity_id, user_id = self._scope_key_segments(field_scope, context)
@@ -429,7 +429,7 @@ class ActivityRuntime:
             course_id, self.name, activity_id, user_id, name, entry_id
         )
 
-    def log_get_range(
+    def logGetRange(
         self,
         name: str,
         from_id: int,
@@ -445,7 +445,7 @@ class ActivityRuntime:
             course_id, self.name, activity_id, user_id, name, from_id, to_id
         )
 
-    def log_append(
+    def logAppend(
         self,
         name: str,
         value: Annotated[FieldType, extism.Json],
@@ -458,7 +458,7 @@ class ActivityRuntime:
             course_id, self.name, activity_id, user_id, name, value
         )
 
-    def log_delete(
+    def logDelete(
         self,
         name: str,
         entry_id: int,
@@ -470,7 +470,7 @@ class ActivityRuntime:
             course_id, self.name, activity_id, user_id, name, entry_id
         )
 
-    def log_delete_range(
+    def logDeleteRange(
         self,
         name: str,
         from_id: int,
@@ -483,7 +483,7 @@ class ActivityRuntime:
             course_id, self.name, activity_id, user_id, name, from_id, to_id
         )
 
-    def http_request(
+    def httpRequest(
         self,
         url: str,
         method: str,
@@ -550,7 +550,7 @@ class ActivityRuntime:
                 }
             )
 
-    def submit_grade(self, score: float) -> bool:
+    def submitGrade(self, score: float) -> bool:
         # TODO actually submit grade
         logger.info("submitted score: %f", score)
         return True

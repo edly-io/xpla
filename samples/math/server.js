@@ -1,10 +1,4 @@
 // Math quiz plugin - validates answers and submits grades via WASM backend
-//
-// This plugin demonstrates the action/event architecture:
-// - Receives actions via onAction
-// - Sends events back via send_event host function
-// - Updates fields via fields.change.* events
-// - Persists counters via getField/setField host functions
 
 import {
   sendEvent,
@@ -12,7 +6,7 @@ import {
   setField,
 } from "../../src/xpla/lib/sandbox";
 
-const { submit_grade } = Host.getFunctions();
+const { submitGrade } = Host.getFunctions();
 
 // Return state visible to the current user.
 function getState() {
@@ -97,7 +91,7 @@ function checkAnswer(question, answer) {
   const score = correct ? 100 : 0;
 
   // Submit grade to LMS via host function
-  submit_grade(score);
+  submitGrade(score);
 
   return { correct, score, feedback };
 }
