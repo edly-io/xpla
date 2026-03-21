@@ -4,28 +4,24 @@ import {
   sendEvent,
   getField,
   setField,
+  submitGrade,
 } from "../../src/xpla/lib/sandbox";
 
-const { submitGrade } = Host.getFunctions();
-
 // Return state visible to the current user.
-function getState() {
-  Host.outputString(
-    JSON.stringify({
-      correct_answers: getField("correct_answers"),
-      wrong_answers: getField("wrong_answers"),
-    }),
-  );
+export function getState(input) {
+  return JSON.stringify({
+    correct_answers: getField("correct_answers"),
+    wrong_answers: getField("wrong_answers"),
+  });
 }
 
 // Handle incoming actions from frontend
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "answer.submit") {
     if (permission === "view") {
       console.log("answer.submit rejected: permission is view");
-      return;
+      return "";
     }
     // Parse the submission: { question: "2+2", answer: "4" }
     const submission = value;
@@ -44,6 +40,7 @@ function onAction() {
 
     // Send feedback event
     sendEvent("answer.result", result, {}, "play");
+    return "";
   }
 }
 
@@ -95,5 +92,3 @@ function checkAnswer(question, answer) {
 
   return { correct, score, feedback };
 }
-
-module.exports = { onAction, getState };

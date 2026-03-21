@@ -24,6 +24,7 @@ SIMULATED_USERS = ["alice", "bob", "charlie"]
 
 field_store: FieldStore = load_field_store()
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 event_bus = EventBus()

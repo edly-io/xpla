@@ -5,7 +5,7 @@ import urllib.error
 
 import pytest
 
-from xpla.lib.runtime import ActivityRuntime
+from xpla.lib.runtime import ActivityRuntime, SandboxContext
 from xpla.lib.sandbox import SandboxRuntimeError
 from xpla.lib.events import EventValidationError
 from xpla.lib.fields import FieldValidationError
@@ -54,14 +54,14 @@ class TestActivityRuntimeInit:
 
         assert ctx.sandbox is None
 
-    @patch("xpla.lib.sandbox.SandboxWasmExecutor")
+    @patch("xpla.lib.sandbox.SandboxComponentExecutor")
     def test_init_with_sandbox(
         self, mock_sandbox_executor: MagicMock, tmp_path: Path
     ) -> None:
-        """Should create SandboxWasmExecutor when server is declared in manifest."""
-        manifest = create_manifest(server="server.wasm")
+        """Should create SandboxComponentExecutor when server is declared in manifest."""
+        manifest = create_manifest(server="server.component.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "server.component.wasm").write_bytes(b"fake wasm")
 
         ctx = ActivityRuntime(
             activity_dir,
@@ -98,24 +98,23 @@ class TestHostFunctions:
     """Tests for host_functions method."""
 
     def test_returns_expected_functions(self, tmp_path: Path) -> None:
-        """Should return list of host function callables."""
+        """Should return dict of WIT-named host function callables."""
         manifest = create_manifest()
         ctx = make_activity_runtime(tmp_path, manifest)
 
         functions = ctx.host_functions()
 
-        function_names = [f.__name__ for f in functions]
-        assert function_names == [
-            "sendEvent",
-            "getField",
-            "setField",
-            "log_get",
-            "logGetRange",
-            "logAppend",
-            "logDelete",
-            "logDeleteRange",
-            "httpRequest",
-            "submitGrade",
+        assert list(functions.keys()) == [
+            "send-event",
+            "get-field",
+            "set-field",
+            "log-get",
+            "log-get-range",
+            "log-append",
+            "log-delete",
+            "log-delete-range",
+            "http-request",
+            "submit-grade",
         ]
 
 
@@ -127,7 +126,7 @@ class TestHttpRequest:
         manifest = create_manifest(capabilities={})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        result = ctx.httpRequest("https://example.com", "GET", b"", ())
+        result = ctx.http_request("https://example.com", "GET", "", "[]")
 
         data = json.loads(result)
         assert data["status"] == 0
@@ -141,7 +140,7 @@ class TestHttpRequest:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        result = ctx.httpRequest("https://evil.com/hack", "GET", b"", ())
+        result = ctx.http_request("https://evil.com/hack", "GET", "", "[]")
 
         data = json.loads(result)
         assert data["status"] == 0
@@ -167,11 +166,11 @@ class TestHttpRequest:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = ctx.httpRequest(
+        result = ctx.http_request(
             "https://api.example.com/data",
             "POST",
-            b"body",
-            (("Content-Type", "application/json"),),
+            "body",
+            '[["Content-Type", "application/json"]]',
         )
 
         data = json.loads(result)
@@ -192,7 +191,7 @@ class TestHttpRequest:
         error.read = MagicMock(return_value=b"not found")  # type: ignore[method-assign]
         mock_urlopen.side_effect = error
 
-        result = ctx.httpRequest("https://example.com", "GET", b"", ())
+        result = ctx.http_request("https://example.com", "GET", "", "[]")
 
         data = json.loads(result)
         assert data["status"] == 404
@@ -206,7 +205,7 @@ class TestHttpRequest:
 
         mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
 
-        result = ctx.httpRequest("https://example.com", "GET", b"", ())
+        result = ctx.http_request("https://example.com", "GET", "", "[]")
 
         data = json.loads(result)
         assert data["status"] == 0
@@ -228,7 +227,7 @@ class TestHttpRequest:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = ctx.httpRequest("https://any-host.com/api", "GET", b"", ())
+        result = ctx.http_request("https://any-host.com/api", "GET", "", "[]")
 
         data = json.loads(result)
         assert data["status"] == 200
@@ -251,7 +250,7 @@ class TestLoadField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        result = ctx.load_field("c", "a", "alice", "score")
+        result = ctx.load_field("a", "c", "alice", "score")
 
         assert result == 0
 
@@ -270,10 +269,10 @@ class TestLoadField:
         ctx = make_activity_runtime(tmp_path, manifest)
         user = "alice"
 
-        assert ctx.load_field("c", "a", user, "count") == 0
-        assert ctx.load_field("c", "a", user, "ratio") == 0.0
-        assert ctx.load_field("c", "a", user, "name") == ""
-        assert ctx.load_field("c", "a", user, "done") is False
+        assert ctx.load_field("a", "c", user, "count") == 0
+        assert ctx.load_field("a", "c", user, "ratio") == 0.0
+        assert ctx.load_field("a", "c", user, "name") == ""
+        assert ctx.load_field("a", "c", user, "done") is False
 
     def test_returns_stored_value(self, tmp_path: Path) -> None:
         """Should return stored value when set."""
@@ -290,7 +289,7 @@ class TestLoadField:
         user = "alice"
 
         ctx.store_field("c", "a", user, "score", 42)
-        result = ctx.load_field("c", "a", user, "score")
+        result = ctx.load_field("a", "c", user, "score")
 
         assert result == 42
 
@@ -302,7 +301,7 @@ class TestLoadField:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="not declared"):
-            ctx.load_field("c", "a", "alice", "unknown")
+            ctx.load_field("a", "c", "alice", "unknown")
 
     def test_fields_isolated_by_user(self, tmp_path: Path) -> None:
         """Should store separate values for different users."""
@@ -321,8 +320,8 @@ class TestLoadField:
         ctx.store_field("c", "a", f"{base_user}_1", "score", 10)
         ctx.store_field("c", "a", f"{base_user}_2", "score", 20)
 
-        assert ctx.load_field("c", "a", f"{base_user}_1", "score") == 10
-        assert ctx.load_field("c", "a", f"{base_user}_2", "score") == 20
+        assert ctx.load_field("a", "c", f"{base_user}_1", "score") == 10
+        assert ctx.load_field("a", "c", f"{base_user}_2", "score") == 20
 
     def test_shared_field_uses_empty_user_id(self, tmp_path: Path) -> None:
         """Should use empty string for shared (non-user) fields."""
@@ -338,7 +337,7 @@ class TestLoadField:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         ctx.store_field("c", "a", "", "question", "What is 2+2?")
-        result = ctx.load_field("c", "a", "", "question")
+        result = ctx.load_field("a", "c", "", "question")
 
         assert result == "What is 2+2?"
 
@@ -356,7 +355,7 @@ class TestStoreField:
 
         ctx.store_field("c", "a", user, "count", 42)
 
-        assert ctx.load_field("c", "a", user, "count") == 42
+        assert ctx.load_field("a", "c", user, "count") == 42
 
     def test_stores_float(self, tmp_path: Path) -> None:
         """Should store and retrieve float value."""
@@ -368,7 +367,7 @@ class TestStoreField:
 
         ctx.store_field("c", "a", user, "ratio", 3.14)
 
-        assert ctx.load_field("c", "a", user, "ratio") == 3.14
+        assert ctx.load_field("a", "c", user, "ratio") == 3.14
 
     def test_stores_string(self, tmp_path: Path) -> None:
         """Should store and retrieve string value."""
@@ -380,7 +379,7 @@ class TestStoreField:
 
         ctx.store_field("c", "a", user, "name", "Alice")
 
-        assert ctx.load_field("c", "a", user, "name") == "Alice"
+        assert ctx.load_field("a", "c", user, "name") == "Alice"
 
     def test_stores_boolean(self, tmp_path: Path) -> None:
         """Should store and retrieve boolean value."""
@@ -392,7 +391,7 @@ class TestStoreField:
 
         ctx.store_field("c", "a", user, "completed", True)
 
-        assert ctx.load_field("c", "a", user, "completed") is True
+        assert ctx.load_field("a", "c", user, "completed") is True
 
     def test_stores_array(self, tmp_path: Path) -> None:
         """Should store and retrieve array value."""
@@ -410,7 +409,7 @@ class TestStoreField:
 
         ctx.store_field("c", "a", user, "tags", ["a", "b", "c"])
 
-        assert ctx.load_field("c", "a", user, "tags") == ["a", "b", "c"]
+        assert ctx.load_field("a", "c", user, "tags") == ["a", "b", "c"]
 
     def test_raises_for_wrong_type(self, tmp_path: Path) -> None:
         """Should raise when value type doesn't match declaration."""
@@ -445,7 +444,7 @@ class TestStoreField:
         ctx.store_field("c", "a", user, "count", 10)
         ctx.store_field("c", "a", user, "count", 20)
 
-        assert ctx.load_field("c", "a", user, "count") == 20
+        assert ctx.load_field("a", "c", user, "count") == 20
 
 
 class TestGetAllFields:
@@ -539,7 +538,7 @@ class TestGetAllFields:
 
 
 class TestScopeAwareGetSetField:
-    """Tests for scope-aware getField/setField host functions."""
+    """Tests for scope-aware get_field/set_field host functions."""
 
     def test_activity_scope(self, tmp_path: Path) -> None:
         """Should get/set activity-scoped fields."""
@@ -548,9 +547,9 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.getField("question", {}) == ""
-        ctx.setField("question", "What is 2+2?", {})
-        assert ctx.getField("question", {}) == "What is 2+2?"
+        assert json.loads(ctx.get_field("question")) == ""
+        ctx.set_field("question", json.dumps("What is 2+2?"))
+        assert json.loads(ctx.get_field("question")) == "What is 2+2?"
 
     def test_user_activity_scope(self, tmp_path: Path) -> None:
         """Should get/set user,activity-scoped fields."""
@@ -562,9 +561,9 @@ class TestScopeAwareGetSetField:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        assert ctx.getField("score", {}) == 0
-        ctx.setField("score", 42, {})
-        assert ctx.getField("score", {}) == 42
+        assert json.loads(ctx.get_field("score")) == 0
+        ctx.set_field("score", json.dumps(42))
+        assert json.loads(ctx.get_field("score")) == 42
 
     def test_course_scope(self, tmp_path: Path) -> None:
         """Should get/set course-scoped fields."""
@@ -573,9 +572,9 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.getField("total", {}) == 0
-        ctx.setField("total", 99, {})
-        assert ctx.getField("total", {}) == 99
+        assert json.loads(ctx.get_field("total")) == 0
+        ctx.set_field("total", json.dumps(99))
+        assert json.loads(ctx.get_field("total")) == 99
 
     def test_user_course_scope(self, tmp_path: Path) -> None:
         """Should get/set user,course-scoped fields."""
@@ -585,9 +584,9 @@ class TestScopeAwareGetSetField:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        assert ctx.getField("grade", {}) == 0
-        ctx.setField("grade", 85, {})
-        assert ctx.getField("grade", {}) == 85
+        assert json.loads(ctx.get_field("grade")) == 0
+        ctx.set_field("grade", json.dumps(85))
+        assert json.loads(ctx.get_field("grade")) == 85
 
     def test_global_scope(self, tmp_path: Path) -> None:
         """Should get/set global-scoped fields."""
@@ -596,9 +595,9 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.getField("setting", {}) == ""
-        ctx.setField("setting", "dark", {})
-        assert ctx.getField("setting", {}) == "dark"
+        assert json.loads(ctx.get_field("setting")) == ""
+        ctx.set_field("setting", json.dumps("dark"))
+        assert json.loads(ctx.get_field("setting")) == "dark"
 
     def test_user_global_scope(self, tmp_path: Path) -> None:
         """Should get/set user,global-scoped fields."""
@@ -608,9 +607,9 @@ class TestScopeAwareGetSetField:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        assert ctx.getField("pref", {}) == ""
-        ctx.setField("pref", "en", {})
-        assert ctx.getField("pref", {}) == "en"
+        assert json.loads(ctx.get_field("pref")) == ""
+        ctx.set_field("pref", json.dumps("en"))
+        assert json.loads(ctx.get_field("pref")) == "en"
 
     def test_different_scopes_isolated(self, tmp_path: Path) -> None:
         """Fields with different scopes should not collide."""
@@ -626,11 +625,11 @@ class TestScopeAwareGetSetField:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.setField("count_activity", 10, {})
-        ctx.setField("count_course", 20, {})
+        ctx.set_field("count_activity", json.dumps(10))
+        ctx.set_field("count_course", json.dumps(20))
 
-        assert ctx.getField("count_activity", {}) == 10
-        assert ctx.getField("count_course", {}) == 20
+        assert json.loads(ctx.get_field("count_activity")) == 10
+        assert json.loads(ctx.get_field("count_course")) == 20
 
 
 class TestGetState:
@@ -653,14 +652,14 @@ class TestGetState:
         result = ctx.get_state()
         assert result == {"score": 0}
 
-    @patch("xpla.lib.sandbox.SandboxWasmExecutor")
-    def test_calls_sandbox_getState(
+    @patch("xpla.lib.sandbox.SandboxComponentExecutor")
+    def test_calls_sandbox_get_state(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
-        """Should call sandbox getState when available."""
-        manifest = create_manifest(server="server.wasm")
+        """Should call sandbox get-state when available."""
+        manifest = create_manifest(server="server.component.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "server.component.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
         mock_sandbox.call_function.return_value = b'{"question": "test"}'
@@ -676,24 +675,20 @@ class TestGetState:
         )
         result = ctx.get_state()
 
-        expected_input = {
-            "context": {
-                "user_id": "myuser",
-                "course_id": "mycourse",
-                "activity_id": "myactivity",
-            },
-            "permission": "play",
-        }
-        mock_sandbox.call_function.assert_called_once_with("getState", expected_input)
+        expected_input = [
+            {"user-id": "myuser", "course-id": "mycourse", "activity-id": "myactivity"},
+            "play",
+        ]
+        mock_sandbox.call_function.assert_called_once_with("get-state", *expected_input)
         assert result == {"question": "test"}
 
-    @patch("xpla.lib.sandbox.SandboxWasmExecutor")
+    @patch("xpla.lib.sandbox.SandboxComponentExecutor")
     def test_no_fallback_on_runtime_error(
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
-        """Should raise error when getState raises SandboxRuntimeError."""
+        """Should raise error when get-state raises SandboxRuntimeError."""
         manifest = create_manifest(
-            server="server.wasm",
+            server="server.component.wasm",
             fields={
                 "score": {
                     "type": "integer",
@@ -703,11 +698,11 @@ class TestGetState:
             },
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "server.component.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
         mock_sandbox.call_function.side_effect = SandboxRuntimeError(
-            "getState not found"
+            "get-state not found"
         )
         mock_sandbox_class.return_value = mock_sandbox
 
@@ -719,19 +714,19 @@ class TestGetState:
             "alice",
             Permission.play,
         )
-        with pytest.raises(SandboxRuntimeError, match="getState not found"):
+        with pytest.raises(SandboxRuntimeError, match="get-state not found"):
             ctx.get_state()
 
 
 class TestSendEvent:
-    """Tests for sendEvent host function."""
+    """Tests for send_event host function."""
 
     def test_appends_event_to_pending(self, tmp_path: Path) -> None:
         """Should append event to pending events list with scope and permission."""
         manifest = create_manifest(events={"test.event": {"type": "string"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.sendEvent("test.event", '"some value"', "{}", "play")
+        ctx.send_event("test.event", '"some value"', None, "play")
 
         events = ctx.clear_pending_events()
         assert len(events) == 1
@@ -751,8 +746,8 @@ class TestSendEvent:
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.sendEvent("event1", '"value1"', "{}", "play")
-        ctx.sendEvent("event2", '"value2"', "{}", "edit")
+        ctx.send_event("event1", '"value1"', None, "play")
+        ctx.send_event("event2", '"value2"', None, "edit")
 
         events = ctx.clear_pending_events()
         assert len(events) == 2
@@ -761,21 +756,12 @@ class TestSendEvent:
         assert events[1]["name"] == "event2"
         assert events[1]["permission"] == "edit"
 
-    def test_returns_empty_string(self, tmp_path: Path) -> None:
-        """Should return empty string as success indicator."""
-        manifest = create_manifest(events={"test": {"type": "string"}})
-        ctx = make_activity_runtime(tmp_path, manifest)
-
-        result = ctx.sendEvent("test", '"value"', "{}", "play")
-
-        assert result == ""
-
     def test_allows_declared_fields_change_events(self, tmp_path: Path) -> None:
         """Should allow fields.change.* events when declared in manifest."""
         manifest = create_manifest(events={"fields.change.score": {"type": "integer"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.sendEvent("fields.change.score", "42", "{}", "play")
+        ctx.send_event("fields.change.score", "42", None, "play")
 
         events = ctx.clear_pending_events()
         assert len(events) == 1
@@ -788,14 +774,19 @@ class TestSendEvent:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(EventValidationError, match="not declared"):
-            ctx.sendEvent("unknown.event", '"value"', "{}", "play")
+            ctx.send_event("unknown.event", '"value"', None, "play")
 
     def test_explicit_scope_preserved(self, tmp_path: Path) -> None:
         """Should preserve explicit scope without filling defaults."""
         manifest = create_manifest(events={"test": {"type": "string"}})
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        ctx.sendEvent("test", '"val"', '{"user_id": "bob"}', "view")
+        ctx.send_event(
+            "test",
+            '"val"',
+            SandboxContext({"user-id": "bob", "activity-id": None, "course-id": None}),
+            "view",
+        )
 
         events = ctx.clear_pending_events()
         assert events[0]["context"] == {"user_id": "bob"}
@@ -811,8 +802,8 @@ class TestClearPendingEvents:
             events={"event1": {"type": "string"}, "event2": {"type": "string"}}
         )
         ctx = make_activity_runtime(tmp_path, manifest)
-        ctx.sendEvent("event1", '"value1"', "{}", "play")
-        ctx.sendEvent("event2", '"value2"', "{}", "play")
+        ctx.send_event("event1", '"value1"', None, "play")
+        ctx.send_event("event2", '"value2"', None, "play")
 
         result = ctx.clear_pending_events()
 
@@ -829,9 +820,9 @@ class TestClearPendingEvents:
 
 
 class TestFieldScopeOverrides:
-    """Tests for getField/setField with scope overrides."""
+    """Tests for get_field/set_field with scope overrides."""
 
-    def test_getField_with_user_override(self, tmp_path: Path) -> None:
+    def test_get_field_with_user_override(self, tmp_path: Path) -> None:
         """Should read another user's user,activity field via scope override."""
         manifest = create_manifest(
             fields={
@@ -842,14 +833,28 @@ class TestFieldScopeOverrides:
         ctx.user_id = "alice"
 
         # Set a field for bob via scope override
-        ctx.setField("score", 42, {"user_id": "bob"})
+        ctx.set_field(
+            "score",
+            json.dumps(42),
+            SandboxContext({"activity-id": None, "course-id": None, "user-id": "bob"}),
+        )
 
         # Read bob's field via scope override
-        assert ctx.getField("score", {"user_id": "bob"}) == 42
+        assert (
+            json.loads(
+                ctx.get_field(
+                    "score",
+                    SandboxContext(
+                        {"activity-id": None, "course-id": None, "user-id": "bob"}
+                    ),
+                )
+            )
+            == 42
+        )
         # Alice's own field is still the default
-        assert ctx.getField("score", {}) == 0
+        assert json.loads(ctx.get_field("score")) == 0
 
-    def test_setField_with_user_override(self, tmp_path: Path) -> None:
+    def test_set_field_with_user_override(self, tmp_path: Path) -> None:
         """Should write another user's user,activity field via scope override."""
         manifest = create_manifest(
             fields={
@@ -859,11 +864,25 @@ class TestFieldScopeOverrides:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        ctx.setField("score", 99, {"user_id": "bob"})
+        ctx.set_field(
+            "score",
+            json.dumps(99),
+            SandboxContext({"activity-id": None, "course-id": None, "user-id": "bob"}),
+        )
 
-        assert ctx.getField("score", {"user_id": "bob"}) == 99
+        assert (
+            json.loads(
+                ctx.get_field(
+                    "score",
+                    SandboxContext(
+                        {"activity-id": None, "course-id": None, "user-id": "bob"}
+                    ),
+                )
+            )
+            == 99
+        )
         # Alice's field unchanged
-        assert ctx.getField("score", {}) == 0
+        assert json.loads(ctx.get_field("score")) == 0
 
     def test_scope_override_invalid_key_raises(self, tmp_path: Path) -> None:
         """Should raise FieldValidationError for invalid override key on course-scoped field."""
@@ -873,7 +892,12 @@ class TestFieldScopeOverrides:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
-            ctx.getField("total", {"instance_id": "other"})
+            ctx.get_field(
+                "total",
+                SandboxContext(
+                    {"activity-id": "other", "course-id": None, "user-id": None}
+                ),
+            )
 
     def test_scope_override_user_id_on_non_user_scoped_raises(
         self, tmp_path: Path
@@ -885,4 +909,9 @@ class TestFieldScopeOverrides:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         with pytest.raises(FieldValidationError, match="Invalid scope override"):
-            ctx.getField("question", {"user_id": "bob"})
+            ctx.get_field(
+                "question",
+                SandboxContext(
+                    {"activity-id": None, "course-id": None, "user-id": "bob"}
+                ),
+            )

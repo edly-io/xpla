@@ -3,26 +3,10 @@
 
 ###### Development
 
-SERVER_JS_SOURCES := $(wildcard samples/*/server.js)
-SERVER_WASMS := $(patsubst %/server.js,%/server.wasm,$(SERVER_JS_SOURCES))
-CLIENT_BUNDLES := $(shell grep -rl '"client.bundle.js"' samples/*/manifest.json 2>/dev/null | sed 's|manifest.json|client.bundle.js|')
-SAMPLE_PKGS := $(wildcard samples/*/package.json)
-SAMPLE_MODULES := $(patsubst %/package.json,%/node_modules/.package-lock.json,$(SAMPLE_PKGS))
+SAMPLE_DIRS := $(dir $(wildcard samples/*/Makefile))
 
-samples: install-samples $(SERVER_WASMS) $(CLIENT_BUNDLES) ## Build all sandboxes for sample activities
-
-install-samples: $(SAMPLE_MODULES) ## Install dependencies for sample activities
-
-samples/%/node_modules/.package-lock.json: samples/%/package.json
-	cd samples/$* && npm install
-
-SANDBOX_LIB := $(wildcard src/xpla/lib/sandbox/*.js)
-
-samples/%/server.wasm: samples/%/server.js $(SANDBOX_LIB) src/xpla/lib/sandbox/sandbox.d.ts
-	./src/xpla/tools/js2wasm.py $< --output $@
-
-samples/%/client.bundle.js: samples/%/client.js
-	./src/xpla/tools/bundle_client.py $< --output $@
+samples: ## Build all sample activities
+	@for dir in $(SAMPLE_DIRS); do echo "Building $$dir" && $(MAKE) -C $$dir build || exit 1; done
 
 demo-server: ## Run a development server for the demo app
 	fastapi dev src/xpla/demo/app.py --host=127.0.0.1 --port=9752

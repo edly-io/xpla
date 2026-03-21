@@ -7,19 +7,18 @@
 import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 
 // Handle incoming actions from frontend
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "config.save") {
     handleConfigSave(value, permission);
   } else if (name === "answer.submit") {
     handleAnswerSubmit(value);
   }
+  return "";
 }
 
 // Return state visible to the current user based on permission level.
-function getState() {
-  const { permission, context } = JSON.parse(Host.inputString());
+export function getState(context, permission) {
   const state = {
     question: getField("question"),
     answers: getField("answers"),
@@ -27,7 +26,7 @@ function getState() {
   if (permission === "edit") {
     state.correct_answers = getField("correct_answers");
   }
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
 
 // Save configuration (question, answers, correct_answers)
@@ -71,5 +70,3 @@ function handleAnswerSubmit(selected) {
 
   sendEvent("answer.result", { correct: isCorrect, feedback }, {}, "play");
 }
-
-module.exports = { onAction, getState };

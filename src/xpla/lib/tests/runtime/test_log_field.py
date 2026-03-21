@@ -1,8 +1,9 @@
+import json
 from pathlib import Path
 
 import pytest
 
-from xpla.lib.runtime import ActivityRuntime
+from xpla.lib.runtime import ActivityRuntime, SandboxContext
 from xpla.lib.fields import FieldValidationError
 from xpla.lib.permission import Permission
 from .utils import (
@@ -43,72 +44,81 @@ def make_ctx(tmp_path: Path) -> ActivityRuntime:
 class TestLogFieldFunctions:
     """Tests for log_* host functions."""
 
-    def test_logAppend_returns_id(self, tmp_path: Path) -> None:
+    def test_log_append_returns_id(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        id0 = ctx.logAppend("messages", {"user": "alice", "text": "hi"}, {})
-        id1 = ctx.logAppend("messages", {"user": "bob", "text": "hello"}, {})
+        id0 = ctx.log_append("messages", json.dumps({"user": "alice", "text": "hi"}))
+        id1 = ctx.log_append("messages", json.dumps({"user": "bob", "text": "hello"}))
         assert id0 == 0
         assert id1 == 1
 
     def test_log_get_retrieves_by_id(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        ctx.logAppend("messages", {"user": "alice", "text": "hi"}, {})
-        ctx.logAppend("messages", {"user": "bob", "text": "hello"}, {})
-        assert ctx.log_get("messages", 0, {}) == {"user": "alice", "text": "hi"}
-        assert ctx.log_get("messages", 1, {}) == {"user": "bob", "text": "hello"}
+        ctx.log_append("messages", json.dumps({"user": "alice", "text": "hi"}))
+        ctx.log_append("messages", json.dumps({"user": "bob", "text": "hello"}))
+        assert json.loads(ctx.log_get("messages", 0)) == {
+            "user": "alice",
+            "text": "hi",
+        }
+        assert json.loads(ctx.log_get("messages", 1)) == {
+            "user": "bob",
+            "text": "hello",
+        }
 
     def test_log_get_missing_returns_none(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        assert ctx.log_get("messages", 99, {}) is None
+        assert json.loads(ctx.log_get("messages", 99)) is None
 
-    def test_logGetRange(self, tmp_path: Path) -> None:
+    def test_log_get_range(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        ctx.logAppend("messages", {"user": "a", "text": "1"}, {})
-        ctx.logAppend("messages", {"user": "b", "text": "2"}, {})
-        ctx.logAppend("messages", {"user": "c", "text": "3"}, {})
-        result = ctx.logGetRange("messages", 0, 3, {})
+        ctx.log_append("messages", json.dumps({"user": "a", "text": "1"}))
+        ctx.log_append("messages", json.dumps({"user": "b", "text": "2"}))
+        ctx.log_append("messages", json.dumps({"user": "c", "text": "3"}))
+        result = json.loads(ctx.log_get_range("messages", 0, 3))
         assert len(result) == 3
         assert result[0] == {"id": 0, "value": {"user": "a", "text": "1"}}
         assert result[2] == {"id": 2, "value": {"user": "c", "text": "3"}}
 
-    def test_logGetRange_partial(self, tmp_path: Path) -> None:
+    def test_log_get_range_partial(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        ctx.logAppend("messages", {"user": "a", "text": "1"}, {})
-        ctx.logAppend("messages", {"user": "b", "text": "2"}, {})
-        result = ctx.logGetRange("messages", 1, 2, {})
+        ctx.log_append("messages", json.dumps({"user": "a", "text": "1"}))
+        ctx.log_append("messages", json.dumps({"user": "b", "text": "2"}))
+        result = json.loads(ctx.log_get_range("messages", 1, 2))
         assert len(result) == 1
         assert result[0]["id"] == 1
 
-    def test_logDelete(self, tmp_path: Path) -> None:
+    def test_log_delete(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        ctx.logAppend("messages", {"user": "a", "text": "1"}, {})
-        assert ctx.logDelete("messages", 0, {}) is True
-        assert ctx.log_get("messages", 0, {}) is None
+        ctx.log_append("messages", json.dumps({"user": "a", "text": "1"}))
+        assert ctx.log_delete("messages", 0) is True
+        assert json.loads(ctx.log_get("messages", 0)) is None
 
-    def test_logDelete_missing(self, tmp_path: Path) -> None:
+    def test_log_delete_missing(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        assert ctx.logDelete("messages", 99, {}) is False
+        assert ctx.log_delete("messages", 99) is False
 
-    def test_logDeleteRange(self, tmp_path: Path) -> None:
+    def test_log_delete_range(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
-        ctx.logAppend("messages", {"user": "a", "text": "1"}, {})
-        ctx.logAppend("messages", {"user": "b", "text": "2"}, {})
-        ctx.logAppend("messages", {"user": "c", "text": "3"}, {})
-        count = ctx.logDeleteRange("messages", 0, 2, {})
+        ctx.log_append("messages", json.dumps({"user": "a", "text": "1"}))
+        ctx.log_append("messages", json.dumps({"user": "b", "text": "2"}))
+        ctx.log_append("messages", json.dumps({"user": "c", "text": "3"}))
+        count = ctx.log_delete_range("messages", 0, 2)
         assert count == 2
-        assert ctx.log_get("messages", 0, {}) is None
-        assert ctx.log_get("messages", 1, {}) is None
-        assert ctx.log_get("messages", 2, {}) == {"user": "c", "text": "3"}
+        assert json.loads(ctx.log_get("messages", 0)) is None
+        assert json.loads(ctx.log_get("messages", 1)) is None
+        assert json.loads(ctx.log_get("messages", 2)) == {
+            "user": "c",
+            "text": "3",
+        }
 
-    def test_getField_raises_on_log(self, tmp_path: Path) -> None:
+    def test_get_field_raises_on_log(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
         with pytest.raises(FieldValidationError, match="type 'log'"):
-            ctx.getField("messages", {})
+            ctx.get_field("messages")
 
-    def test_setField_raises_on_log(self, tmp_path: Path) -> None:
+    def test_set_field_raises_on_log(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
         with pytest.raises(FieldValidationError, match="type 'log'"):
-            ctx.setField("messages", [], {})
+            ctx.set_field("messages", "[]")
 
     def test_scope_override(self, tmp_path: Path) -> None:
         manifest = create_manifest(
@@ -123,16 +133,39 @@ class TestLogFieldFunctions:
         ctx = make_activity_runtime(tmp_path, manifest)
         ctx.user_id = "alice"
 
-        ctx.logAppend("messages", "alice msg", {})
-        ctx.logAppend("messages", "bob msg", {"user_id": "bob"})
+        ctx.log_append("messages", json.dumps("alice msg"))
+        ctx.log_append(
+            "messages",
+            json.dumps("bob msg"),
+            SandboxContext({"activity-id": None, "course-id": None, "user-id": "bob"}),
+        )
 
-        assert ctx.log_get("messages", 0, {}) == "alice msg"
-        assert ctx.log_get("messages", 0, {"user_id": "bob"}) == "bob msg"
+        assert (
+            json.loads(
+                ctx.log_get(
+                    "messages",
+                    0,
+                )
+            )
+            == "alice msg"
+        )
+        assert (
+            json.loads(
+                ctx.log_get(
+                    "messages",
+                    0,
+                    SandboxContext(
+                        {"activity-id": None, "course-id": None, "user-id": "bob"}
+                    ),
+                )
+            )
+            == "bob msg"
+        )
 
     def test_item_validation_rejects_wrong_type(self, tmp_path: Path) -> None:
         ctx = make_ctx(tmp_path)
         with pytest.raises(FieldValidationError, match="item failed validation"):
-            ctx.logAppend("messages", "not an object", {})
+            ctx.log_append("messages", json.dumps("not an object"))
 
     def test_get_all_fields_skips_log(self, tmp_path: Path) -> None:
         manifest = create_manifest(

@@ -32,7 +32,7 @@ make samples
 To build a single activity:
 
 ```bash
-./src/xpla/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
+make -C samples/my-activity build
 ```
 
 ## Creating a New Activity

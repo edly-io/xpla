@@ -5,24 +5,22 @@
 
 import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "config.save") {
     if (permission !== "edit") {
       console.log("config.save rejected: permission is " + permission);
-      return;
+      return "";
     }
     setField("video_url", value.video_url);
     sendEvent("fields.change.video_url", value.video_url, {}, "play");
   }
+  return "";
 }
 
-function getState() {
+export function getState() {
   const state = {
     video_url: getField("video_url"),
   };
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
-
-module.exports = { onAction, getState };

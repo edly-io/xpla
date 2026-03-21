@@ -24,21 +24,18 @@ function bytesToBase64(bytes) {
   return btoa(binString);
 }
 
-function onAction() {
-  const { name, value, context, permission } = JSON.parse(Host.inputString());
-  const user = context.user_id;
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
+  const user = context.userId;
 
   if (name === "config.save") {
     if (permission !== "edit") {
       console.log("config.save rejected: not edit permission");
-      return;
+      return "";
     }
     setField("render_markdown", value.render_markdown);
     sendEventToAllViewers("fields.change.render_markdown", value.render_markdown);
-    return;
-  }
-
-  if (name === "doc.update") {
+  } else if (name === "doc.update") {
     // Load current doc state
     const doc = new Y.Doc();
     const stored = getField("doc_state");
@@ -54,25 +51,23 @@ function onAction() {
     setField("doc_state", bytesToBase64(fullState));
     setField("content", doc.getText("codemirror").toString());
     sendEventToAllViewers("doc.update", { data: value.data, user });
-  }
-
-  if (name === "cursor.move") {
+  } else if (name === "cursor.move") {
     sendEventToAllViewers("cursor.move", {
       user,
       index: value.index,
       length: value.length,
     });
   }
+  return "";
 }
 
 function sendEventToAllViewers(name, value) {
   // Send the same event to both viewers and players
-  sendEvent(name, value, {}, "play");
-  sendEvent(name, value, {}, "view");
+  sendEvent(name, value, null, "play");
+  sendEvent(name, value, null, "view");
 }
 
-function getState() {
-  const { permission } = JSON.parse(Host.inputString());
+export function getState(context, permission) {
   const state = {
     render_markdown: getField("render_markdown") || 0
   };
@@ -80,7 +75,5 @@ function getState() {
     state.doc_state = getField("doc_state");
     state.content = getField("content");
   }
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
-
-module.exports = { onAction, getState };

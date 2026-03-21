@@ -1,14 +1,9 @@
-import json
 import logging
 from pathlib import Path
 from typing import Any, Callable
 
-import extism
-from extism import host_fn
-
-# TODO this is not portable
-# This allows developers to log and troubleshoot issues with `console.log(...)`
-extism.set_log_file("/dev/stdout", "info")
+import wasmtime
+import wasmtime.component
 
 logger = logging.getLogger(__file__)
 
@@ -19,58 +14,162 @@ class SandboxRuntimeError(RuntimeError):
     """
 
 
+class ForbiddenImportError(ValueError):
+    """
+    Raised when a WASM component imports a forbidden interface (e.g. wasi:http).
+    """
+
+
 class SandboxExecutor:
     """
     Abstract base class implementation for all sandbox executors.
     """
 
     def __init__(
-        self, plugin_path: Path, host_functions: list[Callable[..., Any]]
+        self, plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
     ) -> None:
         self._plugin_path = plugin_path
         self._host_functions = host_functions
 
-    def call_function(self, function_name: str, data: Any) -> bytes:
+    def call_function(self, function_name: str, *args: Any) -> bytes:
         raise NotImplementedError
 
 
-class SandboxWasmExecutor(SandboxExecutor):
+class SandboxComponentExecutor(SandboxExecutor):
     """
-    Sandboxed Extism code execution.
+    Sandboxed WASM Component Model execution via wasmtime.
     """
 
     def __init__(
-        self, plugin_path: Path, host_functions: list[Callable[..., Any]]
+        self, plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
     ) -> None:
         super().__init__(plugin_path, host_functions)
-        extism_host_functions = [host_fn()(func) for func in self._host_functions]
-        self._plugin = extism.Plugin(
-            {"wasm": [{"path": str(self._plugin_path)}]},
-            wasi=True,
-            functions=extism_host_functions or None,
-        )
 
-    def call_function(self, function_name: str, data: Any) -> bytes:
+        self._store: wasmtime.Store = self._load_store()
+        component = load_component(self._store.engine, plugin_path)
+
+        linker = wasmtime.component.Linker(self._store.engine)
+        linker.add_wasip2()
+
+        # Register host functions — wrap to absorb the `store` first arg
+        # (wasmtime passes store as first arg to all host function callbacks)
+        with linker.root().add_instance("xpla:sandbox/host") as ctx:
+            for wit_name, func in host_functions.items():
+                ctx.add_func(wit_name, make_host_function(func))
+
+        self._component = component
+        self._instance = linker.instantiate(self._store, component)
+
+    @staticmethod
+    def _load_store() -> wasmtime.Store:
         """
-        Call a function that is exposed in the sandbox. Input data will be
-        JSON-formatted.
+        Create a wasmtime store and engine with wasi features.
         """
-        data_bytes = b"" if data is None else json.dumps(data).encode("utf8")
-        try:
-            result = self._plugin.call(function_name, data_bytes)
-        except extism.Error as e:
+        engine_config = wasmtime.Config()
+        # engine_config.cache = True # Cache to directory. Do we need this?
+        engine = wasmtime.Engine(engine_config)
+        store = wasmtime.Store(engine)
+        wasi_config = wasmtime.WasiConfig()
+        wasi_config.inherit_stdout()
+        wasi_config.inherit_stderr()
+        store.set_wasi(wasi_config)
+        return store
+
+    def call_function(self, function_name: str, *args: Any) -> bytes:
+        """
+        Call an exported function on the WASM component.
+        """
+        func = self._instance.get_func(self._store, function_name)
+        if func is None:
             raise SandboxRuntimeError(
-                f"Extism plugin {self._plugin_path}: error running sandbox function '{function_name}': {e.args[0]}"
+                f"Component {self._plugin_path}: export '{function_name}' not found"
+            )
+        try:
+            result = call_sandbox_function(self._store, func, *args)
+        except wasmtime.WasmtimeError as e:
+            raise SandboxRuntimeError(
+                f"Component {self._plugin_path}: error running '{function_name}' with arguments: {args}"
             ) from e
-        return bytes(result)
+        except Exception as e:
+            raise SandboxRuntimeError(
+                f"Component {self._plugin_path}: error running '{function_name}'"
+            ) from e
+        return result.encode("utf-8") if isinstance(result, str) else b""
+
+
+def load_component(
+    engine: wasmtime.Engine, plugin_path: Path
+) -> wasmtime.component.Component:
+    """
+    Load a component and cache the result in a <plugin_path>.bin file. Automatically
+    load this file if it's more recent than the plugin file. Else, update it.
+    """
+    bin_path = plugin_path.parent / (plugin_path.name + ".bin")
+    if bin_path.exists() and bin_path.stat().st_mtime > plugin_path.stat().st_mtime:
+        # Load serialized file
+        return wasmtime.component.Component.deserialize_file(engine, str(bin_path))
+
+    # Create new component and serialize
+    component = wasmtime.component.Component.from_file(engine, str(plugin_path))
+    bin_path.write_bytes(component.serialize())
+    return component
+
+
+def make_host_function(func: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Convert our host functions to a format that is understandable by wasmtime.
+
+    1. All host functions take a Store as a first argument
+    2. We need to convert Record args to dict
+    """
+
+    def host_function(_store: wasmtime.Store, *args: Any) -> Any:
+        func_args = []
+        for arg in args:
+            # Convert Record args to dict
+            if isinstance(arg, wasmtime.component.Record):
+                arg_dict = arg.__dict__.copy()
+                func_args.append(arg_dict)
+            else:
+                func_args.append(arg)
+        return func(*func_args)
+
+    return host_function
+
+
+class RecordArg:
+    def __init__(self, values: dict[str, Any]) -> None:
+        for key, value in values.items():
+            setattr(self, key, value)
+
+
+def call_sandbox_function(
+    store: wasmtime.Store, func: wasmtime.component.Func, *args: Any
+) -> Any:
+    """
+    To call a sandbox function we must:
+
+    1. add the store as the first argument
+    2. convert dict arguments to records
+    3. call "post_return" after every call, to avoid memory leaks
+    """
+    func_args = []
+    for arg in args:
+        if isinstance(arg, dict):
+            record_arg = RecordArg(arg)
+            func_args.append(record_arg)
+        else:
+            func_args.append(arg)
+    try:
+        return func(store, *func_args)
+    finally:
+        func.post_return(store)
 
 
 def get_sandbox_executor(
-    plugin_path: Path, host_functions: list[Callable[..., Any]]
+    plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
 ) -> SandboxExecutor:
     """
-    Return the right executor for this plugin
-
-    For now we only support Wasm executor, but this could change in the future.
+    Return a sandbox executor for this plugin.
     """
-    return SandboxWasmExecutor(plugin_path, host_functions)
+    return SandboxComponentExecutor(plugin_path, host_functions)

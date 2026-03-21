@@ -120,14 +120,13 @@ def find_activity_dir(activity_type: str) -> Path:
 
 
 def list_activity_types(user_id: str) -> list[str]:
-    samples = sorted(d.name for d in constants.SAMPLES_DIR.iterdir() if d.is_dir())
     user_dir = constants.ACTIVITIES_DIR / user_id
     user_uploads: list[str] = []
     if user_dir.is_dir():
         user_uploads = sorted(
             f"@{user_id}/{d.name}" for d in user_dir.iterdir() if d.is_dir()
         )
-    return samples + user_uploads
+    return constants.SAMPLE_ACTIVITIES + user_uploads
 
 
 def load_activity(

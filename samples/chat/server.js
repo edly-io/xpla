@@ -5,20 +5,19 @@
 
 import { sendEvent, logAppend, logGetRange } from "../../src/xpla/lib/sandbox";
 
-function onAction() {
-  const { name, value, context } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "chat.post") {
-    const user = context.user_id;
+    const user = context.userId;
     const entry = { user, text: value.text };
     const id = logAppend("messages", entry);
-    sendEvent("chat.new", { id, user, text: value.text }, {}, "play");
+    sendEvent("chat.new", { id, user, text: value.text }, "play");
   }
+
+  return "";
 }
 
-function getState() {
+export function getState() {
   const messages = logGetRange("messages", 0, 1000);
-  Host.outputString(JSON.stringify({ messages }));
+  return JSON.stringify({ messages });
 }
-
-module.exports = { onAction, getState };

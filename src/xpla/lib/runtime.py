@@ -1,5 +1,5 @@
 """
-Host functions for Extism plugins.
+Host functions for sandboxed WASM plugins.
 
 These functions are injected into the plugin runtime and can be called
 by WebAssembly code. They provide controlled access to server capabilities.
@@ -9,11 +9,10 @@ from collections.abc import Callable
 import json
 import logging
 from pathlib import Path
-from typing import Annotated, Any, TypedDict
+from typing import Any, TypedDict
+from time import time
 import urllib.error
 import urllib.request
-
-import extism
 
 from xpla.lib.actions import ActionChecker
 from xpla.lib.capabilities import CapabilityChecker, CapabilityError
@@ -27,11 +26,41 @@ from xpla.lib.sandbox import SandboxExecutor, SandboxRuntimeError, get_sandbox_e
 logger = logging.getLogger(__file__)
 
 
+HostContext = TypedDict(
+    "HostContext",
+    {
+        "activity_id": str,
+        "course_id": str,
+        "user_id": str,
+    },
+    total=False,
+)
+SandboxContext = TypedDict(
+    "SandboxContext",
+    {
+        "activity-id": str | None,
+        "course-id": str | None,
+        "user-id": str | None,
+    },
+)
+
+
 class PendingEvent(TypedDict):
     name: str
     value: str
-    context: dict[str, str]
+    context: HostContext
     permission: str
+
+
+def sandbox_to_host_context(sandbox_context: SandboxContext) -> HostContext:
+    host_context: HostContext = {}
+    if sandbox_context["activity-id"] is not None:
+        host_context["activity_id"] = sandbox_context["activity-id"]
+    if sandbox_context["course-id"] is not None:
+        host_context["course_id"] = sandbox_context["course-id"]
+    if sandbox_context["user-id"] is not None:
+        host_context["user_id"] = sandbox_context["user-id"]
+    return host_context
 
 
 class AssetAccessError(Exception):
@@ -39,6 +68,16 @@ class AssetAccessError(Exception):
 
 
 class ActivityRuntime:
+
+    # Valid override keys for each scope
+    _VALID_SCOPE_KEYS: dict[Scope, set[str]] = {
+        Scope.activity: {"course_id", "activity_id"},
+        Scope.user_activity: {"course_id", "activity_id", "user_id"},
+        Scope.course: {"course_id"},
+        Scope.user_course: {"course_id", "user_id"},
+        Scope.global_: set(),
+        Scope.user_global: {"user_id"},
+    }
 
     def __init__(
         self,
@@ -122,6 +161,25 @@ class ActivityRuntime:
         """
         return self.manifest.client
 
+    def host_functions(self) -> dict[str, Callable[..., Any]]:
+        """
+        Host functions that will be made available to the sandbox.
+
+        Keys are WIT-style kebab-case names matching xpla.wit.
+        """
+        return {
+            "send-event": self.send_event,
+            "get-field": self.get_field,
+            "set-field": self.set_field,
+            "log-get": self.log_get,
+            "log-get-range": self.log_get_range,
+            "log-append": self.log_append,
+            "log-delete": self.log_delete,
+            "log-delete-range": self.log_delete_range,
+            "http-request": self.http_request,
+            "submit-grade": self.submit_grade,
+        }
+
     def get_asset_path(self, file_path: str) -> Path:
         full_path = self._activity_dir / file_path
         try:
@@ -139,37 +197,12 @@ class ActivityRuntime:
 
         return full_path
 
-    def on_action(self, action_name: str, action_value: Any) -> None:
-        """
-        Call the sandbox onAction callback.
-
-        The sandbox receives the action name, the action value, a context dict
-        with the current identifiers (user_id, course_id, activity_id),
-        and the current permission level.
-
-        Raise ActionValidationError if action is not valid.
-        """
-        self.action_checker.validate(action_name, action_value)
-        # Call sandbox's onAction if available
-        if self.sandbox is not None:
-            action_input = {
-                "name": action_name,
-                "value": action_value,
-                "context": {
-                    "user_id": self._user_id,
-                    "course_id": self._course_id,
-                    "activity_id": self._activity_id,
-                },
-                "permission": self._permission.value,
-            }
-            try:
-                self.sandbox.call_function("onAction", action_input)
-            except SandboxRuntimeError as e:
-                # TODO It's OK to ignore onAction errors, but we should report errors to the frontend
-                logger.exception(e)
-
     def load_field(
-        self, course_id: str, activity_id: str, user_id: str, name: str
+        self,
+        activity_id: str,
+        course_id: str,
+        user_id: str,
+        name: str,
     ) -> FieldType:
         """Get a declared field.
 
@@ -186,7 +219,7 @@ class ActivityRuntime:
             return default
         return stored
 
-    def store_field(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def store_field(
         self,
         course_id: str,
         activity_id: str,
@@ -204,20 +237,10 @@ class ActivityRuntime:
 
         self.field_store.set(course_id, self.name, activity_id, user_id, name, value)
 
-    # Valid override keys for each scope
-    _VALID_SCOPE_KEYS: dict[Scope, set[str]] = {
-        Scope.activity: {"course_id", "instance_id"},
-        Scope.user_activity: {"course_id", "instance_id", "user_id"},
-        Scope.course: {"course_id"},
-        Scope.user_course: {"course_id", "user_id"},
-        Scope.global_: set(),
-        Scope.user_global: {"user_id"},
-    }
-
     def _scope_key_segments(
-        self, scope: Scope, overrides: dict[str, str] | None = None
+        self, scope: Scope, sandbox_context: SandboxContext | None = None
     ) -> tuple[str, str, str]:
-        """Return (course_id, activity_id, user_id) key segments for a scope.
+        """Return (activity_id, course_id, user_id) key segments for a scope.
 
         Args:
             scope: The field scope.
@@ -226,6 +249,8 @@ class ActivityRuntime:
         Raises:
             FieldValidationError: If an override key is not valid for the scope.
         """
+        overrides = sandbox_to_host_context(sandbox_context) if sandbox_context else {}
+
         if overrides:
             valid_keys = self._VALID_SCOPE_KEYS[scope]
             invalid = set(overrides.keys()) - valid_keys
@@ -238,23 +263,23 @@ class ActivityRuntime:
         overrides = overrides or {}
         scope_map: dict[Scope, tuple[str, str, str]] = {
             Scope.activity: (
+                overrides.get("activity_id", self._activity_id),
                 overrides.get("course_id", self._course_id),
-                overrides.get("instance_id", self._activity_id),
                 "",
             ),
             Scope.user_activity: (
+                overrides.get("activity_id", self._activity_id),
                 overrides.get("course_id", self._course_id),
-                overrides.get("instance_id", self._activity_id),
                 overrides.get("user_id", self._user_id),
             ),
             Scope.course: (
-                overrides.get("course_id", self._course_id),
                 "",
+                overrides.get("course_id", self._course_id),
                 "",
             ),
             Scope.user_course: (
-                overrides.get("course_id", self._course_id),
                 "",
+                overrides.get("course_id", self._course_id),
                 overrides.get("user_id", self._user_id),
             ),
             Scope.global_: ("", "", ""),
@@ -265,6 +290,14 @@ class ActivityRuntime:
             ),
         }
         return scope_map[scope]
+
+    def _log_scope_segments(
+        self, name: str, context: SandboxContext | None
+    ) -> tuple[str, str, str]:
+        """Validate log field and return scope key segments."""
+        self.field_checker.require_log_type(name)
+        field_scope = self.field_checker.get_scope(name)
+        return self._scope_key_segments(field_scope, context)
 
     def get_all_fields(self) -> dict[str, FieldType]:
         """Get all declared fields for a user.
@@ -277,35 +310,9 @@ class ActivityRuntime:
             if isinstance(self.field_checker.get_definition(name), LogField):
                 continue
             scope = self.field_checker.get_scope(name)
-            course_id, activity_id, uid = self._scope_key_segments(scope)
-            result[name] = self.load_field(course_id, activity_id, uid, name)
+            activity_id, course_id, user_id = self._scope_key_segments(scope)
+            result[name] = self.load_field(activity_id, course_id, user_id, name)
         return result
-
-    def get_state(self) -> dict[str, FieldType]:
-        """Get the activity state to send to the client.
-
-        If the sandbox exports a getState function, calls it with a
-        ``{context, permission}`` input dict and returns the result.
-        Otherwise falls back to returning all fields.
-        """
-        if self.sandbox is None:
-            return self.get_all_fields()
-        state_input = {
-            "context": {
-                "user_id": self._user_id,
-                "course_id": self._course_id,
-                "activity_id": self._activity_id,
-            },
-            "permission": self._permission.value,
-        }
-        try:
-            result = self.sandbox.call_function("getState", state_input)
-        except SandboxRuntimeError as e:
-            # TODO we should prevent displaying the activity in the frontend
-            logger.exception(e)
-            raise
-        state: dict[str, FieldType] = json.loads(result)
-        return state
 
     def clear_pending_events(self) -> list[PendingEvent]:
         """Return and clear all pending events."""
@@ -313,24 +320,74 @@ class ActivityRuntime:
         self._pending_events = []
         return events
 
-    def host_functions(self) -> list[Callable[..., Any]]:
-        """
-        Host functions that will be made available to the sandbox.
-        """
-        return [
-            self.sendEvent,
-            self.getField,
-            self.setField,
-            self.log_get,
-            self.logGetRange,
-            self.logAppend,
-            self.logDelete,
-            self.logDeleteRange,
-            self.httpRequest,
-            self.submitGrade,
-        ]
+    def get_state(self) -> dict[str, FieldType]:
+        """Get the activity state to send to the client.
 
-    def sendEvent(self, name: str, value: str, context: str, permission: str) -> str:
+        If the sandbox exports a get-state function, calls it with a
+        ``{context, permission}`` input dict and returns the result.
+        Otherwise falls back to returning all fields.
+        """
+        if self.sandbox is None:
+            return self.get_all_fields()
+        try:
+            result = self.sandbox.call_function(
+                "get-state",
+                SandboxContext(
+                    {
+                        "activity-id": self._activity_id,
+                        "course-id": self._course_id,
+                        "user-id": self._user_id,
+                    }
+                ),
+                self._permission.value,
+            )
+        except SandboxRuntimeError as e:
+            # TODO we should prevent displaying the activity in the frontend
+            logger.exception(e)
+            raise
+        state: dict[str, FieldType] = json.loads(result)
+        return state
+
+    def on_action(self, action_name: str, action_value: Any) -> None:
+        """
+        Call the sandbox on-action callback.
+
+        The sandbox receives the action name, the action value, a context dict
+        with the current identifiers (user_id, course_id, activity_id),
+        and the current permission level.
+
+        Raise ActionValidationError if action is not valid.
+        """
+        self.action_checker.validate(action_name, action_value)
+        if self.sandbox is not None:
+            try:
+                time_start = time()
+                self.sandbox.call_function(
+                    "on-action",
+                    action_name,
+                    json.dumps(action_value),
+                    SandboxContext(
+                        {
+                            "activity-id": self._activity_id,
+                            "course-id": self._course_id,
+                            "user-id": self._user_id,
+                        }
+                    ),
+                    self._permission.value,
+                )
+                time_end = time()
+                logger.info(
+                    "Activity ID=%s call to 'on-action' took %d ms",
+                    self.activity_id,
+                    (time_end - time_start) * 1000,
+                )
+            except SandboxRuntimeError as e:
+                # TODO It's OK to ignore on-action errors, but we should report errors to the frontend
+                logger.exception(e)
+
+    def send_event(
+        self, name: str, value: str, context: SandboxContext | None, permission: str
+    ) -> str:
         """Send an event back to the client.
 
         Called by sandbox code to send events (e.g., field changes) to the frontend.
@@ -346,26 +403,29 @@ class ActivityRuntime:
             EventValidationError: If the event is not declared in manifest.
         """
         self.event_checker.validate(name, json.loads(value))
-        parsed_context = json.loads(context)
-        # Fill in defaults for empty context
-        if not parsed_context:
-            parsed_context = {
-                "activity_id": self._activity_id,
-                "course_id": self._course_id,
-            }
+        if context:
+            host_context = sandbox_to_host_context(context)
+        else:
+            # By default, send event to all users
+            host_context = HostContext(
+                {
+                    "activity_id": self._activity_id,
+                    "course_id": self._course_id,
+                }
+            )
         self._pending_events.append(
             {
                 "name": name,
                 "value": value,
-                "context": parsed_context,
+                "context": host_context,
                 "permission": permission,
             }
         )
+        # We have to return something, otherwise wasmtime complains with "TypeError:
+        # expected Variant type"
         return ""
 
-    def getField(
-        self, name: str, context: Annotated[dict[str, str], extism.Json]
-    ) -> Annotated[FieldType, extism.Json]:
+    def get_field(self, name: str, context: SandboxContext | None = None) -> str:
         """Get a field, resolving scope from manifest.
 
         Args:
@@ -377,18 +437,15 @@ class ActivityRuntime:
         """
         if isinstance(self.field_checker.get_definition(name), LogField):
             raise FieldValidationError(
-                f"Field '{name}' is of type 'log'; use log_get/logGetRange instead"
+                f"Field '{name}' is of type 'log'; use log_get/log_get_range instead"
             )
         field_scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(field_scope, context)
-        value = self.load_field(course_id, activity_id, user_id, name)
-        return value
+        activity_id, course_id, user_id = self._scope_key_segments(field_scope, context)
+        value = self.load_field(activity_id, course_id, user_id, name)
+        return json.dumps(value)
 
-    def setField(
-        self,
-        name: str,
-        value: Annotated[FieldType, extism.Json],
-        context: Annotated[dict[str, str], extism.Json],
+    def set_field(
+        self, name: str, value: str, context: SandboxContext | None = None
     ) -> bool:
         """Set a field, resolving scope from manifest. Takes JSON-encoded value.
 
@@ -399,97 +456,70 @@ class ActivityRuntime:
         """
         if isinstance(self.field_checker.get_definition(name), LogField):
             raise FieldValidationError(
-                f"Field '{name}' is of type 'log'; use logAppend instead"
+                f"Field '{name}' is of type 'log'; use log_append instead"
             )
+        parsed_value: FieldType = json.loads(value)
         field_scope = self.field_checker.get_scope(name)
-        course_id, activity_id, user_id = self._scope_key_segments(field_scope, context)
-        self.store_field(course_id, activity_id, user_id, name, value)
+        activity_id, course_id, user_id = self._scope_key_segments(field_scope, context)
+        self.store_field(course_id, activity_id, user_id, name, parsed_value)
         return True
 
-    def _log_scope_segments(
-        self, name: str, context: dict[str, str] | None = None
-    ) -> tuple[str, str, str]:
-        """Validate log field and return scope key segments."""
-        self.field_checker.require_log_type(name)
-        field_scope = self.field_checker.get_scope(name)
-        return self._scope_key_segments(field_scope, context)
-
     def log_get(
-        self,
-        name: str,
-        entry_id: int,
-        context: Annotated[dict[str, str], extism.Json],
-    ) -> Annotated[FieldType | None, extism.Json]:
+        self, name: str, entry_id: int, context: SandboxContext | None = None
+    ) -> str:
         """Get a single log entry by id.
 
-        Returns the value if found, None otherwise.
+        Returns JSON-encoded value if found, JSON null otherwise.
         """
-        course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        return self.field_store.log_get(
+        activity_id, course_id, user_id = self._log_scope_segments(name, context)
+        value = self.field_store.log_get(
             course_id, self.name, activity_id, user_id, name, entry_id
         )
+        return json.dumps(value)
 
-    def logGetRange(
-        self,
-        name: str,
-        from_id: int,
-        to_id: int,
-        context: Annotated[dict[str, str], extism.Json],
-    ) -> Annotated[list[dict[str, Any]], extism.Json]:
+    def log_get_range(
+        self, name: str, from_id: int, to_id: int, context: SandboxContext | None = None
+    ) -> str:
         """Get log entries in range [from_id, to_id).
 
-        Returns a list of {id, value} dicts.
+        Returns JSON-encoded list of {id, value} dicts.
         """
-        course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        return self.field_store.log_get_range(
+        activity_id, course_id, user_id = self._log_scope_segments(name, context)
+        result = self.field_store.log_get_range(
             course_id, self.name, activity_id, user_id, name, from_id, to_id
         )
+        return json.dumps(result)
 
-    def logAppend(
-        self,
-        name: str,
-        value: Annotated[FieldType, extism.Json],
-        context: Annotated[dict[str, str], extism.Json],
+    def log_append(
+        self, name: str, value: str, context: SandboxContext | None = None
     ) -> int:
         """Append a value to a log field. Returns the assigned id."""
-        course_id, activity_id, user_id = self._log_scope_segments(name, context)
-        self.field_checker.validate_log_item(name, value)
+        parsed_value: FieldType = json.loads(value)
+        activity_id, course_id, user_id = self._log_scope_segments(name, context)
+        self.field_checker.validate_log_item(name, parsed_value)
         return self.field_store.log_append(
-            course_id, self.name, activity_id, user_id, name, value
+            course_id, self.name, activity_id, user_id, name, parsed_value
         )
 
-    def logDelete(
-        self,
-        name: str,
-        entry_id: int,
-        context: Annotated[dict[str, str], extism.Json],
+    def log_delete(
+        self, name: str, entry_id: int, context: SandboxContext | None = None
     ) -> bool:
         """Delete a single log entry by id. Returns True if the entry existed."""
-        course_id, activity_id, user_id = self._log_scope_segments(name, context)
+        activity_id, course_id, user_id = self._log_scope_segments(name, context)
         return self.field_store.log_delete(
             course_id, self.name, activity_id, user_id, name, entry_id
         )
 
-    def logDeleteRange(
-        self,
-        name: str,
-        from_id: int,
-        to_id: int,
-        context: Annotated[dict[str, str], extism.Json],
+    def log_delete_range(
+        self, name: str, from_id: int, to_id: int, context: SandboxContext | None = None
     ) -> int:
         """Delete log entries in range [from_id, to_id). Returns count deleted."""
-        course_id, activity_id, user_id = self._log_scope_segments(name, context)
+        activity_id, course_id, user_id = self._log_scope_segments(name, context)
         return self.field_store.log_delete_range(
             course_id, self.name, activity_id, user_id, name, from_id, to_id
         )
 
-    def httpRequest(
-        self,
-        url: str,
-        method: str,
-        body: bytes,
-        headers: Annotated[tuple[tuple[str, str], ...], extism.Json],
-    ) -> str:
+    def http_request(self, url: str, method: str, body: str, headers: str) -> str:
         """Make an HTTP request.
 
         Returns a JSON string: {"status": int, "headers": [[k,v],...], "body": str}
@@ -504,12 +534,13 @@ class ActivityRuntime:
         except CapabilityError as e:
             return json.dumps({"status": 0, "headers": [], "body": str(e)})
 
-        body_bytes = body or None
+        parsed_headers: list[list[str]] = json.loads(headers)
+        body_bytes = body.encode("utf-8") if body else None
 
         req = urllib.request.Request(
             url,
             data=body_bytes,
-            headers=dict(headers),
+            headers=dict(parsed_headers),
             method=method,
         )
 
@@ -550,7 +581,7 @@ class ActivityRuntime:
                 }
             )
 
-    def submitGrade(self, score: float) -> bool:
+    def submit_grade(self, score: float) -> bool:
         # TODO actually submit grade
         logger.info("submitted score: %f", score)
         return True

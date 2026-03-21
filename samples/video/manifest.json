@@ -1,7 +1,7 @@
 {
   "name": "video",
   "client": "client.bundle.js",
-  "server": "server.wasm",
+  "server": "server.component.wasm",
   "capabilities": {},
   "fields": {
     "video_url": {

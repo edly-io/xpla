@@ -7,7 +7,7 @@ This is the core runtime library for the xPLA (Cross-Platform Learning Activitie
 Key modules:
 
 - [runtime.py](./runtime.py) — `ActivityRuntime`: central orchestrator that loads manifests, executes sandboxed code, and provides host functions
-- [sandbox.py](./sandbox.py) — `SandboxWasmExecutor`: Extism-based WebAssembly plugin runtime
+- [sandbox.py](./sandbox.py) — `SandboxComponentExecutor`: WASM Component Model execution via wasmtime
 - [fields.py](./fields.py) — `FieldChecker`: validates field types and scopes against the manifest
 - [actions.py](./actions.py) — `ActionChecker`: validates client-to-server actions
 - [events.py](./events.py) — `EventChecker`: validates server-to-client events
@@ -21,8 +21,8 @@ Key modules:
 
 1. `ActivityRuntime(activity_dir, field_store, ...)` loads `manifest.json` from the activity directory
 2. If `manifest.server` is declared, the WASM module is loaded and host functions are registered
-3. On page load, the sandbox's `getState()` is called (or all declared fields are returned)
-4. When the client sends an action, `on_action()` validates it against the manifest, then calls the sandbox's `onAction()`. Events emitted by the sandbox are buffered and published via `EventBus`
+3. On page load, the sandbox's `get-state` is called (or all declared fields are returned)
+4. When the client sends an action, `on_action()` validates it against the manifest, then calls the sandbox's `on-action()`. Events emitted by the sandbox are buffered and published via `EventBus`
 
 ## Comparison with Existing Standards
 
@@ -59,10 +59,6 @@ In addition, WASM modules built with Javascript take around 2 MB of space each. 
 
 We have not yet defined a standard to import and export activity instances. We would need to export all activity fields, with the exception of fields that are scoped to users or the platform. Actually, it would be up to the platform to decide whether to export activity fields that are scoped to the course, depending on whether we export a single instance or an entire course.
 
-### Current WASM implementation is not runtime-agnostic
-
-The current implementation assumes that sandboxed code was compiled with and executed by [Extism](https://extism.org/), but we should support other runtimes as well. This should be made possible thanks to the [WebAssembly Component Model](https://github.com/WebAssembly/component-model). More R&D is required.
-
 ## Activity API Reference
 
 This reference is aimed at course authors to create new xPLA packages. We suggest to leverage generative AI to create new packages: when this documentation and sample activities are provided as context, coding LLM typically generate working xPLA in a single shot.
@@ -84,7 +80,7 @@ my-activity/
 {
   "name": "my-activity",
   "client": "client.js",
-  "server": "server.wasm",
+  "server": "server.component.wasm",
   "capabilities": {},
   "fields": {},
   "actions": {},
@@ -143,7 +139,7 @@ Access control is handled at runtime through **permissions** rather than per-fie
 - `"play"`: Active participant (student). Can submit answers.
 - `"edit"`: Course author. Can configure the activity.
 
-The sandbox controls what state to expose to the client via an exported `getState()` function, which receives the current permission level as input. Similarly, the sandbox can guard actions using the `permission` value included in the `onAction` input (e.g. reject submissions when permission is `"view"`).
+The sandbox controls what state to expose to the client via an exported `getState()` function, which receives the current permission level as input. Similarly, the sandbox can guard actions using the `permission` value included in the `on-action` input (e.g. reject submissions when permission is `"view"`).
 
 #### Actions & Events
 
@@ -203,7 +199,7 @@ The `activity` object exposes the following properties and methods:
 
 - `element`: the DOM element to which this activity is attached.
 - `context`: An object with `user_id`, `course_id`, and `activity_id` identifying the current context. Parsed from the `data-context` attribute.
-- `state`: An object containing the activity state. Populated by the sandbox's `getState()` function (or all declared fields if `getState` is not exported).
+- `state`: An object containing the activity state. Populated by the sandbox's `get-state` function (or all declared fields if `get-state` is not exported).
 - `permission`: The current permission level (`"view"`, `"play"`, or `"edit"`). Use this to adapt the UI (e.g. hide submit buttons for `"view"`).
 - `sendAction(name, value)`: Sends an action to the backend sandbox. The current `permission` is included in the payload. The action name must be declared in `manifest.json`.
 - `getAssetUrl(path)`: Returns the URL for an asset in the activity directory (served by the `activity_asset` endpoint).
@@ -216,7 +212,7 @@ The `XPLA` class is implemented in [`xpla.js`](../static/js/xpla.js).
 
 When declared in the manifest, this [WebAssembly](https://webassembly.org/) module will be called as a sandbox from the platform backend. In particular, it is useful for grading assessments: we don't want assessment code to run in the frontend, because it would be trivially vulnerable to cheating.
 
-It is language-agnostic, as the original script can be written in any of the languages supported by WebAssembly. We use [Extism](https://extism.org/) both to build and call these modules. Since Extism supports a wide variety of host languages, sandboxes are portable and can be run from any platform ([Open edX](https://openedx.org/), [Moodle](https://moodle.org), [Canvas](https://canvas.instructure.com/)...).
+It is language-agnostic, as the original script can be written in any of the languages supported by WebAssembly. We use the [WASM Component Model](https://github.com/WebAssembly/component-model) to build and call these modules. Since the Component Model is a W3C standard, sandboxes are portable and can be run from any platform ([Open edX](https://openedx.org/), [Moodle](https://moodle.org), [Canvas](https://canvas.instructure.com/)...) using any compliant runtime (wasmtime, wasmer, etc.).
 
 Note that sandboxes do not persist state. Thus, to get access to configuration settings, user-specific fields, etc. the sandbox should have the key-value store read/write capabilities (see `manifest.json` above).
 
@@ -262,47 +258,45 @@ logDeleteRange("messages", 0, 50);           // returns count deleted
 
 The sandbox script can export the following functions:
 
-- `onAction()`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The input is a JSON object with four keys: `name` (the action name), `value` (the action payload), `context` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"view"`, `"play"`, or `"edit"`).
-- `getState()`: Called when the activity page loads. The input is a JSON object with two keys: `context` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
+- `on-action(input)`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The `input` parameter is a JSON string with four keys: `name` (the action name), `value` (the action payload), `context` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"view"`, `"play"`, or `"edit"`). Returns a string (typically empty).
+- `get-state(input)`: Called when the activity page loads. The `input` parameter is a JSON string with two keys: `context` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
 import { getField } from "../../src/xpla/lib/sandbox";
 
-function getState() {
-  const { context, permission } = JSON.parse(Host.inputString());
+export function getState(context, permission) {
   const state = { question: getField("question") };
   if (permission === "edit") {
     state.correct_answers = getField("correct_answers");
   }
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
 
-function onAction() {
-  const { name, value, context, permission } = JSON.parse(Host.inputString());
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   // name: action name (e.g. "answer.submit")
   // value: action payload
-  // context.user_id: current user ID
-  // context.course_id: current course ID
-  // context.activity_id: current activity instance ID
+  // context.userId: current user ID
+  // context.courseId: current course ID
+  // context.activityId: current activity instance ID
   // permission: "view", "play", or "edit"
+  return "";
 }
-
-module.exports = { onAction, getState };
 ```
 
 The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, context, permission)` (which calls the `sendEvent` host function). The `context` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
 
 ### Building
 
-We provide here a convenience script that makes it easy to build server-side code to WebAssembly.
+Each sample has its own Makefile with a `build` target:
 
 ```bash
-./src/xpla/tools/js2wasm.py samples/my-activity/server.js --output samples/my-activity/server.wasm
+make -C samples/my-activity build
 ```
 
-This produces `server.wasm` in the specified output path.
+This produces `server.component.wasm` in the sample directory.
 
-Alternatively, build all samples with:
+To build all samples at once:
 
     make samples
 
@@ -318,7 +312,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 1. **Manifest validation.** Parse and validate each activity's `manifest.json` against the [JSON Schema](../sandbox-lib/manifest.schema.json). This includes validating the declared fields, actions, events, capabilities, and static assets.
 
-2. **Sandbox execution.** Load the WebAssembly module declared in `manifest.server` and execute its exported functions (`getState`, `onAction`). We recommend using [Extism](https://extism.org/), which provides plugin runtimes for many host languages (Python, Go, Rust, Java, etc.).
+2. **Sandbox execution.** Load the WebAssembly component declared in `manifest.server` and execute its exported functions (`get-state`, `on-action`). We use the [WASM Component Model](https://github.com/WebAssembly/component-model) standard, which is supported by runtimes in many host languages (Python, Go, Rust, Java, etc.) via [wasmtime](https://wasmtime.dev/) and other implementations.
 
 3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`runtime.py`](./runtime.py).
 
@@ -332,8 +326,8 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 The exact API is platform-specific and does not need to follow a standard. The platform must support:
 
-- **Get state**: called on page load. The backend calls the sandbox's `getState()` function and returns the result as JSON. If `getState` is not exported, all declared fields are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with a JSON input containing `name`, `value`, `context` (a dict with `user_id`, `course_id`, `activity_id`), and `permission` (the current permission level).
+- **Get state**: called on page load. The backend calls the sandbox's `get-state()` function and returns the result as JSON. If `get-state` is not exported, all declared fields are returned.
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with `name`, `value`, `context` (a dict with `user-id`, `course-id`, `activity-id`), and `permission` (the current permission level).
 - **Event delivery**: events emitted by the sandbox (via `sendEvent`) are broadcast to connected clients via WebSocket, filtered by context and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
 Our reference implementation exposes these as FastAPI endpoints in [the demo application](../demo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
@@ -352,7 +346,7 @@ Plugins can call host functions which are defined in [`runtime.py`](./runtime.py
 
 Optional host functions for which access must be granted via the "capabilities" field:
 
-- `httpRequest(url: str, method: str, body: bytes, headers: tuple[tuple[str, str], ...])` → `{"status": int, "headers": [[k,v],...], "body": str}`
+- `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs)
 - `submitGrade(score: float)`: to be defined.
 
 #### Log fields
@@ -380,7 +374,7 @@ See the [`samples/chat`](../../samples/chat) activity for a working example.
 
 #### Recommendations
 
-- **Use Extism for sandbox execution.** Extism provides a consistent plugin API across many host languages and handles WebAssembly loading, memory management, and host function binding. See [`sandbox.py`](./sandbox.py).
+- **Use the WASM Component Model for sandbox execution.** The Component Model provides a standardised plugin API across many host languages and handles WebAssembly loading, memory management, and host function binding. See [`sandbox.py`](./sandbox.py).
 - **Validate everything at runtime.** Don't trust that activity code will send well-formed actions or events. Validate action names and payloads against the manifest before calling the sandbox, and validate events before forwarding them to the frontend.
 - **Scope KV keys carefully.** We use the pattern `xpla.<activity_name>.<course_id>.<activity_id>.<user_id>.<value_name>` to prevent activities from interfering with each other's state. Depending on the scope, some segments are empty (e.g., for platform-scoped values, course_id and activity_id are empty).
 
@@ -396,7 +390,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 |---|---|---|
 | `element` | DOM element | The root DOM element where the activity renders its UI. |
 | `context` | `object` | Context identifying the activity instance: `{ user_id, course_id, activity_id }`. Parsed from the `data-context` attribute. |
-| `state` | `object` | The activity state, populated by the backend's `getState()` response. |
+| `state` | `object` | The activity state, populated by the backend's `get-state()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
 | `sendAction(name, value)` | `(string, any) => void` | Sends an action to the backend sandbox via WebSocket. The current `permission` is included in the payload. Fire-and-forget: events are delivered asynchronously through the `onEvent` callback. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
@@ -404,7 +398,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 
 #### Loading flow
 
-1. The backend calls the sandbox's `getState()` function (if exported) to obtain the initial state for the current user and permission level. If `getState` is not exported, all declared values are returned.
+1. The backend calls the sandbox's `get-state()` function (if exported) to obtain the initial state for the current user and permission level. If `get-state` is not exported, all instance-level fields are returned.
 2. The platform renders the activity component, passing it the initial state and permission level.
 3. The runtime loads the activity's client script (declared in `manifest.client`) and calls its exported `setup(activity)` function.
 

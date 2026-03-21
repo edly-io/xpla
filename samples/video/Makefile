@@ -2,9 +2,7 @@ REPO_ROOT := ../..
 SANDBOX_LIB := $(wildcard $(REPO_ROOT)/src/xpla/lib/sandbox/*.js)
 WIT := $(REPO_ROOT)/src/xpla/lib/sandbox/xpla.wit
 
-REVEAL_SRC := node_modules/reveal.js/dist
-
-build: server.component.wasm assets/reveal/reveal.js
+build: server.component.wasm client.bundle.js
 
 server.bundle.js: server.js $(SANDBOX_LIB)
 	npx esbuild server.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=server.bundle.js
@@ -12,13 +10,8 @@ server.bundle.js: server.js $(SANDBOX_LIB)
 server.component.wasm: server.bundle.js $(WIT)
 	npx componentize-js server.bundle.js --wit $(WIT) --world-name activity --disable http --disable fetch-event -o server.component.wasm
 
-assets/reveal/reveal.js: node_modules
-	mkdir -p assets/reveal/theme/fonts
-	cp $(REVEAL_SRC)/reset.css assets/reveal/
-	cp $(REVEAL_SRC)/reveal.css assets/reveal/
-	cp $(REVEAL_SRC)/theme/white.css assets/reveal/theme/
-	cp $(REVEAL_SRC)/reveal.js assets/reveal/
-	cp -r $(REVEAL_SRC)/theme/fonts/source-sans-pro/ assets/reveal/theme/fonts/
+client.bundle.js: client.js node_modules
+	npx esbuild client.js --bundle --format=esm --loader:.css=text --loader:.svg=text --outfile=client.bundle.js
 
 node_modules: package.json
 	npm install

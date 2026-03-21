@@ -5,7 +5,7 @@ import logging
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from xpla.lib.runtime import PendingEvent
+from xpla.lib.runtime import PendingEvent, HostContext
 from xpla.lib.permission import Permission
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ class EventBus:
                     logger.warning("Failed to send event to subscriber %s", sub.user_id)
 
 
-def _matches_context(subscriber: Subscriber, event_context: dict[str, str]) -> bool:
+def _matches_context(subscriber: Subscriber, event_context: HostContext) -> bool:
     """Check if a subscriber matches the event context.
 
     Each dimension present in the event context must match the subscriber's value.

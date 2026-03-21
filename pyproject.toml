@@ -2,13 +2,13 @@
 name = "xpla-demo"
 version = "0.1.0"
 dependencies = [
-    "extism",
     "fastapi[standard]",
     "jinja2",
     "jsonschema",
     "alembic",
     "sqlmodel",
     "uvicorn[standard]",
+    "wasmtime",
 ]
 
 [project.optional-dependencies]

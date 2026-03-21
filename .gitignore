@@ -1,6 +1,7 @@
 # Runtime data
 dist/
 samples/**/*.wasm
+samples/**/*.wasm.bin
 samples/**/*.bundle.js
 samples/*/static/
 

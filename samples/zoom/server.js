@@ -12,7 +12,6 @@ function getZoomToken() {
   const clientSecret = getField("zoom_client_secret");
 
   const credentials = clientId + ":" + clientSecret;
-  // btoa is available in Extism JS runtime
   const encoded = btoa(credentials);
 
   const body = "grant_type=account_credentials&account_id=" + accountId;
@@ -30,20 +29,18 @@ function getZoomToken() {
 }
 
 // Handle incoming actions from frontend
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "credentials.save") {
     handleCredentialsSave(value, permission);
   } else if (name === "meeting.save") {
     handleMeetingSave(value, permission);
   }
+  return "";
 }
 
 // Return state visible to the current user based on permission level.
-function getState() {
-  const { permission } = JSON.parse(Host.inputString());
-
+export function getState(context, permission) {
   const topic = getField("topic");
   const startTime = getField("start_time");
   const duration = getField("duration");
@@ -65,7 +62,7 @@ function getState() {
     state.meeting_id = getField("meeting_id");
   }
 
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
 
 function handleCredentialsSave(value, permission) {
@@ -172,5 +169,3 @@ function handleMeetingSave(value, permission) {
     join_url: joinUrl,
   }, {}, "play");
 }
-
-module.exports = { onAction, getState };

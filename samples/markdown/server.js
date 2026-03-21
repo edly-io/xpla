@@ -19,9 +19,8 @@ function renderMarkdown(content, headerStartLevel) {
   return marked.parse(content);
 }
 
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "config.save") {
     if (permission !== "edit") {
       console.log("config.save rejected: permission is " + permission);
@@ -38,15 +37,12 @@ function onAction() {
   }
 }
 
-function getState() {
-  const { permission } = JSON.parse(Host.inputString());
+export function getState(context, permission) {
   const state = {
     rendered_html: getField("rendered_html"),
   };
   if (permission === "edit") {
     state.markdown_content = getField("markdown_content");
   }
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
-
-module.exports = { onAction, getState };

@@ -6,18 +6,17 @@
 
 import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
 
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "config.save") {
     handleConfigSave(value, permission);
   } else if (name === "answer.submit") {
     handleAnswerSubmit(value);
   }
+  return "";
 }
 
-function getState() {
-  const { permission } = JSON.parse(Host.inputString());
+export function getState(context, permission) {
   const videoId = getField("video_id");
   const interactions = getField("interactions") || [];
 
@@ -36,7 +35,7 @@ function getState() {
     });
   }
 
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
 
 function handleConfigSave(config, permission) {
@@ -92,5 +91,3 @@ function handleAnswerSubmit(value) {
 
   sendEvent("answer.result", { index: index, correct: isCorrect, feedback: feedback }, {}, "play");
 }
-
-module.exports = { onAction, getState };

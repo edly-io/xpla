@@ -25,7 +25,7 @@ Offline mode is supported, with two possible options:
 Make sure to install the following requirements:
 
 - Python 3.11+
-- [extism-js](https://github.com/extism/js-pdk): for building JS plugins to WebAssembly (remember to also install [binaryen](https://github.com/WebAssembly/binaryen))
+- [jco](https://github.com/bytecodealliance/jco): for building JS plugins to WebAssembly components (`npm install -g @anthropic-ai/jco` or use via `npx jco`)
 
 Then install the project with:
 

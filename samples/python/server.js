@@ -16,13 +16,12 @@ function saveUserCode(code) {
   sendEvent("fields.change.user_code", code, {}, "play");
 }
 
-function onAction() {
-  const { name, value, permission } = JSON.parse(Host.inputString());
-
+export function onAction(name, data, context, permission) {
+  const value = JSON.parse(data);
   if (name === "config.save") {
     if (permission !== "edit") {
       console.log("config.save rejected: permission is " + permission);
-      return;
+      return "";
     }
     for (const key of ["instructions", "starter_code", "test_code"]) {
       if (value[key] !== undefined) {
@@ -39,16 +38,15 @@ function onAction() {
     }
     saveUserCode(value.code);
   }
+  return "";
 }
 
-function getState() {
+export function getState(input) {
   const state = {
     instructions: getField("instructions"),
     starter_code: getField("starter_code"),
     test_code: getField("test_code"),
     user_code: getField("user_code"),
   };
-  Host.outputString(JSON.stringify(state));
+  return JSON.stringify(state);
 }
-
-module.exports = { onAction, getState };
