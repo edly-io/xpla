@@ -26,7 +26,7 @@ export function setup(activity) {
 
     element.innerHTML = `
       <style>
-        .mcq-container { font-family: sans-serif; max-width: 600px; }
+        #mcq-container { font-family: sans-serif; max-width: 600px; }
         .toggle-btn { margin-bottom: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
         .author-view, .student-view { padding: 1rem; border: 1px solid #ccc; border-radius: 4px; }
         .answer-item { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
@@ -40,27 +40,15 @@ export function setup(activity) {
         .student-answer { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
         .no-config { color: #666; font-style: italic; }
       </style>
-      <div class="mcq-container">
-        ${toggleHtml}
-        <div id="view-container"></div>
-      </div>
+      <div id="mcq-container"></div>
     `;
 
-    const viewContainer = element.querySelector("#view-container");
+    const container = element.querySelector("#mcq-container");
 
     if (isAuthorView) {
-      renderAuthorView(viewContainer, config);
+      renderAuthorView(container, config);
     } else {
-      renderStudentView(viewContainer, config, hasConfig);
-    }
-
-    // Toggle button handler (only exists for "edit" permission)
-    const toggleBtn = element.querySelector("#toggle-view");
-    if (toggleBtn) {
-      toggleBtn.addEventListener("click", () => {
-        isAuthorView = !isAuthorView;
-        render();
-      });
+      renderStudentView(container, config, hasConfig);
     }
   }
 
@@ -80,7 +68,6 @@ export function setup(activity) {
 
     container.innerHTML = `
       <div class="author-view">
-        <h3>Author View</h3>
         <div>
           <label for="question-input"><strong>Question:</strong></label><br>
           <textarea id="question-input" rows="3" style="width: 100%; margin-top: 0.25rem;">${escapeHtml(config.question)}</textarea>
@@ -157,8 +144,7 @@ export function setup(activity) {
     if (!hasConfig) {
       container.innerHTML = `
         <div class="student-view">
-          <h3>Student View</h3>
-          <p class="no-config">No question has been configured yet. Switch to Author View to create one.</p>
+          <p class="no-config">No question has been configured yet.</p>
         </div>
       `;
       return;
