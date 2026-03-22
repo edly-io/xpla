@@ -78,7 +78,7 @@ export function setup(activity) {
   const permission = activity.permission;
   const root = element.getRootNode();
 
-  const pyodideUrl = activity.getAssetUrl("static/pyodide/pyodide.mjs");
+  const pyodideUrl = activity.getAssetUrl("assets/pyodide/pyodide.mjs");
   const workerBlob = new Blob([makeWorkerSrc(pyodideUrl)], { type: "application/javascript" });
   const workerUrl = URL.createObjectURL(workerBlob);
 

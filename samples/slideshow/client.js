@@ -37,10 +37,10 @@ export function setup(activity) {
   const element = activity.element;
   const permission = activity.permission;
   const assetUrls = {
-    resetCss: activity.getAssetUrl("static/reveal/reset.css"),
-    revealCss: activity.getAssetUrl("static/reveal/reveal.css"),
-    themeCss: activity.getAssetUrl("static/reveal/theme/white.css"),
-    revealJs: activity.getAssetUrl("static/reveal/reveal.js"),
+    resetCss: activity.getAssetUrl("assets/reveal/reset.css"),
+    revealCss: activity.getAssetUrl("assets/reveal/reveal.css"),
+    themeCss: activity.getAssetUrl("assets/reveal/theme/white.css"),
+    revealJs: activity.getAssetUrl("assets/reveal/reveal.js"),
   };
 
   function getSlidesHtml() {
