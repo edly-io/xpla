@@ -5,6 +5,7 @@ from typing import Any
 from xpla.lib.runtime import ActivityRuntime
 from xpla.lib.permission import Permission
 from xpla.lib.field_store import FieldStore, MemoryKVStore
+from xpla.lib.file_storage import MemoryFileStorage
 
 
 def create_manifest(
@@ -53,6 +54,7 @@ def make_activity_runtime(tmp_path: Path, manifest: dict[str, Any]) -> ActivityR
     return ActivityRuntime(
         activity_dir,
         make_field_store(),
+        MemoryFileStorage(),
         "activityid",
         "courseid",
         "userid",

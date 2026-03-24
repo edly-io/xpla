@@ -1,4 +1,4 @@
-"""Capability validation and enforcement for HTTP and AI access."""
+"""Capability validation and enforcement for HTTP, AI, and storage access."""
 
 from urllib.parse import urlparse
 
@@ -55,3 +55,17 @@ class CapabilityChecker:
                 raise CapabilityError(
                     f"AI model '{model}' not allowed. " f"Allowed: {sorted(allowed)}"
                 )
+
+    def check_storage(self, name: str) -> None:
+        """Check if the named storage is declared.
+
+        Raises:
+            CapabilityError: If storage not declared or name not in the declared list.
+        """
+        if self._caps is None or self._caps.storage is None:
+            raise CapabilityError("storage capability not declared in manifest")
+        if name not in self._caps.storage:
+            raise CapabilityError(
+                f"Storage '{name}' not declared. "
+                f"Declared: {sorted(self._caps.storage)}"
+            )

@@ -18,6 +18,7 @@ from xpla.lib.actions import ActionChecker
 from xpla.lib.capabilities import CapabilityChecker, CapabilityError
 from xpla.lib.events import EventChecker
 from xpla.lib.field_store import FieldStore
+from xpla.lib.file_storage import FileStorage, FileStorageError
 from xpla.lib.permission import Permission
 from xpla.lib.fields import FieldChecker, FieldType, FieldValidationError
 from xpla.lib.manifest_types import LogField, Scope, XplaActivityManifest
@@ -83,12 +84,14 @@ class ActivityRuntime:
         self,
         activity_dir: Path,
         field_store: FieldStore,
+        file_storage: FileStorage,
         activity_id: str,
         course_id: str,
         user_id: str,
         permission: Permission,
     ) -> None:
         self._activity_dir = activity_dir
+        self._file_storage = file_storage
         self._user_id: str = user_id
         self._permission: Permission = permission
         self._course_id: str = course_id
@@ -178,6 +181,12 @@ class ActivityRuntime:
             "log-delete-range": self.log_delete_range,
             "http-request": self.http_request,
             "submit-grade": self.submit_grade,
+            "storage-read": self.storage_read,
+            "storage-exists": self.storage_exists,
+            "storage-url": self.storage_url,
+            "storage-list": self.storage_list,
+            "storage-write": self.storage_write,
+            "storage-delete": self.storage_delete,
         }
 
     def get_asset_path(self, file_path: str) -> Path:
@@ -585,3 +594,60 @@ class ActivityRuntime:
         # TODO actually submit grade
         logger.info("submitted score: %f", score)
         return True
+
+    # ── Storage host functions ──────────────────────────────────────────
+
+    def _storage_path(self, name: str, path: str) -> str:
+        """Build the full storage path and validate the storage name."""
+        self.capability_checker.check_storage(name)
+        return (
+            f"{self._activity_id}/{name}/{path}"
+            if path
+            else f"{self._activity_id}/{name}"
+        )
+
+    def storage_read(self, name: str, path: str) -> bytes:
+        """Read a file from storage. Returns raw bytes."""
+        try:
+            return self._file_storage.read(self._storage_path(name, path))
+        except FileStorageError as e:
+            raise AssetAccessError(str(e)) from e
+
+    def storage_exists(self, name: str, path: str) -> bool:
+        """Check whether a path exists in storage."""
+        try:
+            return self._file_storage.exists(self._storage_path(name, path))
+        except FileStorageError as e:
+            raise AssetAccessError(str(e)) from e
+
+    def storage_url(self, name: str, path: str) -> str:
+        """Return the HTTP URL path for a storage file."""
+        self.capability_checker.check_storage(name)
+        clean = path.strip("/")
+        return f"/activity/{self._activity_id}/storage/{name}/{clean}"
+
+    def storage_list(self, name: str, path: str) -> tuple[list[str], list[str]]:
+        """List files and directories at a storage path.
+
+        Returns a tuple with ``directories`` and ``files``.
+        """
+        try:
+            files, directories = self._file_storage.list(self._storage_path(name, path))
+        except FileStorageError as e:
+            raise AssetAccessError(str(e)) from e
+        return (directories, files)
+
+    def storage_write(self, name: str, path: str, content: bytes) -> bool:
+        """Write content to a storage file. Creates parent directories."""
+        try:
+            self._file_storage.write(self._storage_path(name, path), content)
+        except FileStorageError as e:
+            raise AssetAccessError(str(e)) from e
+        return True
+
+    def storage_delete(self, name: str, path: str) -> bool:
+        """Delete a storage file. Returns True if the file existed."""
+        try:
+            return self._file_storage.delete(self._storage_path(name, path))
+        except FileStorageError as e:
+            raise AssetAccessError(str(e)) from e

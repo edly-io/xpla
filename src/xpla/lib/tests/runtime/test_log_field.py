@@ -5,6 +5,7 @@ import pytest
 
 from xpla.lib.runtime import ActivityRuntime, SandboxContext
 from xpla.lib.fields import FieldValidationError
+from xpla.lib.file_storage import MemoryFileStorage
 from xpla.lib.permission import Permission
 from .utils import (
     create_manifest,
@@ -34,6 +35,7 @@ def make_ctx(tmp_path: Path) -> ActivityRuntime:
     return ActivityRuntime(
         activity_dir,
         make_field_store(),
+        MemoryFileStorage(),
         "activityid",
         "courseid",
         "userid",

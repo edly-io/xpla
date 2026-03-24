@@ -1,7 +1,6 @@
 """Tests for the image sample activity."""
 
 import base64
-from pathlib import Path
 
 from xpla.lib.permission import Permission
 from xpla.lib.tests.samples.conftest import make_runtime
@@ -13,8 +12,8 @@ def test_get_state_defaults() -> None:
     assert state["image_filename"] == ""
 
 
-def test_image_upload(tmp_path: Path) -> None:
-    rt = make_runtime("image", permission=Permission.edit, storage_dir=tmp_path)
+def test_image_upload() -> None:
+    rt = make_runtime("image", permission=Permission.edit)
     # Create a small PNG-like base64 payload
     pixel_data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
     b64 = base64.b64encode(pixel_data).decode()

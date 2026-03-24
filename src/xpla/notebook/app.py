@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import json
 import logging
+import mimetypes
 import re
 import shutil
 import tempfile
@@ -23,12 +24,15 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     PlainTextResponse,
+    Response,
 )
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
 
 from xpla.lib.actions import ActionValidationError
+from xpla.lib.capabilities import CapabilityError
+from xpla.lib.file_storage import FileStorageError, LocalFileStorage
 from xpla.lib.manifest_types import XplaActivityManifest
 from xpla.lib.runtime import ActivityRuntime, AssetAccessError
 from xpla.lib.event_bus import EventBus
@@ -66,6 +70,7 @@ event_bus = EventBus()
 USER_ID = "student"
 
 field_store = SQLiteFieldStore()
+file_storage = LocalFileStorage(constants.DIST_DIR / "xpln" / "storage")
 
 
 # ---- request bodies ----
@@ -139,6 +144,7 @@ def load_activity(
     return ActivityRuntime(
         activity_dir,
         field_store,
+        file_storage,
         activity_id=activity_id,
         user_id=USER_ID,
         course_id=course_id,
@@ -236,6 +242,7 @@ async def delete_course(
                 select(PageActivity).where(PageActivity.page_id == page.id)
             ).all()
             for act in activities:
+                file_storage.delete_all(act.id)
                 session.delete(act)
             session.delete(page)
         session.delete(course)
@@ -338,6 +345,7 @@ async def delete_page(
             select(PageActivity).where(PageActivity.page_id == page_id)
         ).all()
         for act in activities:
+            file_storage.delete_all(act.id)
             session.delete(act)
         session.delete(page)
         session.commit()
@@ -443,6 +451,7 @@ async def delete_activity(
     """Remove an activity instance from its page."""
     pa = session.get(PageActivity, activity_id)
     if pa:
+        file_storage.delete_all(pa.id)
         session.delete(pa)
         session.commit()
 
@@ -650,6 +659,7 @@ async def delete_activity_type(
     ).all()
     for pa in activities:
         field_store.delete_by_activity(pa.id)
+        file_storage.delete_all(pa.id)
         session.delete(pa)
     session.commit()
 
@@ -679,6 +689,35 @@ async def activity_asset(
     except AssetAccessError as e:
         raise HTTPException(status_code=404, detail="Access denied") from e
     return FileResponse(full_path)
+
+
+@app.get(
+    "/activity/{activity_id}/storage/{storage_name}/{file_path:path}",
+    summary="Serve a file from activity storage",
+)
+async def storage_file(
+    activity_id: str,
+    storage_name: str,
+    file_path: str,
+    session: Session = Depends(get_session),
+) -> Response:
+    pa = session.get(PageActivity, activity_id)
+    if pa is None:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    page = session.get(Page, pa.page_id)
+    course_id = page.course_id if page else ""
+    ctx = load_activity(pa.activity_type, activity_id, course_id, Permission.play)
+    try:
+        ctx.capability_checker.check_storage(storage_name)
+    except CapabilityError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    storage_path = f"{activity_id}/{storage_name}/{file_path}"
+    try:
+        content = file_storage.read(storage_path)
+    except FileStorageError as e:
+        raise HTTPException(status_code=404, detail="File not found") from e
+    media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+    return Response(content=content, media_type=media_type)
 
 
 @app.post(

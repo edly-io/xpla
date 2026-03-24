@@ -11,9 +11,10 @@ Key modules:
 - [fields.py](./fields.py) — `FieldChecker`: validates field types and scopes against the manifest
 - [actions.py](./actions.py) — `ActionChecker`: validates client-to-server actions
 - [events.py](./events.py) — `EventChecker`: validates server-to-client events
-- [capabilities.py](./capabilities.py) — `CapabilityChecker`: enforces declared capabilities (HTTP, AI, etc.)
+- [capabilities.py](./capabilities.py) — `CapabilityChecker`: enforces declared capabilities (HTTP, AI, storage)
 - [event_bus.py](./event_bus.py) — `EventBus`: in-memory pub/sub for WebSocket event broadcasting with context/permission filtering
 - [field_store.py](./field_store.py) — `FieldStore`: abstract base class for field persistence (scalar and log fields)
+- [file_storage.py](./file_storage.py) — `FileStorage`: abstract base class for file persistence; `LocalFileStorage`: local filesystem implementation; `MemoryFileStorage`: in-memory implementation for testing
 - [kv.py](./kv.py) — `KVFieldStore`: simple JSON-file-backed `FieldStore` implementation
 - [permission.py](./permission.py) — `Permission` enum: `view`, `play`, `edit`
 
@@ -91,7 +92,7 @@ my-activity/
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
 - `client` (required): Path to the client-side JavaScript module, relative to `manifest.json`.
 - `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
-- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: key-value store access, HTTP host requests, LMS functions, AI agents, etc. For more details, check the [`capabilities.py`](./capabilities.py) module. At the moment capabilities are not truly enforced, so don't count on them too much...
+- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: HTTP host requests, AI agents, and file storage. For more details, check the [`capabilities.py`](./capabilities.py) module. Capabilities are enforced at runtime. See [Storage](#storage) below for the storage capability.
 - `fields` (optional, defaults to `{}`): Declares activity fields with type and scope. Fields are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
 - `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.
@@ -170,6 +171,26 @@ Activities communicate between client and server using **actions** (client→ser
 
 Payloads are validated at runtime: sending an undeclared action or emitting an undeclared event raises a validation error.
 
+#### Storage
+
+Activities that need to read or write files at runtime (e.g. user uploads) must declare a `storage` capability. The value is a list of **storage names** — each name is a namespace the activity can read from and write to:
+
+```json
+{
+  "capabilities": {
+    "storage": ["media"]
+  }
+}
+```
+
+Storage is for **runtime-generated files** only. Bundled static files (CSS, JS, images shipped with the activity) should be declared in the `assets` field instead and served via `getAssetUrl()` on the client.
+
+Each storage host function takes a storage `name` and a relative `path` as separate arguments. The runtime validates that the name is declared in the manifest. Stored files are served at `/activity/{activity_id}/storage/{name}/{path}`.
+
+The platform provides a `FileStorage` backend to the `ActivityRuntime`. The reference implementation uses `LocalFileStorage`, which stores files on the local filesystem. For cloud deployments, a custom `FileStorage` subclass (e.g. backed by S3) can be used instead. `MemoryFileStorage` is provided for unit testing.
+
+When an activity instance is deleted, the platform should call `FileStorage.delete_all(activity_id)` to clean up stored files.
+
 ### Client module (declared via `client` field)
 
 This client-side scripting module will be loaded alongside the `<xpl-activity>` element. This module must export a `setup` function which will be called once the element is ready. The `setup` function receives the `<xpl-activity>` element as its argument, which you can use to inject HTML and add interactivity to your activity.
@@ -227,6 +248,7 @@ import {
   sendEvent,
   getField, setField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
+  storageRead, storageWrite, storageExists, storageUrl, storageList, storageDelete,
 } from "../../src/xpla/lib/sandbox";
 
 // Send an event to all connected clients in the current activity
@@ -252,6 +274,14 @@ const entry = logGet("messages", id);       // { user: "alice", text: "hello" }
 const all = logGetRange("messages", 0, 100); // [{ id: 0, value: {...} }, ...]
 logDelete("messages", id);                   // true
 logDeleteRange("messages", 0, 50);           // returns count deleted
+
+// Storage operations (name + path, where name is declared in manifest capabilities)
+storageWrite("media", "photo.png", imageBytes);                 // write a file (Uint8Array)
+const data = storageRead("media", "photo.png");                 // read file contents (Uint8Array)
+const exists = storageExists("media", "photo.png");             // true
+const url = storageUrl("media", "photo.png");                   // "/activity/{id}/storage/media/photo.png"
+const [ directories, files ] = storageList("media", "");        // list stored files
+storageDelete("media", "photo.png");                            // delete a file
 ```
 
 #### Exported functions
@@ -344,10 +374,19 @@ Plugins can call host functions which are defined in [`runtime.py`](./runtime.py
 - `logDelete(name: str, entry_id: int, context: str) -> bool`: delete a single entry, returns whether it existed
 - `logDeleteRange(name: str, from_id: int, to_id: int, context: str) -> int`: delete entries in range, returns count deleted
 
-Optional host functions for which access must be granted via the "capabilities" field:
+Optional host functions for which access must be granted via the `"capabilities"` field:
 
-- `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs)
+- `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs). Requires the `http` capability.
 - `submitGrade(score: float)`: to be defined.
+
+Storage host functions (require the `storage` capability). Each function takes the storage `name` as its first argument:
+
+- `storageRead(name: str, path: str) -> bytes`: Read a file from the named storage.
+- `storageWrite(name: str, path: str, content: bytes) -> bool`: Write a file. Creates parent directories as needed.
+- `storageExists(name: str, path: str) -> bool`: Check whether a file exists.
+- `storageUrl(name: str, path: str) -> str`: Return the HTTP URL for a storage file (e.g. `"/activity/{activity_id}/storage/media/img.png"`).
+- `storageList(name: str, path: str) -> {files: [str], directories: [str]}`: List files and directories.
+- `storageDelete(name: str, path: str) -> bool`: Delete a file. Returns `true` if the file existed.
 
 #### Log fields
 

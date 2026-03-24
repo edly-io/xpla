@@ -35,6 +35,10 @@ class Capabilities(BaseModel):
     )
     http: Annotated[Http | None, Field(description="HTTP request capability.")] = None
     ai: Annotated[Ai | None, Field(description="AI model access capability.")] = None
+    storage: Annotated[
+        list[str] | None,
+        Field(description="File storage names the activity can read and write."),
+    ] = None
 
 
 class Asset(RootModel[str]):

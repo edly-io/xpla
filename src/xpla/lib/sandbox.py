@@ -20,6 +20,16 @@ class ForbiddenImportError(ValueError):
     """
 
 
+class RecordArg:
+    """
+    This is used to convert from dict arguments/return values to WIT's 'record' type.
+    """
+
+    def __init__(self, values: dict[str, Any]) -> None:
+        for key, value in values.items():
+            setattr(self, key, value)
+
+
 class SandboxExecutor:
     """
     Abstract base class implementation for all sandbox executors.
@@ -132,15 +142,12 @@ def make_host_function(func: Callable[..., Any]) -> Callable[..., Any]:
                 func_args.append(arg_dict)
             else:
                 func_args.append(arg)
-        return func(*func_args)
+        result = func(*func_args)
+        if isinstance(result, dict):
+            return RecordArg(result)
+        return result
 
     return host_function
-
-
-class RecordArg:
-    def __init__(self, values: dict[str, Any]) -> None:
-        for key, value in values.items():
-            setattr(self, key, value)
 
 
 def call_sandbox_function(

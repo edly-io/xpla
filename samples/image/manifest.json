@@ -1,0 +1,27 @@
+{
+  "name": "image",
+  "client": "client.js",
+  "server": "server.component.wasm",
+  "capabilities": {
+    "storage": ["media"]
+  },
+  "fields": {
+    "image_filename": {
+      "type": "string",
+      "scope": "activity",
+      "default": ""
+    }
+  },
+  "actions": {
+    "image.upload": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "string" }
+      },
+      "required": ["data"]
+    }
+  },
+  "events": {
+    "image.changed": { "type": "string" }
+  }
+}

@@ -4,17 +4,20 @@ FastAPI application for the xPLA server.
 
 import json
 import logging
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from xpla.lib.runtime import ActivityRuntime, AssetAccessError
 from xpla.lib.actions import ActionValidationError
+from xpla.lib.capabilities import CapabilityError
 from xpla.lib.event_bus import EventBus
 from xpla.lib.field_store import FieldStore
+from xpla.lib.file_storage import FileStorageError, LocalFileStorage
 from xpla.lib.permission import Permission
 from xpla.demo import constants
 from xpla.demo.kv import load_field_store
@@ -23,6 +26,7 @@ USER_ID_COOKIE = "xpla_user"
 SIMULATED_USERS = ["alice", "bob", "charlie"]
 
 field_store: FieldStore = load_field_store()
+file_storage = LocalFileStorage(constants.DIST_DIR / "demo" / "storage")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,6 +66,7 @@ def load_activity(cookies: dict[str, str], activity_type: str) -> ActivityRuntim
     activity_context = ActivityRuntime(
         activity_dir,
         field_store,
+        file_storage,
         activity_id=activity_type,
         course_id="democourse",
         user_id=user_id,
@@ -170,6 +175,25 @@ async def activity_asset(
         raise HTTPException(status_code=404, detail="Access denied") from e
 
     return FileResponse(full_path)
+
+
+@app.get("/activity/{activity_type}/storage/{storage_name}/{file_path:path}")
+async def storage_file(
+    request: Request, activity_type: str, storage_name: str, file_path: str
+) -> Response:
+    """Serve a file from activity storage."""
+    activity_context = load_activity(request.cookies, activity_type)
+    try:
+        activity_context.capability_checker.check_storage(storage_name)
+    except CapabilityError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    storage_path = f"{activity_type}/{storage_name}/{file_path}"
+    try:
+        content = file_storage.read(storage_path)
+    except FileStorageError as e:
+        raise HTTPException(status_code=404, detail="File not found") from e
+    media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+    return Response(content=content, media_type=media_type)
 
 
 @app.post("/api/activity/{activity_type}/actions/{action_name}")

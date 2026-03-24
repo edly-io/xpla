@@ -9,6 +9,7 @@ from xpla.lib.runtime import ActivityRuntime, SandboxContext
 from xpla.lib.sandbox import SandboxRuntimeError
 from xpla.lib.events import EventValidationError
 from xpla.lib.fields import FieldValidationError
+from xpla.lib.file_storage import MemoryFileStorage
 from xpla.lib.permission import Permission
 
 from .utils import (
@@ -66,6 +67,7 @@ class TestActivityRuntimeInit:
         ctx = ActivityRuntime(
             activity_dir,
             make_field_store(),
+            MemoryFileStorage(),
             "activityid",
             "courseid",
             "userid",
@@ -115,6 +117,12 @@ class TestHostFunctions:
             "log-delete-range",
             "http-request",
             "submit-grade",
+            "storage-read",
+            "storage-exists",
+            "storage-url",
+            "storage-list",
+            "storage-write",
+            "storage-delete",
         ]
 
 
@@ -668,6 +676,7 @@ class TestGetState:
         ctx = ActivityRuntime(
             activity_dir,
             make_field_store(),
+            MemoryFileStorage(),
             "myactivity",
             "mycourse",
             "myuser",
@@ -709,6 +718,7 @@ class TestGetState:
         ctx = ActivityRuntime(
             activity_dir,
             make_field_store(),
+            MemoryFileStorage(),
             "activityid",
             "courseid",
             "alice",

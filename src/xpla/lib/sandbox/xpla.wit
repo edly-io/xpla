@@ -20,11 +20,20 @@ interface host {
     send-event: func(name: string, value: string, context: option<context>, permission: permission) -> string;
     get-field: func(name: string, context: option<context>) -> string;
     set-field: func(name: string, value: string, context: option<context>) -> bool;
+
     log-get: func(name: string, entry-id: u32, context: option<context>) -> string;
     log-get-range: func(name: string, from-id: u32, to-id: u32, context: option<context>) -> string;
     log-append: func(name: string, value: string, context: option<context>) -> u32;
     log-delete: func(name: string, entry-id: u32, context: option<context>) -> bool;
     log-delete-range: func(name: string, from-id: u32, to-id: u32, context: option<context>) -> u32;
+
+    storage-read: func(name: string, path: string) -> list<u8>;
+    storage-exists: func(name: string, path: string) -> bool;
+    storage-url: func(name: string, path: string) -> string;
+    storage-list: func(name: string, path: string) -> tuple<list<string>, list<string>>;
+    storage-write: func(name: string, path: string, content: list<u8>) -> bool;
+    storage-delete: func(name: string, path: string) -> bool;
+
     http-request: func(url: string, method: string, body: string, headers: string) -> string;
     submit-grade: func(score: f64) -> bool;
 }
