@@ -4,12 +4,12 @@
 // - credentials.save: Store Zoom API credentials (course-scoped)
 // - meeting.save: Save meeting config and create/update via Zoom API
 
-import { sendEvent, getField, setField, httpRequest } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField, httpRequest } from "xpla:sandbox/host";
 
 function getZoomToken() {
-  const accountId = getField("zoom_account_id");
-  const clientId = getField("zoom_client_id");
-  const clientSecret = getField("zoom_client_secret");
+  const accountId = JSON.parse(getField("zoom_account_id"));
+  const clientId = JSON.parse(getField("zoom_client_id"));
+  const clientSecret = JSON.parse(getField("zoom_client_secret"));
 
   const credentials = clientId + ":" + clientSecret;
   const encoded = btoa(credentials);
@@ -20,7 +20,7 @@ function getZoomToken() {
     ["Content-Type", "application/x-www-form-urlencoded"],
   ];
 
-  const response = httpRequest("https://zoom.us/oauth/token", "POST", body, headers);
+  const response = JSON.parse(httpRequest("https://zoom.us/oauth/token", "POST", body, JSON.stringify(headers)));
   if (response.status !== 200) {
     throw new Error("Zoom OAuth failed (HTTP " + response.status + "): " + response.body);
   }
@@ -41,25 +41,25 @@ export function onAction(name, data, context, permission) {
 
 // Return state visible to the current user based on permission level.
 export function getState(context, permission) {
-  const topic = getField("topic");
-  const startTime = getField("start_time");
-  const duration = getField("duration");
-  const timezone = getField("timezone");
-  const joinUrl = getField("join_url");
+  const topic = JSON.parse(getField("topic"));
+  const startTime = JSON.parse(getField("start_time"));
+  const duration = JSON.parse(getField("duration"));
+  const timezone = JSON.parse(getField("timezone"));
+  const joinUrl = JSON.parse(getField("join_url"));
 
   const state = { topic, start_time: startTime, duration, timezone, join_url: joinUrl };
 
   if (permission === "edit") {
-    const accountId = getField("zoom_account_id");
-    const clientId = getField("zoom_client_id");
-    const clientSecret = getField("zoom_client_secret");
+    const accountId = JSON.parse(getField("zoom_account_id"));
+    const clientId = JSON.parse(getField("zoom_client_id"));
+    const clientSecret = JSON.parse(getField("zoom_client_secret"));
     state.credentials_configured = !!(accountId && clientId && clientSecret);
-    state.password = getField("password");
-    state.waiting_room = getField("waiting_room");
-    state.join_before_host = getField("join_before_host");
-    state.mute_upon_entry = getField("mute_upon_entry");
-    state.auto_recording = getField("auto_recording");
-    state.meeting_id = getField("meeting_id");
+    state.password = JSON.parse(getField("password"));
+    state.waiting_room = JSON.parse(getField("waiting_room"));
+    state.join_before_host = JSON.parse(getField("join_before_host"));
+    state.mute_upon_entry = JSON.parse(getField("mute_upon_entry"));
+    state.auto_recording = JSON.parse(getField("auto_recording"));
+    state.meeting_id = JSON.parse(getField("meeting_id"));
   }
 
   return JSON.stringify(state);
@@ -70,12 +70,12 @@ function handleCredentialsSave(value, permission) {
     console.log("credentials.save rejected: permission is " + permission);
     return;
   }
-  setField("zoom_account_id", value.zoom_account_id);
-  setField("zoom_client_id", value.zoom_client_id);
-  setField("zoom_client_secret", value.zoom_client_secret);
+  setField("zoom_account_id", JSON.stringify(value.zoom_account_id));
+  setField("zoom_client_id", JSON.stringify(value.zoom_client_id));
+  setField("zoom_client_secret", JSON.stringify(value.zoom_client_secret));
 
   const configured = !!(value.zoom_account_id && value.zoom_client_id && value.zoom_client_secret);
-  sendEvent("credentials.status", { configured }, {}, "edit");
+  sendEvent("credentials.status", JSON.stringify({ configured }), null, "edit");
 }
 
 function handleMeetingSave(value, permission) {
@@ -85,15 +85,15 @@ function handleMeetingSave(value, permission) {
   }
 
   // Store meeting fields
-  setField("topic", value.topic);
-  setField("start_time", value.start_time);
-  setField("duration", value.duration);
-  setField("timezone", value.timezone);
-  setField("password", value.password);
-  setField("waiting_room", value.waiting_room);
-  setField("join_before_host", value.join_before_host);
-  setField("mute_upon_entry", value.mute_upon_entry);
-  setField("auto_recording", value.auto_recording);
+  setField("topic", JSON.stringify(value.topic));
+  setField("start_time", JSON.stringify(value.start_time));
+  setField("duration", JSON.stringify(value.duration));
+  setField("timezone", JSON.stringify(value.timezone));
+  setField("password", JSON.stringify(value.password));
+  setField("waiting_room", JSON.stringify(value.waiting_room));
+  setField("join_before_host", JSON.stringify(value.join_before_host));
+  setField("mute_upon_entry", JSON.stringify(value.mute_upon_entry));
+  setField("auto_recording", JSON.stringify(value.auto_recording));
 
   // Call Zoom API to create meeting
   const token = getZoomToken();
@@ -116,36 +116,37 @@ function handleMeetingSave(value, permission) {
     ["Authorization", "Bearer " + token],
     ["Content-Type", "application/json"],
   ];
+  const headersStr = JSON.stringify(headers);
 
-  const existingMeetingId = getField("meeting_id");
+  const existingMeetingId = JSON.parse(getField("meeting_id"));
   let response;
   if (existingMeetingId) {
     // Update existing meeting
-    response = httpRequest(
+    response = JSON.parse(httpRequest(
       "https://api.zoom.us/v2/meetings/" + existingMeetingId,
       "PATCH",
       meetingBody,
-      headers
-    );
+      headersStr
+    ));
     if (response.status !== 204) {
       console.log("Zoom API error (PATCH): HTTP " + response.status + " " + response.body);
       return;
     }
     // PATCH returns 204 with empty body on success; re-fetch to get join_url
-    response = httpRequest(
+    response = JSON.parse(httpRequest(
       "https://api.zoom.us/v2/meetings/" + existingMeetingId,
       "GET",
       "",
-      headers
-    );
+      headersStr
+    ));
   } else {
     // Create new meeting
-    response = httpRequest(
+    response = JSON.parse(httpRequest(
       "https://api.zoom.us/v2/users/me/meetings",
       "POST",
       meetingBody,
-      headers
-    );
+      headersStr
+    ));
   }
 
   if (response.status < 200 || response.status >= 300) {
@@ -158,14 +159,14 @@ function handleMeetingSave(value, permission) {
   const meetingId = String(meeting.id);
   const joinUrl = meeting.join_url;
 
-  setField("meeting_id", meetingId);
-  setField("join_url", joinUrl);
+  setField("meeting_id", JSON.stringify(meetingId));
+  setField("join_url", JSON.stringify(joinUrl));
 
-  sendEvent("meeting.updated", {
+  sendEvent("meeting.updated", JSON.stringify({
     topic: value.topic,
     start_time: value.start_time,
     duration: value.duration,
     timezone: value.timezone,
     join_url: joinUrl,
-  }, {}, "play");
+  }), null, "play");
 }

@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save the video_id
 
-import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField } from "xpla:sandbox/host";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);
@@ -12,15 +12,15 @@ export function onAction(name, data, context, permission) {
       console.log("config.save rejected: permission is " + permission);
       return "";
     }
-    setField("video_id", value.video_id);
-    sendEvent("fields.change.video_id", value.video_id, {}, "play");
+    setField("video_id", JSON.stringify(value.video_id));
+    sendEvent("fields.change.video_id", JSON.stringify(value.video_id), null, "play");
   }
   return "";
 }
 
 export function getState() {
   const state = {
-    video_id: getField("video_id"),
+    video_id: JSON.parse(getField("video_id")),
   };
   return JSON.stringify(state);
 }

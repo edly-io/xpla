@@ -4,7 +4,7 @@
 // - config.save: Save question, answers, and correct_answers
 // - answer.submit: Check if selected answers match correct answers
 
-import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField } from "xpla:sandbox/host";
 
 // Handle incoming actions from frontend
 export function onAction(name, data, context, permission) {
@@ -20,11 +20,11 @@ export function onAction(name, data, context, permission) {
 // Return state visible to the current user based on permission level.
 export function getState(context, permission) {
   const state = {
-    question: getField("question"),
-    answers: getField("answers"),
+    question: JSON.parse(getField("question")),
+    answers: JSON.parse(getField("answers")),
   };
   if (permission === "edit") {
-    state.correct_answers = getField("correct_answers");
+    state.correct_answers = JSON.parse(getField("correct_answers"));
   }
   return JSON.stringify(state);
 }
@@ -35,21 +35,21 @@ function handleConfigSave(config, permission) {
     console.log("config.save rejected: permission is " + permission);
     return;
   }
-  setField("question", config.question);
-  setField("answers", config.answers);
-  setField("correct_answers", config.correct_answers);
+  setField("question", JSON.stringify(config.question));
+  setField("answers", JSON.stringify(config.answers));
+  setField("correct_answers", JSON.stringify(config.correct_answers));
 
   // Notify frontend of field changes
-  sendEvent("fields.change.question", config.question, {}, "play");
-  sendEvent("fields.change.answers", config.answers, {}, "play");
-  sendEvent("fields.change.correct_answers", config.correct_answers, {}, "edit");
+  sendEvent("fields.change.question", JSON.stringify(config.question), null, "play");
+  sendEvent("fields.change.answers", JSON.stringify(config.answers), null, "play");
+  sendEvent("fields.change.correct_answers", JSON.stringify(config.correct_answers), null, "edit");
 }
 
 // Check submitted answers against correct answers
 function handleAnswerSubmit(selected) {
 
   // Get correct answers from stored config
-  const correctAnswers = getField("correct_answers");
+  const correctAnswers = JSON.parse(getField("correct_answers"));
 
   // Compare selected answers with correct answers
   const selectedSet = new Set(selected);
@@ -68,5 +68,5 @@ function handleAnswerSubmit(selected) {
     feedback = "Incorrect. Try again!";
   }
 
-  sendEvent("answer.result", { correct: isCorrect, feedback }, {}, "play");
+  sendEvent("answer.result", JSON.stringify({ correct: isCorrect, feedback }), null, "play");
 }

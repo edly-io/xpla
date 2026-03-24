@@ -5,13 +5,13 @@ import {
   getField,
   setField,
   submitGrade,
-} from "../../src/xpla/lib/sandbox";
+} from "xpla:sandbox/host";
 
 // Return state visible to the current user.
 export function getState(input) {
   return JSON.stringify({
-    correct_answers: getField("correct_answers"),
-    wrong_answers: getField("wrong_answers"),
+    correct_answers: JSON.parse(getField("correct_answers")),
+    wrong_answers: JSON.parse(getField("wrong_answers")),
   });
 }
 
@@ -29,17 +29,17 @@ export function onAction(name, data, context, permission) {
 
     // Update counters and emit value change events
     if (result.correct) {
-      const correctCount = getField("correct_answers") + 1;
-      setField("correct_answers", correctCount);
-      sendEvent("fields.change.correct_answers", correctCount, {}, "play");
+      const correctCount = JSON.parse(getField("correct_answers")) + 1;
+      setField("correct_answers", JSON.stringify(correctCount));
+      sendEvent("fields.change.correct_answers", JSON.stringify(correctCount), null, "play");
     } else {
-      const wrongCount = getField("wrong_answers") + 1;
-      setField("wrong_answers", wrongCount);
-      sendEvent("fields.change.wrong_answers", wrongCount, {}, "play");
+      const wrongCount = JSON.parse(getField("wrong_answers")) + 1;
+      setField("wrong_answers", JSON.stringify(wrongCount));
+      sendEvent("fields.change.wrong_answers", JSON.stringify(wrongCount), null, "play");
     }
 
     // Send feedback event
-    sendEvent("answer.result", result, {}, "play");
+    sendEvent("answer.result", JSON.stringify(result), null, "play");
     return "";
   }
 }

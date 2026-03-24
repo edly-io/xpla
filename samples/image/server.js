@@ -3,7 +3,7 @@
 // Actions handled:
 // - image.upload: Save an image from a data URI
 
-import { sendEvent, getField, setField, storageUrl, storageWrite } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField, storageUrl, storageWrite } from "xpla:sandbox/host";
 
 const MIME_TO_EXT = {
   "image/jpeg": "jpg",
@@ -43,14 +43,14 @@ export function onAction(name, data, context, permission) {
     const filename = "img." + ext;
 
     storageWrite("media", filename, base64ToBytes(base64));
-    setField("image_filename", filename);
-    sendEvent("image.changed", storageUrl("media", filename), {}, "view");
+    setField("image_filename", JSON.stringify(filename));
+    sendEvent("image.changed", JSON.stringify(storageUrl("media", filename)), null, "view");
   }
   return "";
 }
 
 export function getState() {
-  const filename = getField("image_filename");
+  const filename = JSON.parse(getField("image_filename"));
   const state = {
     image_url: filename ? storageUrl("media", filename) : "",
     image_filename: filename,

@@ -4,7 +4,7 @@
 // - config.save: Save video_id and interactions list
 // - answer.submit: Check if selected answers match correct answers for a given interaction
 
-import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField } from "xpla:sandbox/host";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);
@@ -17,8 +17,8 @@ export function onAction(name, data, context, permission) {
 }
 
 export function getState(context, permission) {
-  const videoId = getField("video_id");
-  const interactions = getField("interactions") || [];
+  const videoId = JSON.parse(getField("video_id"));
+  const interactions = JSON.parse(getField("interactions")) || [];
 
   const state = { video_id: videoId };
 
@@ -43,10 +43,10 @@ function handleConfigSave(config, permission) {
     console.log("config.save rejected: permission is " + permission);
     return;
   }
-  setField("video_id", config.video_id);
-  setField("interactions", config.interactions);
+  setField("video_id", JSON.stringify(config.video_id));
+  setField("interactions", JSON.stringify(config.interactions));
 
-  sendEvent("fields.change.video_id", config.video_id, {}, "play");
+  sendEvent("fields.change.video_id", JSON.stringify(config.video_id), null, "play");
 
   // Broadcast interactions without correct_answers to non-edit users
   var publicInteractions = config.interactions.map(function (interaction) {
@@ -56,17 +56,17 @@ function handleConfigSave(config, permission) {
       answers: interaction.answers,
     };
   });
-  sendEvent("fields.change.interactions", publicInteractions, {}, "play");
-  sendEvent("fields.change.interactions", config.interactions, {}, "edit");
+  sendEvent("fields.change.interactions", JSON.stringify(publicInteractions), null, "play");
+  sendEvent("fields.change.interactions", JSON.stringify(config.interactions), null, "edit");
 }
 
 function handleAnswerSubmit(value) {
-  var interactions = getField("interactions") || [];
+  var interactions = JSON.parse(getField("interactions")) || [];
   var index = value.index;
   var selected = value.selected;
 
   if (index < 0 || index >= interactions.length) {
-    sendEvent("answer.result", { index: index, correct: false, feedback: "Invalid interaction." }, {}, "play");
+    sendEvent("answer.result", JSON.stringify({ index: index, correct: false, feedback: "Invalid interaction." }), null, "play");
     return;
   }
 
@@ -89,5 +89,5 @@ function handleAnswerSubmit(value) {
     feedback = "Incorrect. Try again!";
   }
 
-  sendEvent("answer.result", { index: index, correct: isCorrect, feedback: feedback }, {}, "play");
+  sendEvent("answer.result", JSON.stringify({ index: index, correct: isCorrect, feedback: feedback }), null, "play");
 }

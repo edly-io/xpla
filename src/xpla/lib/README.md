@@ -239,9 +239,9 @@ Note that sandboxes do not persist state. Thus, to get access to configuration s
 
 Sandboxes have access to a standard list of host functions. See [Host functions](#host-functions) in the Platform API section below.
 
-#### Sandbox library
+#### Host functions in JavaScript
 
-A shared library is available at [`src/xpla/lib/sandbox/index.js`](./sandbox/index.js) with helper functions for common host function interactions. This library is here for convenience and is not part of the xPLA standard, though it implements good practices. It makes it easier for Javascript authors to avoid dealing with inconvenient WebAssembly data types.
+Activities import host functions directly from the WASM Component Model interface `"xpla:sandbox/host"`. Field values and event payloads are exchanged as JSON strings, so activities must `JSON.stringify` before writing and `JSON.parse` after reading.
 
 ```javascript
 import {
@@ -249,31 +249,27 @@ import {
   getField, setField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
   storageRead, storageWrite, storageExists, storageUrl, storageList, storageDelete,
-} from "../../src/xpla/lib/sandbox";
+} from "xpla:sandbox/host";
 
 // Send an event to all connected clients in the current activity
 // sendEvent(name, value, context, permission)
-//   context: {} = current activity (default), or e.g. { user_id: "alice" } to target a specific user
+//   context: null = current activity (default), or e.g. { userId: "alice" } to target a specific user
 //   permission: minimum permission to receive the event ("view", "play", or "edit")
-sendEvent("answer.result", { correct: true }, {}, "play");
+sendEvent("answer.result", JSON.stringify({ correct: true }), null, "play");
 
 // Get/set fields (scope is resolved automatically from manifest)
-const score = getField("correct_answers");
-setField("correct_answers", score + 1);
+const score = JSON.parse(getField("correct_answers"));
+setField("correct_answers", JSON.stringify(score + 1));
 
-const question = getField("question");
-setField("question", "What is 2+2?");
-
-// Get/set fields for a different user via context overrides
-const studentScore = getField("score", { user_id: "student123" });
-setField("score", studentScore + 1, { user_id: "student123" });
+const question = JSON.parse(getField("question"));
+setField("question", JSON.stringify("What is 2+2?"));
 
 // Log field operations (append-only ordered data)
-const id = logAppend("messages", { user: "alice", text: "hello" });
-const entry = logGet("messages", id);       // { user: "alice", text: "hello" }
-const all = logGetRange("messages", 0, 100); // [{ id: 0, value: {...} }, ...]
-logDelete("messages", id);                   // true
-logDeleteRange("messages", 0, 50);           // returns count deleted
+const id = logAppend("messages", JSON.stringify({ user: "alice", text: "hello" }));
+const entry = JSON.parse(logGet("messages", id));       // { user: "alice", text: "hello" }
+const all = JSON.parse(logGetRange("messages", 0, 100)); // [{ id: 0, value: {...} }, ...]
+logDelete("messages", id);                               // true
+logDeleteRange("messages", 0, 50);                       // returns count deleted
 
 // Storage operations (name + path, where name is declared in manifest capabilities)
 storageWrite("media", "photo.png", imageBytes);                 // write a file (Uint8Array)
@@ -292,12 +288,12 @@ The sandbox script can export the following functions:
 - `get-state(input)`: Called when the activity page loads. The `input` parameter is a JSON string with two keys: `context` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
-import { getField } from "../../src/xpla/lib/sandbox";
+import { getField } from "xpla:sandbox/host";
 
 export function getState(context, permission) {
-  const state = { question: getField("question") };
+  const state = { question: JSON.parse(getField("question")) };
   if (permission === "edit") {
-    state.correct_answers = getField("correct_answers");
+    state.correct_answers = JSON.parse(getField("correct_answers"));
   }
   return JSON.stringify(state);
 }
@@ -314,7 +310,7 @@ export function onAction(name, data, context, permission) {
 }
 ```
 
-The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, value, context, permission)` (which calls the `sendEvent` host function). The `context` argument controls which clients receive the event (e.g. `{}` for the whole activity, `{user_id: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
+The `onAction` function is called whenever the frontend sends an action via `activity.sendAction(name, value)`. The sandbox can send events back to connected clients using `sendEvent(name, JSON.stringify(value), context, permission)` (which calls the `sendEvent` host function). The `context` argument controls which clients receive the event (e.g. `null` for the whole activity, `{userId: "alice"}` for a specific user), and `permission` sets the minimum permission level required to receive it.
 
 ### Building
 

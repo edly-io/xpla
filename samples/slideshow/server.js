@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save the slides_html
 
-import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField } from "xpla:sandbox/host";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);
@@ -12,15 +12,15 @@ export function onAction(name, data, context, permission) {
       console.log("config.save rejected: permission is " + permission);
       return "";
     }
-    setField("slides_html", value.slides_html);
-    sendEvent("fields.change.slides_html", value.slides_html, {}, "play");
+    setField("slides_html", JSON.stringify(value.slides_html));
+    sendEvent("fields.change.slides_html", JSON.stringify(value.slides_html), null, "play");
   }
   return "";
 }
 
 export function getState() {
   const state = {
-    slides_html: getField("slides_html"),
+    slides_html: JSON.parse(getField("slides_html")),
   };
   return JSON.stringify(state);
 }

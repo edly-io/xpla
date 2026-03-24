@@ -9,11 +9,11 @@ import {
   sendEvent,
   getField,
   setField,
-} from "../../src/xpla/lib/sandbox";
+} from "xpla:sandbox/host";
 
 function saveUserCode(code) {
-  setField("user_code", code);
-  sendEvent("fields.change.user_code", code, {}, "play");
+  setField("user_code", JSON.stringify(code));
+  sendEvent("fields.change.user_code", JSON.stringify(code), null, "play");
 }
 
 export function onAction(name, data, context, permission) {
@@ -25,8 +25,8 @@ export function onAction(name, data, context, permission) {
     }
     for (const key of ["instructions", "starter_code", "test_code"]) {
       if (value[key] !== undefined) {
-        setField(key, value[key]);
-        sendEvent("fields.change." + key, value[key], {}, "play");
+        setField(key, JSON.stringify(value[key]));
+        sendEvent("fields.change." + key, JSON.stringify(value[key]), null, "play");
       }
     }
   }
@@ -43,10 +43,10 @@ export function onAction(name, data, context, permission) {
 
 export function getState(input) {
   const state = {
-    instructions: getField("instructions"),
-    starter_code: getField("starter_code"),
-    test_code: getField("test_code"),
-    user_code: getField("user_code"),
+    instructions: JSON.parse(getField("instructions")),
+    starter_code: JSON.parse(getField("starter_code")),
+    test_code: JSON.parse(getField("test_code")),
+    user_code: JSON.parse(getField("user_code")),
   };
   return JSON.stringify(state);
 }

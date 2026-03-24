@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save markdown_content and render to HTML
 
-import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField } from "xpla:sandbox/host";
 import { Marked } from "marked";
 
 function renderMarkdown(content, headerStartLevel) {
@@ -27,22 +27,22 @@ export function onAction(name, data, context, permission) {
       return;
     }
     const markdownContent = value.markdown_content;
-    const headerStartLevel = getField("header_start_level") || 2;
+    const headerStartLevel = JSON.parse(getField("header_start_level")) || 2;
     const html = renderMarkdown(markdownContent, headerStartLevel);
 
-    setField("markdown_content", markdownContent);
-    setField("rendered_html", html);
-    sendEvent("fields.change.markdown_content", markdownContent, {}, "play");
-    sendEvent("fields.change.rendered_html", html, {}, "play");
+    setField("markdown_content", JSON.stringify(markdownContent));
+    setField("rendered_html", JSON.stringify(html));
+    sendEvent("fields.change.markdown_content", JSON.stringify(markdownContent), null, "play");
+    sendEvent("fields.change.rendered_html", JSON.stringify(html), null, "play");
   }
 }
 
 export function getState(context, permission) {
   const state = {
-    rendered_html: getField("rendered_html"),
+    rendered_html: JSON.parse(getField("rendered_html")),
   };
   if (permission === "edit") {
-    state.markdown_content = getField("markdown_content");
+    state.markdown_content = JSON.parse(getField("markdown_content"));
   }
   return JSON.stringify(state);
 }

@@ -4,7 +4,7 @@
 // - doc.update: Merge Yjs update into stored state, broadcast to all
 // - cursor.move: Broadcast cursor position to all clients
 
-import { sendEvent, getField, setField } from "../../src/xpla/lib/sandbox";
+import { sendEvent, getField, setField } from "xpla:sandbox/host";
 import * as Y from "yjs";
 
 function base64ToBytes(base64) {
@@ -33,12 +33,12 @@ export function onAction(name, data, context, permission) {
       console.log("config.save rejected: not edit permission");
       return "";
     }
-    setField("render_markdown", value.render_markdown);
+    setField("render_markdown", JSON.stringify(value.render_markdown));
     sendEventToAllViewers("fields.change.render_markdown", value.render_markdown);
   } else if (name === "doc.update") {
     // Load current doc state
     const doc = new Y.Doc();
-    const stored = getField("doc_state");
+    const stored = JSON.parse(getField("doc_state"));
     if (stored) {
       Y.applyUpdate(doc, base64ToBytes(stored));
     }
@@ -48,8 +48,8 @@ export function onAction(name, data, context, permission) {
 
     // Save merged state and plain text snapshot
     const fullState = Y.encodeStateAsUpdate(doc);
-    setField("doc_state", bytesToBase64(fullState));
-    setField("content", doc.getText("codemirror").toString());
+    setField("doc_state", JSON.stringify(bytesToBase64(fullState)));
+    setField("content", JSON.stringify(doc.getText("codemirror").toString()));
     sendEventToAllViewers("doc.update", { data: value.data, user });
   } else if (name === "cursor.move") {
     sendEventToAllViewers("cursor.move", {
@@ -63,17 +63,17 @@ export function onAction(name, data, context, permission) {
 
 function sendEventToAllViewers(name, value) {
   // Send the same event to both viewers and players
-  sendEvent(name, value, null, "play");
-  sendEvent(name, value, null, "view");
+  sendEvent(name, JSON.stringify(value), null, "play");
+  sendEvent(name, JSON.stringify(value), null, "view");
 }
 
 export function getState(context, permission) {
   const state = {
-    render_markdown: getField("render_markdown") || 0
+    render_markdown: JSON.parse(getField("render_markdown")) || 0
   };
   if (permission === "play" || permission == "play") {
-    state.doc_state = getField("doc_state");
-    state.content = getField("content");
+    state.doc_state = JSON.parse(getField("doc_state"));
+    state.content = JSON.parse(getField("content"));
   }
   return JSON.stringify(state);
 }

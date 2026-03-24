@@ -17,7 +17,7 @@ Offline mode is supported, with two possible options:
 | [src/xpla/demo/](./src/xpla/demo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
 | [src/xpla/notebook/](./src/xpla/notebook/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
 | [samples/](./samples/) | **Sample activities.** Reference xPLA activities (MCQ, quiz, video, chat, etc.) that demonstrate the standard. |
-| [src/xpla/lib/sandbox/](./src/xpla/lib/sandbox/) | **Sandbox helper library.** JavaScript convenience functions for writing server-side WASM code (field access, event sending, etc.). |
+| [src/xpla/lib/sandbox/](./src/xpla/lib/sandbox/) | **Sandbox definition.** WIT interface and JSON Schema for the WASM Component Model sandbox. |
 | [src/xpla/static/](./src/xpla/static/) | **Shared static files.** The `XPLA` base class ([xpla.js](./src/xpla/static/js/xpla.js)) that powers the `<xpl-activity>` web component. |
 
 ## Installation
