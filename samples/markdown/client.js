@@ -30,7 +30,6 @@ export function setup(activity) {
         .no-preview { color: #666; font-style: italic; }
       </style>
       <div class="md-container">
-        <h3>Edit Markdown Content</h3>
         <textarea class="md-editor" id="md-input">${escapeHtml(markdown)}</textarea>
         <button type="button" class="save-btn" id="save-btn">Save</button>
         <div id="save-feedback"></div>

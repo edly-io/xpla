@@ -1,6 +1,0 @@
-{
-  "private": true,
-  "dependencies": {
-    "marked": "^15.0.0"
-  }
-}

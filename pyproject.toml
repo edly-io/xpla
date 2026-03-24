@@ -2,13 +2,16 @@
 name = "xpla-demo"
 version = "0.1.0"
 dependencies = [
+    "alembic",
     "fastapi[standard]",
     "jinja2",
     "jsonschema",
-    "alembic",
     "sqlmodel",
     "uvicorn[standard]",
     "wasmtime",
+    # for markdown activity
+    "markdown",
+    "componentize-py",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +22,7 @@ dev = [
     "mypy",
     "pylint",
     "pytest",
+    "types-markdown",
 ]
 
 [tool.setuptools.packages.find]
