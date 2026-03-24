@@ -2,8 +2,7 @@
   "name": "slideshow",
   "client": "client.js",
   "server": "server.component.wasm",
-  "capabilities": {},
-  "fields": {
+    "fields": {
     "slides_html": {
       "type": "string",
       "scope": "activity",

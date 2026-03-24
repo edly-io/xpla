@@ -2,8 +2,7 @@
   "name": "markdown",
   "client": "client.js",
   "server": "server.component.wasm",
-  "capabilities": {},
-  "fields": {
+    "fields": {
     "markdown_content": { "type": "string", "scope": "activity", "default": "" },
     "header_start_level": { "type": "integer", "scope": "activity", "default": 2 },
     "rendered_html": { "type": "string", "scope": "activity", "default": "" }

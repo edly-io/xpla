@@ -2,8 +2,7 @@
   "name": "video",
   "client": "client.bundle.js",
   "server": "server.component.wasm",
-  "capabilities": {},
-  "fields": {
+    "fields": {
     "video_url": {
       "type": "string",
       "scope": "activity",

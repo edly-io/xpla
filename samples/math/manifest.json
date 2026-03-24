@@ -2,8 +2,7 @@
   "name": "math",
   "client": "client.js",
   "server": "server.component.wasm",
-  "capabilities": {},
-  "fields": {
+    "fields": {
     "correct_answers": {
       "type": "integer",
       "scope": "user,activity",

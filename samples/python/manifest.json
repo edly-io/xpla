@@ -2,8 +2,7 @@
   "name": "python",
   "client": "client.bundle.js",
   "server": "server.component.wasm",
-  "capabilities": {},
-  "fields": {
+    "fields": {
     "instructions": {
       "type": "string",
       "scope": "activity",
