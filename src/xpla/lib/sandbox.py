@@ -55,35 +55,42 @@ class SandboxComponentExecutor(SandboxExecutor):
     ) -> None:
         super().__init__(plugin_path, host_functions)
 
-        self._store: wasmtime.Store = self._load_store()
-        component = load_component(self._store.engine, plugin_path)
+        self._plugin_path = plugin_path
+        self._host_functions = host_functions
+        self.__store: wasmtime.Store | None = None
+        self.__instance: wasmtime.component.Instance | None = None
 
-        linker = wasmtime.component.Linker(self._store.engine)
-        linker.add_wasip2()
-
-        # Register host functions — wrap to absorb the `store` first arg
-        # (wasmtime passes store as first arg to all host function callbacks)
-        with linker.root().add_instance("xpla:sandbox/host") as ctx:
-            for wit_name, func in host_functions.items():
-                ctx.add_func(wit_name, make_host_function(func))
-
-        self._component = component
-        self._instance = linker.instantiate(self._store, component)
-
-    @staticmethod
-    def _load_store() -> wasmtime.Store:
+    @property
+    def _store(self) -> wasmtime.Store:
         """
         Create a wasmtime store and engine with wasi features.
         """
-        engine_config = wasmtime.Config()
-        # engine_config.cache = True # Cache to directory. Do we need this?
-        engine = wasmtime.Engine(engine_config)
-        store = wasmtime.Store(engine)
-        wasi_config = wasmtime.WasiConfig()
-        wasi_config.inherit_stdout()
-        wasi_config.inherit_stderr()
-        store.set_wasi(wasi_config)
-        return store
+        if not self.__store:
+            engine_config = wasmtime.Config()
+            # engine_config.cache = True # Cache to directory. Do we need this?
+            engine = wasmtime.Engine(engine_config)
+            self.__store = wasmtime.Store(engine)
+            wasi_config = wasmtime.WasiConfig()
+            wasi_config.inherit_stdout()
+            wasi_config.inherit_stderr()
+            self._store.set_wasi(wasi_config)
+        return self.__store
+
+    @property
+    def _instance(self) -> wasmtime.component.Instance:
+        if not self.__instance:
+            component = load_component(self._store.engine, self._plugin_path)
+            linker = wasmtime.component.Linker(self._store.engine)
+            linker.add_wasip2()
+
+            # Register host functions — wrap to absorb the `store` first arg
+            # (wasmtime passes store as first arg to all host function callbacks)
+            with linker.root().add_instance("xpla:sandbox/host") as ctx:
+                for wit_name, func in self._host_functions.items():
+                    ctx.add_func(wit_name, make_host_function(func))
+
+            self.__instance = linker.instantiate(self._store, component)
+        return self.__instance
 
     def call_function(self, function_name: str, *args: Any) -> bytes:
         """
