@@ -1,0 +1,27 @@
+{
+  "name": "scorm",
+  "client": "client.js",
+  "server": "server.component.wasm",
+  "capabilities": {
+    "storage": ["content"]
+  },
+  "fields": {
+    "entry_point": {
+      "type": "string",
+      "scope": "activity",
+      "default": ""
+    }
+  },
+  "actions": {
+    "scorm.upload": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "string" }
+      },
+      "required": ["data"]
+    }
+  },
+  "events": {
+    "scorm.ready": { "type": "string" }
+  }
+}

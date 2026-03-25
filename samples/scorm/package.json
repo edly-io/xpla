@@ -1,0 +1,7 @@
+{
+  "name": "xpla-scorm",
+  "private": true,
+  "dependencies": {
+    "fflate": "^0.8.0"
+  }
+}
