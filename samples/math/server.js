@@ -8,7 +8,7 @@ import {
 } from "xpla:sandbox/host";
 
 // Return state visible to the current user.
-export function getState(input) {
+export function getState() {
   return JSON.stringify({
     correct_answers: JSON.parse(getField("correct_answers")),
     wrong_answers: JSON.parse(getField("wrong_answers")),

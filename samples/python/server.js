@@ -41,7 +41,7 @@ export function onAction(name, data, context, permission) {
   return "";
 }
 
-export function getState(input) {
+export function getState(context, permission) {
   const state = {
     instructions: JSON.parse(getField("instructions")),
     starter_code: JSON.parse(getField("starter_code")),
