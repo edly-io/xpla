@@ -13,6 +13,22 @@ export async function registerXplActivity(): Promise<void> {
       return `${proto}//${location.host}/api/activity/${this.context.activity_id}/${this.permission}/ws`;
     }
 
+    async _sendActionHttp(action: { action: string; value: unknown; permission: string }): Promise<void> {
+      const url = `/api/activity/${this.context.activity_id}/${this.permission}/actions`;
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: action.action, value: action.value }),
+        });
+        if (!resp.ok) {
+          console.error("HTTP action failed:", resp.status);
+        }
+      } catch (err) {
+        console.error("HTTP action error:", err);
+      }
+    }
+
     getAssetUrl(path: string): string {
       return `/a/${this.context.activity_id}/${path}`;
     }

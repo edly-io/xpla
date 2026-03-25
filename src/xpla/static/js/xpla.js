@@ -1,3 +1,7 @@
+// Actions larger than this (in JSON-serialized bytes) are sent via HTTP
+// instead of WebSocket, to avoid WebSocket frame-size limitations.
+const HTTP_SIZE_THRESHOLD = 1_000_000;
+
 export class XPLA extends HTMLElement {
   constructor() {
     super();
@@ -145,6 +149,22 @@ export class XPLA extends HTMLElement {
     }
   }
 
+  async _sendActionHttp(action) {
+    const url = `/api/activity/${this.context.activity_id}/actions/${encodeURIComponent(action.action)}`;
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action.value),
+      });
+      if (!resp.ok) {
+        console.error("HTTP action failed:", resp.status);
+      }
+    } catch (err) {
+      console.error("HTTP action error:", err);
+    }
+  }
+
   async _loadScript(url) {
     try {
       const module = await import(url);
@@ -157,7 +177,15 @@ export class XPLA extends HTMLElement {
   }
 
   sendAction(name, value = "") {
-    this._pushAction({ action: name, value, permission: this.permission });
+    const action = { action: name, value, permission: this.permission };
+    const payload = JSON.stringify(action);
+    if (payload.length > HTTP_SIZE_THRESHOLD) {
+      // Large payloads bypass the localStorage queue (which has a ~5MB
+      // limit) and are sent directly via HTTP POST.
+      this._sendActionHttp(action);
+    } else {
+      this._pushAction(action);
+    }
   }
 
   _pushAction(action) {
