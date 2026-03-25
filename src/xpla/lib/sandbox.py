@@ -50,6 +50,10 @@ class SandboxComponentExecutor(SandboxExecutor):
     Sandboxed WASM Component Model execution via wasmtime.
     """
 
+    # Set to -1 to disable memory limits
+    # We need at least 20MB for Python and 10MB for JS activities
+    MEMORY_LIMIT_BYTES: int = 20 * 10**6
+
     def __init__(
         self, plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
     ) -> None:
@@ -70,6 +74,7 @@ class SandboxComponentExecutor(SandboxExecutor):
             # engine_config.cache = True # Cache to directory. Do we need this?
             engine = wasmtime.Engine(engine_config)
             self.__store = wasmtime.Store(engine)
+            self.__store.set_limits(memory_size=self.MEMORY_LIMIT_BYTES)
             wasi_config = wasmtime.WasiConfig()
             wasi_config.inherit_stdout()
             wasi_config.inherit_stderr()
