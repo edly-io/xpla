@@ -1,5 +1,4 @@
-"""Tests for the markdown sample activity.
-"""
+"""Tests for the markdown sample activity."""
 
 from xpla.lib.permission import Permission
 from xpla.lib.tests.samples.conftest import make_runtime

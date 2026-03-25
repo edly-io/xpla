@@ -1,5 +1,6 @@
 """FileStorage — abstract base class, local, and in-memory implementations."""
 
+import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -15,6 +16,10 @@ class FileStorage(ABC):
     Every method takes a relative ``path``.  The caller is responsible for
     including any scoping prefix (e.g. activity ID) in the path.
     """
+
+    @abstractmethod
+    def mkdir(self, path: str) -> None:
+        """Create a single directory."""
 
     @abstractmethod
     def read(self, path: str) -> bytes:
@@ -58,6 +63,10 @@ class LocalFileStorage(FileStorage):
         except ValueError as e:
             raise FileStorageError(f"Path escapes storage root: {path!r}") from e
         return full
+
+    def mkdir(self, path: str) -> None:
+        full = self._resolve(path)
+        os.makedirs(full, exist_ok=True)
 
     def read(self, path: str) -> bytes:
         full = self._resolve(path)
@@ -104,6 +113,9 @@ class MemoryFileStorage(FileStorage):
 
     def __init__(self) -> None:
         self._files: dict[str, bytes] = {}
+
+    def mkdir(self, path: str) -> None:
+        pass
 
     def read(self, path: str) -> bytes:
         path = path.strip("/")

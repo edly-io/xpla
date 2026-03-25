@@ -119,6 +119,11 @@ class ActivityRuntime:
             wasm_path = self._activity_dir / server_path
             self.sandbox = get_sandbox_executor(wasm_path, self.host_functions())
 
+        # Ensure that all storage paths exist
+        if self.manifest.capabilities and self.manifest.capabilities.storage:
+            for storage_name in self.manifest.capabilities.storage:
+                self._file_storage.mkdir(self._storage_path(storage_name, ""))
+
     @property
     def user_id(self) -> str:
         return self._user_id
