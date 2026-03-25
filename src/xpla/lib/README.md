@@ -427,7 +427,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | `context` | `object` | Context identifying the activity instance: `{ user_id, course_id, activity_id }`. Parsed from the `data-context` attribute. |
 | `state` | `object` | The activity state, populated by the backend's `get-state()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
-| `sendAction(name, value)` | `(string, any) => void` | Sends an action to the backend sandbox via WebSocket. The current `permission` is included in the payload. Fire-and-forget: events are delivered asynchronously through the `onEvent` callback. |
+| `sendAction(name, value)` | `(string, any) => Promise<void>` | Sends an action to the backend sandbox via WebSocket. The current `permission` is included in the payload. Fire-and-forget: callers are not required to `await` the returned promise. Events are delivered asynchronously through the `onEvent` callback. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
 | `onEvent(name, value)` | `(string, any) => void` | Callback invoked for every event emitted by the server. Default is a no-op; activity code overrides it. |
 

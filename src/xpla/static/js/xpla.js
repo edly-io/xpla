@@ -1,6 +1,39 @@
-// Actions larger than this (in JSON-serialized bytes) are sent via HTTP
-// instead of WebSocket, to avoid WebSocket frame-size limitations.
-const HTTP_SIZE_THRESHOLD = 1_000_000;
+// ---- IndexedDB helpers ----
+
+let _dbPromise = null;
+
+function _openDB() {
+  if (!_dbPromise) {
+    _dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open("xpla", 1);
+      req.onupgradeneeded = () => {
+        const store = req.result.createObjectStore("pending-actions", {
+          autoIncrement: true,
+        });
+        store.createIndex("owner", ["activityId", "userId"]);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return _dbPromise;
+}
+
+function _idbReq(req) {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function _idbTxDone(tx) {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ---- XPLA custom element ----
 
 export class XPLA extends HTMLElement {
   constructor() {
@@ -12,7 +45,7 @@ export class XPLA extends HTMLElement {
     this._reconnectDelay = 500;
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     const contextAttr = this.getAttribute("data-context");
     if (contextAttr) {
       this.context = JSON.parse(contextAttr);
@@ -37,6 +70,11 @@ export class XPLA extends HTMLElement {
     }
 
     this.render();
+
+    // Ensure the DB is ready before connecting the WebSocket, so that
+    // _flushQueue (called on WS open) can read pending actions.
+    await _openDB();
+
     this._connectWebSocket();
     const src = this.getAttribute("data-src");
     if (src) {
@@ -135,33 +173,35 @@ export class XPLA extends HTMLElement {
     }, this._reconnectDelay);
   }
 
-  _storageKey() {
-    return `xpla:pending:${this.context.activity_id}`;
-  }
+  async _flushQueue() {
+    const db = await _openDB();
+    const key = [this.context.activity_id, this.context.user_id];
 
-  _flushQueue() {
-    const key = this._storageKey();
-    let pending = JSON.parse(localStorage.getItem(key) || "[]");
-    while (pending.length > 0 && this._ws.readyState === WebSocket.OPEN) {
-      const item = pending.shift();
-      this._ws.send(JSON.stringify(item));
-      localStorage.setItem(key, JSON.stringify(pending));
+    // Read all pending records in one shot (no await between IDB operations)
+    const tx = db.transaction("pending-actions", "readonly");
+    const index = tx.objectStore("pending-actions").index("owner");
+    const [records, primaryKeys] = await Promise.all([
+      _idbReq(index.getAll(key)),
+      _idbReq(index.getAllKeys(key)),
+    ]);
+
+    // Send via WS
+    const sentKeys = [];
+    for (let i = 0; i < records.length; i++) {
+      if (this._ws.readyState !== WebSocket.OPEN) break;
+      const { action, value, permission } = records[i];
+      this._ws.send(JSON.stringify({ action, value, permission }));
+      sentKeys.push(primaryKeys[i]);
     }
-  }
 
-  async _sendActionHttp(action) {
-    const url = `/api/activity/${this.context.activity_id}/actions/${encodeURIComponent(action.action)}`;
-    try {
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action.value),
-      });
-      if (!resp.ok) {
-        console.error("HTTP action failed:", resp.status);
+    // Delete sent records
+    if (sentKeys.length > 0) {
+      const delTx = db.transaction("pending-actions", "readwrite");
+      const store = delTx.objectStore("pending-actions");
+      for (const pk of sentKeys) {
+        store.delete(pk);
       }
-    } catch (err) {
-      console.error("HTTP action error:", err);
+      await _idbTxDone(delTx);
     }
   }
 
@@ -176,23 +216,20 @@ export class XPLA extends HTMLElement {
     }
   }
 
-  sendAction(name, value = "") {
-    const action = { action: name, value, permission: this.permission };
-    const payload = JSON.stringify(action);
-    if (payload.length > HTTP_SIZE_THRESHOLD) {
-      // Large payloads bypass the localStorage queue (which has a ~5MB
-      // limit) and are sent directly via HTTP POST.
-      this._sendActionHttp(action);
-    } else {
-      this._pushAction(action);
-    }
+  async sendAction(name, value = "") {
+    await this._pushAction({ action: name, value, permission: this.permission });
   }
 
-  _pushAction(action) {
-    const key = this._storageKey();
-    const pending = JSON.parse(localStorage.getItem(key) || "[]");
-    pending.push(action);
-    localStorage.setItem(key, JSON.stringify(pending));
+  async _pushAction(action) {
+    const db = await _openDB();
+    const record = {
+      activityId: this.context.activity_id,
+      userId: this.context.user_id,
+      ...action,
+    };
+    const tx = db.transaction("pending-actions", "readwrite");
+    tx.objectStore("pending-actions").add(record);
+    await _idbTxDone(tx);
     if (this._ws.readyState === WebSocket.OPEN) {
       this._flushQueue();
     }
