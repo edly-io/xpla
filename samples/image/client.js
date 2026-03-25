@@ -16,7 +16,8 @@ export function setup(activity) {
     if (!img) return;
     const url = activity.state.image_url;
     if (url) {
-      img.src = url;
+      // Append cache buster in case the url is the same
+      img.src = url + "#" + new Date().getTime();;
       img.style.display = "block";
     } else {
       img.style.display = "none";
