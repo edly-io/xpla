@@ -40,6 +40,9 @@ test-manifests: ## Validate all manifest.json files
 test-codegen: ## Make sure that manifest types are up-to-date
 	$(MAKE) --always-make manifest-types CODEGEN_OPTIONS="--check"
 
+load-test: ## Run a crude WASM component load testing script
+	python src/xpla/lib/tests/samples/load_test.py
+
 # This command must be run every time the schema is updated
 .PHONY: manifest-types
 manifest-types: src/xpla/lib/manifest_types.py ## Generate manifest types based on schema
