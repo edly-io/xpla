@@ -751,6 +751,9 @@ async def activity_actions(
     except ActionValidationError as e:
         raise HTTPException(status_code=400, detail=f"Invalid action: {e}") from e
 
+    events = ctx.clear_pending_events()
+    await event_bus.publish(activity.activity_type, events)
+
 
 @app.websocket("/api/activity/{activity_id}/{permission}/ws")
 async def activity_ws(
