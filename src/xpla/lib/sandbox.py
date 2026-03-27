@@ -83,7 +83,7 @@ class SandboxComponentExecutor(SandboxExecutor):
             wasi_config = wasmtime.WasiConfig()
             wasi_config.inherit_stdout()
             wasi_config.inherit_stderr()
-            self._store.set_wasi(wasi_config)
+            self.__store.set_wasi(wasi_config)
         return self.__store
 
     @property
@@ -93,8 +93,7 @@ class SandboxComponentExecutor(SandboxExecutor):
             linker = wasmtime.component.Linker(self._store.engine)
             linker.add_wasip2()
 
-            # Register host functions — wrap to absorb the `store` first arg
-            # (wasmtime passes store as first arg to all host function callbacks)
+            # Register host functions
             with linker.root().add_instance("xpla:sandbox/host") as ctx:
                 for wit_name, func in self._host_functions.items():
                     ctx.add_func(wit_name, make_host_function(func))
@@ -115,6 +114,8 @@ class SandboxComponentExecutor(SandboxExecutor):
         try:
             result = call_sandbox_function(self._store, func, *args)
         except wasmtime.WasmtimeError as e:
+            # Reset store to protect from further "trap" errors
+            self._reset()
             raise SandboxRuntimeError(
                 f"Component {self._plugin_path}: error running '{function_name}' with arguments: {args}"
             ) from e
@@ -122,7 +123,8 @@ class SandboxComponentExecutor(SandboxExecutor):
             raise SandboxRuntimeError(
                 f"Component {self._plugin_path}: error running '{function_name}'"
             ) from e
-        self._call_count += 1
+        finally:
+            self._call_count += 1
         return result.encode("utf-8") if isinstance(result, str) else b""
 
     def _check_reset(self) -> bool:
@@ -132,11 +134,19 @@ class SandboxComponentExecutor(SandboxExecutor):
         calls, eventually crashing with OOM even when post_return is called.
         """
         if self.RESET_AFTER_CALLS > 0 and self._call_count >= self.RESET_AFTER_CALLS:
-            self.__store = None
-            self.__instance = None
-            self._call_count = 0
+            self._reset()
             return True
         return False
+
+    def _reset(self) -> None:
+        """
+        Force a reset of the WASM store. This is needed in case of error, otherwise we
+        will keep getting WasmtimeError such as "wasm trap: cannot enter component
+        instance"
+        """
+        self.__store = None
+        self.__instance = None
+        self._call_count = 0
 
 
 def load_component(
