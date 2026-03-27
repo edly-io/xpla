@@ -54,10 +54,6 @@ class SandboxComponentExecutor(SandboxExecutor):
     # We need at least 20MB for Python and 10MB for JS activities
     MEMORY_LIMIT_BYTES: int = 20 * 10**6
 
-    # Reset the store/instance after this many calls to avoid OOM crashes from
-    # SpiderMonkey GC memory accumulation.
-    RESET_AFTER_CALLS: int = 2000
-
     def __init__(
         self, plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
     ) -> None:
@@ -65,57 +61,60 @@ class SandboxComponentExecutor(SandboxExecutor):
 
         self._plugin_path = plugin_path
         self._host_functions = host_functions
-        self.__store: wasmtime.Store | None = None
-        self.__instance: wasmtime.component.Instance | None = None
-        self._call_count: int = 0
 
-    @property
-    def _store(self) -> wasmtime.Store:
+    def _create_store_instance(
+        self,
+    ) -> tuple[wasmtime.Store, wasmtime.component.Instance]:
         """
-        Create a wasmtime store and engine with wasi features.
+        Create a wasmtime store, engine with wasi features, component, etc.
         """
-        if not self.__store:
-            engine_config = wasmtime.Config()
-            # engine_config.cache = True # Cache to directory. Do we need this?
-            engine = wasmtime.Engine(engine_config)
-            self.__store = wasmtime.Store(engine)
-            self.__store.set_limits(memory_size=self.MEMORY_LIMIT_BYTES)
-            wasi_config = wasmtime.WasiConfig()
-            wasi_config.inherit_stdout()
-            wasi_config.inherit_stderr()
-            self.__store.set_wasi(wasi_config)
-        return self.__store
+        # Create config
+        engine_config = wasmtime.Config()
+        # engine_config.cache = True # Cache to directory. Do we need this?
 
-    @property
-    def _instance(self) -> wasmtime.component.Instance:
-        if not self.__instance:
-            component = load_component(self._store.engine, self._plugin_path)
-            linker = wasmtime.component.Linker(self._store.engine)
-            linker.add_wasip2()
+        # Create engine
+        engine = wasmtime.Engine(engine_config)
 
-            # Register host functions
-            with linker.root().add_instance("xpla:sandbox/host") as ctx:
-                for wit_name, func in self._host_functions.items():
-                    ctx.add_func(wit_name, make_host_function(func))
+        # Create WASI config
+        wasi_config = wasmtime.WasiConfig()
+        wasi_config.inherit_stdout()
+        wasi_config.inherit_stderr()
 
-            self.__instance = linker.instantiate(self._store, component)
-        return self.__instance
+        # Create store
+        store = wasmtime.Store(engine)
+        store.set_limits(memory_size=self.MEMORY_LIMIT_BYTES)
+        store.set_wasi(wasi_config)
+
+        # Create linker
+        linker = wasmtime.component.Linker(store.engine)
+        linker.add_wasip2()
+
+        # Create component
+        component = load_component(store.engine, self._plugin_path)
+
+        # Register host functions
+        with linker.root().add_instance("xpla:sandbox/host") as ctx:
+            for wit_name, func in self._host_functions.items():
+                ctx.add_func(wit_name, make_host_function(func))
+
+        # Create instance
+        instance = linker.instantiate(store, component)
+
+        return store, instance
 
     def call_function(self, function_name: str, *args: Any) -> bytes:
         """
         Call an exported function on the WASM component.
         """
-        self._check_reset()
-        func = self._instance.get_func(self._store, function_name)
+        store, instance = self._create_store_instance()
+        func = instance.get_func(store, function_name)
         if func is None:
             raise SandboxRuntimeError(
                 f"Component {self._plugin_path}: export '{function_name}' not found"
             )
         try:
-            result = call_sandbox_function(self._store, func, *args)
+            result = call_sandbox_function(store, func, *args)
         except wasmtime.WasmtimeError as e:
-            # Reset store to protect from further "trap" errors
-            self._reset()
             raise SandboxRuntimeError(
                 f"Component {self._plugin_path}: error running '{function_name}' with arguments: {args}"
             ) from e
@@ -123,30 +122,7 @@ class SandboxComponentExecutor(SandboxExecutor):
             raise SandboxRuntimeError(
                 f"Component {self._plugin_path}: error running '{function_name}'"
             ) from e
-        finally:
-            self._call_count += 1
         return result.encode("utf-8") if isinstance(result, str) else b""
-
-    def _check_reset(self) -> bool:
-        """
-        Check whether we should reset the store and instance to reclaim all WASM memory.
-        This is needed because SpiderMonkey's GC accumulates internal memory over many
-        calls, eventually crashing with OOM even when post_return is called.
-        """
-        if self.RESET_AFTER_CALLS > 0 and self._call_count >= self.RESET_AFTER_CALLS:
-            self._reset()
-            return True
-        return False
-
-    def _reset(self) -> None:
-        """
-        Force a reset of the WASM store. This is needed in case of error, otherwise we
-        will keep getting WasmtimeError such as "wasm trap: cannot enter component
-        instance"
-        """
-        self.__store = None
-        self.__instance = None
-        self._call_count = 0
 
 
 def load_component(
