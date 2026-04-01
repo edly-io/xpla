@@ -153,17 +153,38 @@ def load_activity(
     )
 
 
+def get_activity_or_404(session: Session, activity_id: str) -> PageActivity:
+    page_activity = session.get(PageActivity, activity_id)
+    if not page_activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return page_activity
+
+
+def get_page_or_404(session: Session, page_id: str) -> Page:
+    page = session.get(Page, page_id)
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return page
+
+
+def get_course_or_404(session: Session, course_id: str) -> Course:
+    course = session.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    return course
+
+
 def activity_dict(
     pa: PageActivity,
     session: Session,
     permission: Permission = Permission.play,
 ) -> dict[str, object]:
-    page = session.get(Page, pa.page_id)
-    course_id = page.course_id if page else ""
-    ctx = load_activity(pa.activity_type, pa.id, course_id, permission)
+    page = get_page_or_404(session, pa.page_id)
+    course = get_course_or_404(session, page.course_id)
+    ctx = load_activity(pa.activity_type, pa.id, course.id, permission)
     return {
         "id": pa.id,
-        "page_id": pa.page_id,
+        "page_id": page.id,
         "activity_type": pa.activity_type,
         "position": pa.position,
         "client_path": ctx.client_path,
@@ -171,7 +192,7 @@ def activity_dict(
         "permission": ctx.permission.name,
         "context": {
             "user_id": USER_ID,
-            "course_id": course_id,
+            "course_id": course.id,
             "activity_id": pa.id,
         },
     }
@@ -217,9 +238,7 @@ async def update_course(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Update the title of an existing course."""
-    course = session.get(Course, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Not found")
+    course = get_course_or_404(session, course_id)
     course.title = body.title
     session.add(course)
     session.commit()
@@ -235,19 +254,18 @@ async def delete_course(
     session: Session = Depends(get_session),
 ) -> None:
     """Delete a course and all its pages and activity instances."""
-    course = session.get(Course, course_id)
-    if course:
-        pages = session.exec(select(Page).where(Page.course_id == course_id)).all()
-        for page in pages:
-            activities = session.exec(
-                select(PageActivity).where(PageActivity.page_id == page.id)
-            ).all()
-            for act in activities:
-                file_storage.delete_all(act.id)
-                session.delete(act)
-            session.delete(page)
-        session.delete(course)
-        session.commit()
+    course = get_course_or_404(session, course_id)
+    pages = session.exec(select(Page).where(Page.course_id == course_id)).all()
+    for page in pages:
+        activities = session.exec(
+            select(PageActivity).where(PageActivity.page_id == page.id)
+        ).all()
+        for act in activities:
+            file_storage.delete_all(act.id)
+            session.delete(act)
+        session.delete(page)
+    session.delete(course)
+    session.commit()
 
 
 @app.post("/api/courses/reorder", summary="Reorder courses")
@@ -257,10 +275,9 @@ async def reorder_courses(
 ) -> JSONResponse:
     """Set course positions from the given ordered list of IDs."""
     for i, course_id in enumerate(body.course_ids):
-        course = session.get(Course, course_id)
-        if course:
-            course.position = i
-            session.add(course)
+        course = get_course_or_404(session, course_id)
+        course.position = i
+        session.add(course)
     session.commit()
     return JSONResponse(content={})
 
@@ -274,9 +291,7 @@ async def get_course(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Return course details including the ordered list of pages."""
-    course = session.get(Course, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Not found")
+    course = course = get_course_or_404(session, course_id)
     pages = session.exec(
         select(Page).where(Page.course_id == course_id).order_by(col(Page.position))
     ).all()
@@ -324,9 +339,7 @@ async def update_page(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Update the title of an existing page."""
-    page = session.get(Page, page_id)
-    if not page:
-        raise HTTPException(status_code=404, detail="Not found")
+    page = get_page_or_404(session, page_id)
     page.title = body.title
     session.add(page)
     session.commit()
@@ -340,16 +353,15 @@ async def delete_page(
     session: Session = Depends(get_session),
 ) -> None:
     """Delete a page and all its activity instances."""
-    page = session.get(Page, page_id)
-    if page:
-        activities = session.exec(
-            select(PageActivity).where(PageActivity.page_id == page_id)
-        ).all()
-        for act in activities:
-            file_storage.delete_all(act.id)
-            session.delete(act)
-        session.delete(page)
-        session.commit()
+    page = get_page_or_404(session, page_id)
+    activities = session.exec(
+        select(PageActivity).where(PageActivity.page_id == page_id)
+    ).all()
+    for act in activities:
+        file_storage.delete_all(act.id)
+        session.delete(act)
+    session.delete(page)
+    session.commit()
 
 
 @app.post("/api/pages/reorder", summary="Reorder pages")
@@ -359,10 +371,9 @@ async def reorder_pages(
 ) -> JSONResponse:
     """Set page positions from the given ordered list of IDs."""
     for i, page_id in enumerate(body.page_ids):
-        page = session.get(Page, page_id)
-        if page:
-            page.position = i
-            session.add(page)
+        page = get_page_or_404(session, page_id)
+        page.position = i
+        session.add(page)
     session.commit()
     return JSONResponse(content={})
 
@@ -376,9 +387,7 @@ async def get_page(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Return page details, its activity instances, and available activity types."""
-    page = session.get(Page, page_id)
-    if not page:
-        raise HTTPException(status_code=404, detail="Not found")
+    page = get_page_or_404(session, page_id)
     page_activities = session.exec(
         select(PageActivity)
         .where(PageActivity.page_id == page_id)
@@ -434,9 +443,7 @@ async def get_activity(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Return activity state and metadata for the given permission level."""
-    pa = session.get(PageActivity, activity_id)
-    if not pa:
-        raise HTTPException(status_code=404, detail="Not found")
+    pa = get_activity_or_404(session, activity_id)
     return JSONResponse(activity_dict(pa, session, permission))
 
 
@@ -450,11 +457,10 @@ async def delete_activity(
     session: Session = Depends(get_session),
 ) -> None:
     """Remove an activity instance from its page."""
-    pa = session.get(PageActivity, activity_id)
-    if pa:
-        file_storage.delete_all(pa.id)
-        session.delete(pa)
-        session.commit()
+    pa = get_activity_or_404(session, activity_id)
+    file_storage.delete_all(pa.id)
+    session.delete(pa)
+    session.commit()
 
 
 @app.get(
@@ -467,12 +473,8 @@ async def activity_llms_txt(
     request: Request,
     session: Session = Depends(get_session),
 ) -> PlainTextResponse:
-    activity = session.get(PageActivity, activity_id)
-    if not activity:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    page = session.get(Page, activity.page_id)
-    if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+    activity = get_activity_or_404(session, activity_id)
+    page = get_page_or_404(session, activity.page_id)
 
     runtime = load_activity(
         activity.activity_type, activity_id, page.course_id, permission
@@ -513,9 +515,7 @@ async def move_activity(
     session: Session = Depends(get_session),
 ) -> JSONResponse:
     """Swap the activity with its neighbor in the given direction."""
-    pa = session.get(PageActivity, activity_id)
-    if not pa:
-        raise HTTPException(status_code=404, detail="Not found")
+    _pa = get_activity_or_404(session, activity_id)
 
     items = list(
         session.exec(
@@ -607,6 +607,7 @@ async def upload_activity_type(
             )
 
         try:
+            # TODO those many checks should not be performed in the view
             manifest = XplaActivityManifest.model_validate_json(
                 manifest_path.read_text()
             )
@@ -679,12 +680,10 @@ async def delete_activity_type(
 async def activity_asset(
     activity_id: str, file_path: str, session: Session = Depends(get_session)
 ) -> FileResponse:
-    pa = session.get(PageActivity, activity_id)
-    if pa is None:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    page = session.get(Page, pa.page_id)
-    course_id = page.course_id if page else ""
-    ctx = load_activity(pa.activity_type, activity_id, course_id, Permission.play)
+    pa = get_activity_or_404(session, activity_id)
+    page = get_page_or_404(session, pa.page_id)
+    course = get_course_or_404(session, page.course_id)
+    ctx = load_activity(pa.activity_type, activity_id, course.id, Permission.play)
     try:
         full_path = ctx.get_asset_path(file_path)
     except AssetAccessError as e:
@@ -702,12 +701,9 @@ async def storage_file(
     file_path: str,
     session: Session = Depends(get_session),
 ) -> Response:
-    pa = session.get(PageActivity, activity_id)
-    if pa is None:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    page = session.get(Page, pa.page_id)
-    course_id = page.course_id if page else ""
-    ctx = load_activity(pa.activity_type, activity_id, course_id, Permission.play)
+    pa = get_activity_or_404(session, activity_id)
+    page = get_page_or_404(session, pa.page_id)
+    ctx = load_activity(pa.activity_type, activity_id, page.course_id, Permission.play)
     try:
         content = ctx.storage_read(storage_name, file_path)
     except CapabilityError as e:
@@ -735,12 +731,8 @@ async def activity_actions(
     frontend. Actions that are sent via this endpoint *must* match the format that is
     documented in the activity manifest.
     """
-    activity = session.get(PageActivity, activity_id)
-    if not activity:
-        raise HTTPException(status_code=404, detail="Invalid activity ID")
-    page = session.get(Page, activity.page_id)
-    if not page:
-        raise HTTPException(status_code=404, detail="Parent page could not be found")
+    activity = get_activity_or_404(session, activity_id)
+    page = get_page_or_404(session, activity.page_id)
 
     ctx = load_activity(activity.activity_type, activity_id, page.course_id, permission)
     try:
@@ -763,15 +755,12 @@ async def activity_ws(
     # Check arguments
     # https://websocket.org/reference/close-codes/
     policy_violation_code = 1008
-    pa = session.get(PageActivity, activity_id)
-    if not pa:
+    try:
+        pa = get_activity_or_404(session, activity_id)
+        page = get_page_or_404(session, pa.page_id)
+    except HTTPException:
         await websocket.close(code=policy_violation_code)
         return
-    page = session.get(Page, pa.page_id)
-    if not page:
-        await websocket.close(code=policy_violation_code)
-        return
-
     await websocket.accept()
 
     subscriber = event_bus.subscribe(
