@@ -92,7 +92,7 @@ my-activity/
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
 - `client` (required): Path to the client-side JavaScript module, relative to `manifest.json`.
 - `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
-- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: HTTP host requests, AI agents, and file storage. For more details, check the [`capabilities.py`](./capabilities.py) module. Capabilities are enforced at runtime. See [Storage](#storage) below for the storage capability.
+- `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: HTTP host requests and file storage. For more details, check the [`capabilities.py`](./capabilities.py) module. Capabilities are enforced at runtime. See [Storage](#storage) below for the storage capability.
 - `fields` (optional, defaults to `{}`): Declares activity fields with type and scope. Fields are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
 - `events` (optional, defaults to `{}`): Declares events the server sandbox can emit to the client. Validated at runtime.

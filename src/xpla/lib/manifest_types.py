@@ -19,22 +19,11 @@ class Http(BaseModel):
     ] = None
 
 
-class Ai(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    models: Annotated[
-        list[str] | None,
-        Field(description="Allowed model names. Empty array allows all models."),
-    ] = None
-
-
 class Capabilities(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     http: Annotated[Http | None, Field(description="HTTP request capability.")] = None
-    ai: Annotated[Ai | None, Field(description="AI model access capability.")] = None
     storage: Annotated[
         list[str] | None,
         Field(description="File storage names the activity can read and write."),

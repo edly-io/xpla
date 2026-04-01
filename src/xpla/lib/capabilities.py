@@ -39,23 +39,6 @@ class CapabilityChecker:
                     f"Allowed hosts: {sorted(allowed)}"
                 )
 
-    def check_ai_model(self, model: str) -> None:
-        """Check if AI model is allowed.
-
-        Raises:
-            CapabilityError: If AI not allowed or model restricted.
-        """
-        if self._caps is None or self._caps.ai is None:
-            raise CapabilityError("ai capability not declared in manifest")
-
-        # If allowed_models is empty or None, allow all
-        allowed = self._caps.ai.models
-        if allowed:
-            if model not in allowed:
-                raise CapabilityError(
-                    f"AI model '{model}' not allowed. " f"Allowed: {sorted(allowed)}"
-                )
-
     def check_storage(self, name: str) -> None:
         """Check if the named storage is declared.
 

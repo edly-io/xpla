@@ -38,18 +38,6 @@
             }
           }
         },
-        "ai": {
-          "description": "AI model access capability.",
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "models": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Allowed model names. Empty array allows all models."
-            }
-          }
-        },
         "storage": {
           "description": "File storage names the activity can read and write.",
           "type": "array",
