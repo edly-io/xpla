@@ -5,6 +5,7 @@ import urllib.error
 
 import pytest
 
+from xpla.lib.capabilities import CapabilityError
 from xpla.lib.runtime import ActivityRuntime, SandboxContext
 from xpla.lib.sandbox import SandboxRuntimeError
 from xpla.lib.events import EventValidationError
@@ -45,8 +46,8 @@ class TestActivityRuntimeInit:
         ctx = make_activity_runtime(tmp_path, manifest)
 
         assert ctx.capability_checker is not None
-        # Should not raise for http capability
-        ctx.capability_checker.check_http_request("https://example.com")
+        with pytest.raises(CapabilityError):
+            ctx.capability_checker.check_http_request("https://example.com")
 
     def test_init_without_sandbox(self, tmp_path: Path) -> None:
         """Should set sandbox to None when no wasm file exists."""
@@ -99,30 +100,46 @@ class TestActivityRuntimeProperties:
 class TestHostFunctions:
     """Tests for host_functions method."""
 
-    def test_returns_expected_functions(self, tmp_path: Path) -> None:
+    def test_unprivileged_manifests_returns_base_functions(
+        self, tmp_path: Path
+    ) -> None:
         """Should return dict of WIT-named host function callables."""
         manifest = create_manifest()
         ctx = make_activity_runtime(tmp_path, manifest)
 
         functions = ctx.host_functions()
 
-        assert list(functions.keys()) == [
-            "send-event",
+        assert sorted(functions.keys()) == [
             "get-field",
-            "set-field",
-            "log-get",
-            "log-get-range",
             "log-append",
             "log-delete",
             "log-delete-range",
-            "http-request",
+            "log-get",
+            "log-get-range",
+            "send-event",
+            "set-field",
             "submit-grade",
-            "storage-read",
-            "storage-exists",
-            "storage-url",
-            "storage-list",
-            "storage-write",
-            "storage-delete",
+        ]
+
+    def test_manifest_with_http_gets_http_base_function(self, tmp_path: Path) -> None:
+        manifest = create_manifest(
+            capabilities={"http": {"allowed_hosts": ["example.com"]}}
+        )
+        ctx = make_activity_runtime(tmp_path, manifest)
+
+        functions = ctx.host_functions()
+
+        assert sorted(functions.keys()) == [
+            "get-field",
+            "http-request",
+            "log-append",
+            "log-delete",
+            "log-delete-range",
+            "log-get",
+            "log-get-range",
+            "send-event",
+            "set-field",
+            "submit-grade",
         ]
 
 
@@ -139,7 +156,10 @@ class TestHttpRequest:
         data = json.loads(result)
         assert data["status"] == 0
         assert data["headers"] == []
-        assert "not declared" in data["body"]
+        assert (
+            "HTTP requests to example.com not allowed. Allowed hosts: []"
+            in data["body"]
+        )
 
     def test_error_when_host_not_allowed(self, tmp_path: Path) -> None:
         """Should return status=0 when host not in allowed list."""
@@ -190,7 +210,9 @@ class TestHttpRequest:
     @patch("xpla.lib.runtime.urllib.request.urlopen")
     def test_handles_http_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Should return structured response on HTTPError."""
-        manifest = create_manifest(capabilities={"http": {}})
+        manifest = create_manifest(
+            capabilities={"http": {"allowed_hosts": ["example.com"]}}
+        )
         ctx = make_activity_runtime(tmp_path, manifest)
 
         error = urllib.error.HTTPError(
@@ -208,7 +230,9 @@ class TestHttpRequest:
     @patch("xpla.lib.runtime.urllib.request.urlopen")
     def test_handles_url_error(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Should return status=0 on URLError."""
-        manifest = create_manifest(capabilities={"http": {}})
+        manifest = create_manifest(
+            capabilities={"http": {"allowed_hosts": ["example.com"]}}
+        )
         ctx = make_activity_runtime(tmp_path, manifest)
 
         mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
@@ -218,28 +242,6 @@ class TestHttpRequest:
         data = json.loads(result)
         assert data["status"] == 0
         assert "Connection refused" in data["body"]
-
-    @patch("xpla.lib.runtime.urllib.request.urlopen")
-    def test_permissive_mode_allows_all_hosts(
-        self, mock_urlopen: MagicMock, tmp_path: Path
-    ) -> None:
-        """Should allow all hosts when allowed_hosts is empty."""
-        manifest = create_manifest(capabilities={"http": {}})
-        ctx = make_activity_runtime(tmp_path, manifest)
-
-        mock_response = MagicMock()
-        mock_response.read.return_value = b"ok"
-        mock_response.status = 200
-        mock_response.getheaders.return_value = []
-        mock_response.__enter__ = MagicMock(return_value=mock_response)
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
-
-        result = ctx.http_request("https://any-host.com/api", "GET", "", "[]")
-
-        data = json.loads(result)
-        assert data["status"] == 200
-        assert data["body"] == "ok"
 
 
 class TestLoadField:

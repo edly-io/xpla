@@ -1,12 +1,12 @@
 REPO_ROOT := ../..
-WIT := $(REPO_ROOT)/src/xpla/lib/sandbox/xpla.wit
+
 
 build: server.component.wasm
 
-server.component.wasm: $(WIT) server.py
-	componentize-py --wit-path=$(WIT) --world=activity componentize --output server.component.wasm server
+server.component.wasm: xpla.wit server.py
+	componentize-py --wit-path=xpla.wit --world=activity componentize --output server.component.wasm server
 
 # Generate bindings to better integrate with the IDE.
-bindings: $(WIT)
+bindings: xpla.wit
 	rm -rf ./bindings
-	componentize-py --wit-path=$(WIT) --world=activity bindings ./bindings
+	componentize-py --wit-path=xpla.wit --world=activity bindings ./bindings

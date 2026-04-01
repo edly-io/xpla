@@ -25,7 +25,10 @@ class TestCapabilityChecker:
         """Should reject operations when capability not declared."""
         checker = CapabilityChecker(None)
 
-        with pytest.raises(CapabilityError, match="http capability not declared"):
+        with pytest.raises(
+            CapabilityError,
+            match=r"HTTP requests to example\.com not allowed. Allowed hosts: \[\]",
+        ):
             checker.check_http_request("https://example.com")
 
     def test_empty_capabilities_rejected(self) -> None:
@@ -33,5 +36,8 @@ class TestCapabilityChecker:
         caps = Capabilities()
         checker = CapabilityChecker(caps)
 
-        with pytest.raises(CapabilityError, match="http capability not declared"):
+        with pytest.raises(
+            CapabilityError,
+            match=r"HTTP requests to example\.com not allowed. Allowed hosts: \[\]",
+        ):
             checker.check_http_request("https://example.com")

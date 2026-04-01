@@ -203,12 +203,16 @@ class TestStorageCapabilityChecker:
 
     def test_no_capability_rejects(self) -> None:
         checker = CapabilityChecker(None)
-        with pytest.raises(CapabilityError, match="storage capability not declared"):
+        with pytest.raises(
+            CapabilityError, match=r"Storage 'media' not declared\. Declared: \[\]"
+        ):
             checker.check_storage("media")
 
     def test_empty_capabilities_rejects(self) -> None:
         checker = CapabilityChecker(Capabilities())
-        with pytest.raises(CapabilityError, match="storage capability not declared"):
+        with pytest.raises(
+            CapabilityError, match=r"Storage 'media' not declared\. Declared: \[\]"
+        ):
             checker.check_storage("media")
 
     def test_undeclared_name_rejects(self) -> None:
@@ -231,12 +235,17 @@ class TestStorageRuntimeIntegration:
 
     def test_storage_rejected_without_capability(self) -> None:
         rt = _make_runtime(capabilities={})
-        with pytest.raises(CapabilityError, match="storage capability not declared"):
+        with pytest.raises(
+            CapabilityError, match=r"Storage 'media' not declared\. Declared: \[\]"
+        ):
             rt.storage_read("media", "test.txt")
 
     def test_storage_read_rejected_for_undeclared_name(self) -> None:
         rt = _make_runtime(capabilities={"storage": ["media"]})
-        with pytest.raises(CapabilityError, match="not declared"):
+        with pytest.raises(
+            CapabilityError,
+            match=r"Storage 'private' not declared\. Declared: \['media'\]",
+        ):
             rt.storage_read("private", "secret.txt")
 
     def test_storage_write_and_read(self) -> None:

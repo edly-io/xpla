@@ -175,7 +175,7 @@ class ActivityRuntime:
 
         Keys are WIT-style kebab-case names matching xpla.wit.
         """
-        return {
+        host_functions: dict[str, Callable[..., Any]] = {
             "send-event": self.send_event,
             "get-field": self.get_field,
             "set-field": self.set_field,
@@ -184,15 +184,26 @@ class ActivityRuntime:
             "log-append": self.log_append,
             "log-delete": self.log_delete,
             "log-delete-range": self.log_delete_range,
-            "http-request": self.http_request,
             "submit-grade": self.submit_grade,
-            "storage-read": self.storage_read,
-            "storage-exists": self.storage_exists,
-            "storage-url": self.storage_url,
-            "storage-list": self.storage_list,
-            "storage-write": self.storage_write,
-            "storage-delete": self.storage_delete,
         }
+        if self.capability_checker.is_http_requested():
+            host_functions.update(
+                {
+                    "http-request": self.http_request,
+                }
+            )
+        if self.capability_checker.is_storage_requested():
+            host_functions.update(
+                {
+                    "storage-read": self.storage_read,
+                    "storage-exists": self.storage_exists,
+                    "storage-url": self.storage_url,
+                    "storage-list": self.storage_list,
+                    "storage-write": self.storage_write,
+                    "storage-delete": self.storage_delete,
+                }
+            )
+        return host_functions
 
     def get_asset_path(self, file_path: str) -> Path:
         full_path = self._activity_dir / file_path
