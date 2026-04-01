@@ -184,12 +184,9 @@ async def storage_file(
     """Serve a file from activity storage."""
     activity_context = load_activity(request.cookies, activity_type)
     try:
-        activity_context.capability_checker.check_storage(storage_name)
+        content = activity_context.storage_read(storage_name, file_path)
     except CapabilityError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    storage_path = f"{activity_type}/{storage_name}/{file_path}"
-    try:
-        content = file_storage.read(storage_path)
     except FileStorageError as e:
         raise HTTPException(status_code=404, detail="File not found") from e
     media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"

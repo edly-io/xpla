@@ -709,12 +709,9 @@ async def storage_file(
     course_id = page.course_id if page else ""
     ctx = load_activity(pa.activity_type, activity_id, course_id, Permission.play)
     try:
-        ctx.capability_checker.check_storage(storage_name)
+        content = ctx.storage_read(storage_name, file_path)
     except CapabilityError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    storage_path = f"{activity_id}/{storage_name}/{file_path}"
-    try:
-        content = file_storage.read(storage_path)
     except FileStorageError as e:
         raise HTTPException(status_code=404, detail="File not found") from e
     media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
