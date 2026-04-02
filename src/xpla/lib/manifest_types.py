@@ -19,17 +19,6 @@ class Http(BaseModel):
     ] = None
 
 
-class Capabilities(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    http: Annotated[Http | None, Field(description="HTTP request capability.")] = None
-    storage: Annotated[
-        list[str] | None,
-        Field(description="File storage names the activity can read and write."),
-    ] = None
-
-
 class Asset(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
@@ -44,6 +33,18 @@ class Scope(Enum):
     user_activity = "user,activity"
     user_course = "user,course"
     user_global = "user,global"
+
+
+class StorageDefinition(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    scope: Annotated[
+        Scope,
+        Field(
+            description="Scope of the storage bucket. Determines the context dimensions used to partition files."
+        ),
+    ]
 
 
 class FieldBase(BaseModel):
@@ -72,6 +73,17 @@ class StringType(BaseModel):
 
 class BooleanType(BaseModel):
     type: Literal["boolean"]
+
+
+class Capabilities(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    http: Annotated[Http | None, Field(description="HTTP request capability.")] = None
+    storage: Annotated[
+        dict[str, StorageDefinition] | None,
+        Field(description="Named file storage buckets with scope declarations."),
+    ] = None
 
 
 class IntegerField(IntegerType, FieldBase):

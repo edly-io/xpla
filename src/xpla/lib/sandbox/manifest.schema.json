@@ -39,9 +39,11 @@
           }
         },
         "storage": {
-          "description": "File storage names the activity can read and write.",
-          "type": "array",
-          "items": { "type": "string" }
+          "description": "Named file storage buckets with scope declarations.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/storageDefinition"
+          }
         }
       }
     },
@@ -72,6 +74,18 @@
     }
   },
   "$defs": {
+    "storageDefinition": {
+      "type": "object",
+      "required": ["scope"],
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["activity", "course", "global", "user,activity", "user,course", "user,global"],
+          "description": "Scope of the storage bucket. Determines the context dimensions used to partition files."
+        }
+      }
+    },
     "fieldBase": {
       "type": "object",
       "required": ["scope"],

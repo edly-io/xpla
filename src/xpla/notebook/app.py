@@ -14,6 +14,7 @@ from fastapi import (
     FastAPI,
     Form,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     WebSocket,
@@ -32,14 +33,17 @@ from sqlmodel import Session, col, desc, select
 
 from xpla.lib.actions import ActionValidationError
 from xpla.lib.capabilities import CapabilityError
-from xpla.lib.file_storage import FileStorageError, LocalFileStorage
+from xpla.lib.file_storage import FileStorageError
 from xpla.lib.manifest_types import XplaActivityManifest
-from xpla.lib.runtime import ActivityRuntime, AssetAccessError
+from xpla.lib.runtime import ActivityRuntime, AssetAccessError, SandboxContext
 from xpla.lib.event_bus import EventBus
 from xpla.lib.permission import Permission
 from xpla.notebook import constants
 from xpla.notebook.db import run_migrations, get_session
-from xpla.notebook.field_store import SQLiteFieldStore
+from xpla.notebook.runtime import (
+    NotebookActivityRuntime,
+    delete_activity_by
+)
 from xpla.notebook.models import Course, Page, PageActivity
 from xpla.notebook import llms
 
@@ -68,10 +72,6 @@ if constants.FRONTEND_DIR.is_dir():
 event_bus = EventBus()
 
 USER_ID = "student"
-
-field_store = SQLiteFieldStore()
-file_storage = LocalFileStorage(constants.DIST_DIR / "xpln" / "storage")
-
 
 # ---- request bodies ----
 
@@ -142,14 +142,12 @@ def load_activity(
     permission: Permission,
 ) -> ActivityRuntime:
     activity_dir = find_activity_dir(activity_type)
-    return ActivityRuntime(
+    return NotebookActivityRuntime(
         activity_dir,
-        field_store,
-        file_storage,
-        activity_id=activity_id,
-        user_id=USER_ID,
-        course_id=course_id,
-        permission=permission,
+        activity_id,
+        course_id,
+        USER_ID,
+        permission,
     )
 
 
@@ -261,7 +259,7 @@ async def delete_course(
             select(PageActivity).where(PageActivity.page_id == page.id)
         ).all()
         for act in activities:
-            file_storage.delete_all(act.id)
+            delete_activity_by(activity_id=act.id, course_id=course_id)
             session.delete(act)
         session.delete(page)
     session.delete(course)
@@ -358,7 +356,7 @@ async def delete_page(
         select(PageActivity).where(PageActivity.page_id == page_id)
     ).all()
     for act in activities:
-        file_storage.delete_all(act.id)
+        delete_activity_by(activity_id=act.id, course_id=page.course_id)
         session.delete(act)
     session.delete(page)
     session.commit()
@@ -458,7 +456,8 @@ async def delete_activity(
 ) -> None:
     """Remove an activity instance from its page."""
     pa = get_activity_or_404(session, activity_id)
-    file_storage.delete_all(pa.id)
+    page = get_page_or_404(session, pa.page_id)
+    delete_activity_by(activity_id=pa.id, course_id=page.course_id)
     session.delete(pa)
     session.commit()
 
@@ -659,9 +658,8 @@ async def delete_activity_type(
     activities = session.exec(
         select(PageActivity).where(PageActivity.activity_type == activity_type_str)
     ).all()
+    delete_activity_by(activity_name=activity_type_str)
     for pa in activities:
-        field_store.delete_by_activity(pa.id)
-        file_storage.delete_all(pa.id)
         session.delete(pa)
     session.commit()
 
@@ -700,12 +698,22 @@ async def storage_file(
     storage_name: str,
     file_path: str,
     session: Session = Depends(get_session),
+    activity_id_override: str | None = Query(None, alias="activity_id"),
+    course_id_override: str | None = Query(None, alias="course_id"),
+    user_id_override: str | None = Query(None, alias="user_id"),
 ) -> Response:
     pa = get_activity_or_404(session, activity_id)
     page = get_page_or_404(session, pa.page_id)
     ctx = load_activity(pa.activity_type, activity_id, page.course_id, Permission.play)
+    context: SandboxContext | None = None
+    if activity_id_override or course_id_override or user_id_override:
+        context = {
+            "activity-id": activity_id_override,
+            "course-id": course_id_override,
+            "user-id": user_id_override,
+        }
     try:
-        content = ctx.storage_read(storage_name, file_path)
+        content = ctx.storage_read(storage_name, file_path, context)
     except CapabilityError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except FileStorageError as e:

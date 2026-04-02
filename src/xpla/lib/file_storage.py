@@ -39,11 +39,10 @@ class FileStorage(ABC):
 
     @abstractmethod
     def delete(self, path: str) -> bool:
-        """Delete a single file.  Returns ``True`` if it existed."""
+        """Delete a file or directory.  Directories are removed recursively.
 
-    @abstractmethod
-    def delete_all(self, path: str) -> None:
-        """Recursively delete everything under *path*."""
+        Returns ``True`` if something existed at *path*.
+        """
 
 
 class LocalFileStorage(FileStorage):
@@ -100,12 +99,10 @@ class LocalFileStorage(FileStorage):
         if full.is_file():
             full.unlink()
             return True
-        return False
-
-    def delete_all(self, path: str) -> None:
-        full = self._resolve(path)
         if full.is_dir():
             shutil.rmtree(full)
+            return True
+        return False
 
 
 class MemoryFileStorage(FileStorage):
@@ -156,11 +153,8 @@ class MemoryFileStorage(FileStorage):
         if path in self._files:
             del self._files[path]
             return True
-        return False
-
-    def delete_all(self, path: str) -> None:
-        path = path.strip("/")
         prefix = path + "/"
-        to_delete = [k for k in self._files if k == path or k.startswith(prefix)]
+        to_delete = [k for k in self._files if k.startswith(prefix)]
         for k in to_delete:
             del self._files[k]
+        return len(to_delete) > 0

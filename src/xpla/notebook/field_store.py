@@ -328,37 +328,27 @@ class SQLiteFieldStore(FieldStore):
                 session.commit()
             return count
 
-    # Bulk delete methods (not on the base class)
 
-    def delete_by_course(self, course_id: str) -> None:
-        """Delete all field data for a given course."""
-        with Session(engine) as session:
-            for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
-                entries = session.exec(
-                    select(model).where(col(model.course_id) == course_id)
-                ).all()
-                for entry in entries:
-                    session.delete(entry)
-            session.commit()
-
-    def delete_by_activity(self, activity_id: str) -> None:
-        """Delete all field data for a given activity instance."""
-        with Session(engine) as session:
-            for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
-                entries = session.exec(
-                    select(model).where(col(model.activity_id) == activity_id)
-                ).all()
-                for entry in entries:
-                    session.delete(entry)
-            session.commit()
-
-    def delete_by_activity_name(self, activity_name: str) -> None:
-        """Delete all field data for a given activity name."""
-        with Session(engine) as session:
-            for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
-                entries = session.exec(
-                    select(model).where(col(model.activity_name) == activity_name)
-                ).all()
-                for entry in entries:
-                    session.delete(entry)
-            session.commit()
+def delete_fields_by(
+    activity_id: str | None = None,
+    activity_name: str | None = None,
+    course_id: str | None = None,
+) -> None:
+    """Delete all field data for a given course/activity type/id."""
+    with Session(engine) as session:
+        for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
+            select_filter = select(model)
+            if course_id:
+                select_filter = select_filter.where(col(model.course_id) == course_id)
+            if activity_name:
+                select_filter = select_filter.where(
+                    col(model.activity_name) == activity_name
+                )
+            if activity_id:
+                select_filter = select_filter.where(
+                    col(model.activity_id) == activity_id
+                )
+            entries = session.exec(select_filter).all()
+            for entry in entries:
+                session.delete(entry)
+        session.commit()

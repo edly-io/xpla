@@ -3,7 +3,9 @@
   "client": "client.js",
   "server": "server.component.wasm",
   "capabilities": {
-    "storage": ["content"]
+    "storage": {
+      "content": { "scope": "activity" }
+    }
   },
   "fields": {
     "entry_point": {

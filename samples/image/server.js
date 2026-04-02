@@ -42,9 +42,9 @@ export function onAction(name, data, context, permission) {
     const ext = MIME_TO_EXT[mime] || "bin";
     const filename = "img." + ext;
 
-    storageWrite("media", filename, base64ToBytes(base64));
+    storageWrite("media", filename, base64ToBytes(base64), null);
     setField("image_filename", JSON.stringify(filename));
-    sendEvent("image.changed", JSON.stringify(storageUrl("media", filename)), null, "view");
+    sendEvent("image.changed", JSON.stringify(storageUrl("media", filename, null)), null, "view");
   }
   return "";
 }
@@ -52,7 +52,7 @@ export function onAction(name, data, context, permission) {
 export function getState() {
   const filename = JSON.parse(getField("image_filename"));
   const state = {
-    image_url: filename ? storageUrl("media", filename) : "",
+    image_url: filename ? storageUrl("media", filename, null) : "",
     image_filename: filename,
   };
   return JSON.stringify(state);

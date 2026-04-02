@@ -21,10 +21,10 @@ interface host {
     get-field: func(name: string, context: option<context>) -> string;
     set-field: func(name: string, value: string, context: option<context>) -> bool;
 
-    storage-url: func(name: string, path: string) -> string;
-    storage-list: func(name: string, path: string) -> tuple<list<string>, list<string>>;
-    storage-write: func(name: string, path: string, content: list<u8>) -> bool;
-    storage-delete: func(name: string, path: string) -> bool;
+    storage-url: func(name: string, path: string, context: option<context>) -> string;
+    storage-list: func(name: string, path: string, context: option<context>) -> tuple<list<string>, list<string>>;
+    storage-write: func(name: string, path: string, content: list<u8>, context: option<context>) -> bool;
+    storage-delete: func(name: string, path: string, context: option<context>) -> bool;
 }
 
 world activity {

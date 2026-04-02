@@ -7,14 +7,21 @@ import logging
 import mimetypes
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from xpla.lib.runtime import ActivityRuntime, AssetAccessError
-from xpla.lib.actions import ActionValidationError
 from xpla.lib.capabilities import CapabilityError
+from xpla.lib.runtime import ActivityRuntime, AssetAccessError, SandboxContext
+from xpla.lib.actions import ActionValidationError
 from xpla.lib.event_bus import EventBus
 from xpla.lib.field_store import FieldStore
 from xpla.lib.file_storage import FileStorageError, LocalFileStorage
@@ -179,12 +186,25 @@ async def activity_asset(
 
 @app.get("/activity/{activity_type}/storage/{storage_name}/{file_path:path}")
 async def storage_file(
-    request: Request, activity_type: str, storage_name: str, file_path: str
+    request: Request,
+    activity_type: str,
+    storage_name: str,
+    file_path: str,
+    activity_id_override: str | None = Query(None, alias="activity_id"),
+    course_id_override: str | None = Query(None, alias="course_id"),
+    user_id_override: str | None = Query(None, alias="user_id"),
 ) -> Response:
     """Serve a file from activity storage."""
     activity_context = load_activity(request.cookies, activity_type)
+    context: SandboxContext | None = None
+    if activity_id_override or course_id_override or user_id_override:
+        context = {
+            "activity-id": activity_id_override,
+            "course-id": course_id_override,
+            "user-id": user_id_override,
+        }
     try:
-        content = activity_context.storage_read(storage_name, file_path)
+        content = activity_context.storage_read(storage_name, file_path, context)
     except CapabilityError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except FileStorageError as e:

@@ -2,7 +2,7 @@
 
 from urllib.parse import urlparse
 
-from xpla.lib.manifest_types import Capabilities
+from xpla.lib.manifest_types import Capabilities, Scope
 
 __all__ = [
     "CapabilityChecker",
@@ -58,8 +58,18 @@ class CapabilityChecker:
         Raises:
             CapabilityError: If storage not declared or name not in the declared list.
         """
-        storage = self._caps.storage or []
+        storage = self._caps.storage or {}
         if name not in storage:
             raise CapabilityError(
-                f"Storage '{name}' not declared. " f"Declared: {sorted(storage)}"
+                f"Storage '{name}' not declared. " f"Declared: {sorted(storage.keys())}"
             )
+
+    def get_storage_scope(self, name: str) -> Scope:
+        """Get the scope for a declared storage bucket.
+
+        Raises:
+            CapabilityError: If storage not declared or name not in the declared list.
+        """
+        self.check_storage(name)
+        assert self._caps.storage is not None
+        return self._caps.storage[name].scope

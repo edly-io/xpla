@@ -173,23 +173,26 @@ Payloads are validated at runtime: sending an undeclared action or emitting an u
 
 #### Storage
 
-Activities that need to read or write files at runtime (e.g. user uploads) must declare a `storage` capability. The value is a list of **storage names** — each name is a namespace the activity can read from and write to:
+Activities that need to read or write files at runtime (e.g. user uploads) must declare a `storage` capability. Each storage entry has a **name** and a **scope** (same scope values as fields):
 
 ```json
 {
   "capabilities": {
-    "storage": ["media"]
+    "storage": {
+      "media": { "scope": "activity" },
+      "user_uploads": { "scope": "user,activity" }
+    }
   }
 }
 ```
 
 Storage is for **runtime-generated files** only. Bundled static files (CSS, JS, images shipped with the activity) should be declared in the `assets` field instead and served via `getAssetUrl()` on the client.
 
-Each storage host function takes a storage `name` and a relative `path` as separate arguments. The runtime validates that the name is declared in the manifest. Stored files are served at `/activity/{activity_id}/storage/{name}/{path}`.
+Each storage host function takes a storage `name`, a relative `path`, and an optional `context` as arguments. The runtime validates that the name is declared in the manifest. The scope determines how files are partitioned across context dimensions (activity, course, user), just like fields. When `context` is `null`, the current context is used. Stored files are served at `/activity/{activity_id}/storage/{name}/{path}`.
 
 The platform provides a `FileStorage` backend to the `ActivityRuntime`. The reference implementation uses `LocalFileStorage`, which stores files on the local filesystem. For cloud deployments, a custom `FileStorage` subclass (e.g. backed by S3) can be used instead. `MemoryFileStorage` is provided for unit testing.
 
-When an activity instance is deleted, the platform should call `FileStorage.delete_all(activity_id)` to clean up stored files.
+When an activity type is deleted, the platform should call `FileStorage.delete(activity_name)` to clean up all stored files for that activity type.
 
 ### Client module (declared via `client` field)
 
@@ -271,13 +274,13 @@ const all = JSON.parse(logGetRange("messages", 0, 100)); // [{ id: 0, value: {..
 logDelete("messages", id);                               // true
 logDeleteRange("messages", 0, 50);                       // returns count deleted
 
-// Storage operations (name + path, where name is declared in manifest capabilities)
-storageWrite("media", "photo.png", imageBytes);                 // write a file (Uint8Array)
-const data = storageRead("media", "photo.png");                 // read file contents (Uint8Array)
-const exists = storageExists("media", "photo.png");             // true
-const url = storageUrl("media", "photo.png");                   // "/activity/{id}/storage/media/photo.png"
-const [ directories, files ] = storageList("media", "");        // list stored files
-storageDelete("media", "photo.png");                            // delete a file
+// Storage operations (name + path + optional context, where name is declared in manifest capabilities)
+storageWrite("media", "photo.png", imageBytes, null);           // write a file (Uint8Array)
+const data = storageRead("media", "photo.png", null);           // read file contents (Uint8Array)
+const exists = storageExists("media", "photo.png", null);       // true
+const url = storageUrl("media", "photo.png", null);             // "/activity/{id}/storage/media/photo.png"
+const [ directories, files ] = storageList("media", "", null);  // list stored files
+storageDelete("media", "photo.png", null);                      // delete a file
 ```
 
 #### Exported functions
@@ -375,14 +378,14 @@ Optional host functions for which access must be granted via the `"capabilities"
 - `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs). Requires the `http` capability.
 - `submitGrade(score: float)`: to be defined.
 
-Storage host functions (require the `storage` capability). Each function takes the storage `name` as its first argument:
+Storage host functions (require the `storage` capability). Each function takes the storage `name`, a relative `path`, and an optional `context` (pass `null` to use the current context):
 
-- `storageRead(name: str, path: str) -> bytes`: Read a file from the named storage.
-- `storageWrite(name: str, path: str, content: bytes) -> bool`: Write a file. Creates parent directories as needed.
-- `storageExists(name: str, path: str) -> bool`: Check whether a file exists.
-- `storageUrl(name: str, path: str) -> str`: Return the HTTP URL for a storage file (e.g. `"/activity/{activity_id}/storage/media/img.png"`).
-- `storageList(name: str, path: str) -> {files: [str], directories: [str]}`: List files and directories.
-- `storageDelete(name: str, path: str) -> bool`: Delete a file. Returns `true` if the file existed.
+- `storageRead(name: str, path: str, context) -> bytes`: Read a file from the named storage.
+- `storageWrite(name: str, path: str, content: bytes, context) -> bool`: Write a file. Creates parent directories as needed.
+- `storageExists(name: str, path: str, context) -> bool`: Check whether a file exists.
+- `storageUrl(name: str, path: str, context) -> str`: Return the HTTP URL for a storage file (e.g. `"/activity/{activity_id}/storage/media/img.png"`). Context overrides are encoded as query parameters.
+- `storageList(name: str, path: str, context) -> {files: [str], directories: [str]}`: List files and directories.
+- `storageDelete(name: str, path: str, context) -> bool`: Delete a file. Returns `true` if the file existed.
 
 #### Log fields
 

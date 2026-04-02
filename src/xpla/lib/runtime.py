@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 from time import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from xpla.lib.actions import ActionChecker
@@ -119,10 +120,7 @@ class ActivityRuntime:
             wasm_path = self._activity_dir / server_path
             self.sandbox = get_sandbox_executor(wasm_path, self.host_functions())
 
-        # Ensure that all storage paths exist
-        if self.manifest.capabilities and self.manifest.capabilities.storage:
-            for storage_name in self.manifest.capabilities.storage:
-                self._file_storage.mkdir(self._storage_path(storage_name, ""))
+        # Storage directories are created on demand by storage_write.
 
     @property
     def user_id(self) -> str:
@@ -613,57 +611,94 @@ class ActivityRuntime:
 
     # ── Storage host functions ──────────────────────────────────────────
 
-    def _storage_path(self, name: str, path: str) -> str:
-        """Build the full storage path and validate the storage name."""
-        self.capability_checker.check_storage(name)
-        return (
-            f"{self._activity_id}/{name}/{path}"
-            if path
-            else f"{self._activity_id}/{name}"
-        )
+    def _storage_path(
+        self, name: str, path: str, context: SandboxContext | None = None
+    ) -> str:
+        """Build the full scoped storage path and validate the storage name."""
+        scope = self.capability_checker.get_storage_scope(name)
+        activity_id, course_id, user_id = self._scope_key_segments(scope, context)
+        segments: list[str] = [self.manifest.name, name]
+        segments.extend(s for s in (course_id, activity_id, user_id) if s)
+        if path:
+            segments.append(path)
+        return "/".join(segments)
 
-    def storage_read(self, name: str, path: str) -> bytes:
+    def storage_read(
+        self, name: str, path: str, context: SandboxContext | None = None
+    ) -> bytes:
         """Read a file from storage. Returns raw bytes."""
         try:
-            return self._file_storage.read(self._storage_path(name, path))
+            return self._file_storage.read(self._storage_path(name, path, context))
         except FileStorageError as e:
             raise AssetAccessError(str(e)) from e
 
-    def storage_exists(self, name: str, path: str) -> bool:
+    def storage_exists(
+        self, name: str, path: str, context: SandboxContext | None = None
+    ) -> bool:
         """Check whether a path exists in storage."""
         try:
-            return self._file_storage.exists(self._storage_path(name, path))
+            return self._file_storage.exists(self._storage_path(name, path, context))
         except FileStorageError as e:
             raise AssetAccessError(str(e)) from e
 
-    def storage_url(self, name: str, path: str) -> str:
-        """Return the HTTP URL path for a storage file."""
+    def storage_url(
+        self, name: str, path: str, context: SandboxContext | None = None
+    ) -> str:
+        """Return the HTTP URL path for a storage file.
+
+        Context overrides are encoded as query parameters so the serving
+        endpoint can reconstruct the same scoped path via the runtime.
+        """
         self.capability_checker.check_storage(name)
         clean = path.strip("/")
-        return f"/activity/{self._activity_id}/storage/{name}/{clean}"
+        base = f"/activity/{self._activity_id}/storage/{name}/{clean}"
+        if context is None:
+            return base
+        params: dict[str, str] = {}
+        if context.get("activity-id") is not None:
+            params["activity_id"] = context["activity-id"]  # type: ignore[assignment]
+        if context.get("course-id") is not None:
+            params["course_id"] = context["course-id"]  # type: ignore[assignment]
+        if context.get("user-id") is not None:
+            params["user_id"] = context["user-id"]  # type: ignore[assignment]
+        if params:
+            return f"{base}?{urllib.parse.urlencode(params)}"
+        return base
 
-    def storage_list(self, name: str, path: str) -> tuple[list[str], list[str]]:
+    def storage_list(
+        self, name: str, path: str, context: SandboxContext | None = None
+    ) -> tuple[list[str], list[str]]:
         """List files and directories at a storage path.
 
         Returns a tuple with ``directories`` and ``files``.
         """
         try:
-            files, directories = self._file_storage.list(self._storage_path(name, path))
+            files, directories = self._file_storage.list(
+                self._storage_path(name, path, context)
+            )
         except FileStorageError as e:
             raise AssetAccessError(str(e)) from e
         return (directories, files)
 
-    def storage_write(self, name: str, path: str, content: bytes) -> bool:
+    def storage_write(
+        self,
+        name: str,
+        path: str,
+        content: bytes,
+        context: SandboxContext | None = None,
+    ) -> bool:
         """Write content to a storage file. Creates parent directories."""
         try:
-            self._file_storage.write(self._storage_path(name, path), content)
+            self._file_storage.write(self._storage_path(name, path, context), content)
         except FileStorageError as e:
             raise AssetAccessError(str(e)) from e
         return True
 
-    def storage_delete(self, name: str, path: str) -> bool:
+    def storage_delete(
+        self, name: str, path: str, context: SandboxContext | None = None
+    ) -> bool:
         """Delete a storage file. Returns True if the file existed."""
         try:
-            return self._file_storage.delete(self._storage_path(name, path))
+            return self._file_storage.delete(self._storage_path(name, path, context))
         except FileStorageError as e:
             raise AssetAccessError(str(e)) from e

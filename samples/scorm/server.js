@@ -25,10 +25,10 @@ function base64ToBytes(base64) {
 
 /** Delete all files currently in the "content" storage namespace. */
 function clearStorage(prefix) {
-  const [dirs, files] = storageList("content", prefix);
+  const [dirs, files] = storageList("content", prefix, null);
   for (const file of files) {
     const path = prefix ? prefix + "/" + file : file;
-    storageDelete("content", path);
+    storageDelete("content", path, null);
   }
   for (const dir of dirs) {
     const path = prefix ? prefix + "/" + dir : dir;
@@ -94,7 +94,7 @@ export function onAction(name, data, context, permission) {
     for (const [path, content] of Object.entries(files)) {
       // Skip directories (they have zero-length content and trailing /)
       if (path.endsWith("/") || content.length === 0) continue;
-      storageWrite("content", path, content);
+      storageWrite("content", path, content, null);
       storedPaths.push(path);
     }
 
@@ -102,7 +102,7 @@ export function onAction(name, data, context, permission) {
     const entryPoint = findEntryPoint(storedPaths);
     setField("entry_point", JSON.stringify(entryPoint));
 
-    const url = entryPoint ? storageUrl("content", entryPoint) : "";
+    const url = entryPoint ? storageUrl("content", entryPoint, null) : "";
     sendEvent("scorm.ready", JSON.stringify(url), null, "view");
   }
   return "";
@@ -111,6 +111,6 @@ export function onAction(name, data, context, permission) {
 export function getState() {
   const entryPoint = JSON.parse(getField("entry_point"));
   return JSON.stringify({
-    entry_url: entryPoint ? storageUrl("content", entryPoint) : "",
+    entry_url: entryPoint ? storageUrl("content", entryPoint, null) : "",
   });
 }

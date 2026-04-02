@@ -3,7 +3,9 @@
   "client": "client.js",
   "server": "server.component.wasm",
   "capabilities": {
-    "storage": ["media"]
+    "storage": {
+      "media": { "scope": "activity" }
+    }
   },
   "fields": {
     "image_filename": {
