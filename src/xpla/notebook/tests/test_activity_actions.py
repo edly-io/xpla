@@ -72,7 +72,9 @@ def test_invalid_permission(client: TestClient, activity: PageActivity) -> None:
 def test_action_validation_error(client: TestClient, activity: PageActivity) -> None:
     mock_ctx = MagicMock()
     mock_ctx.on_action.side_effect = ActionValidationError("bad action")
-    with patch("xpla.notebook.app.load_activity", return_value=mock_ctx):
+    with patch(
+        "xpla.notebook.views.activity_runtime.load_any_activity", return_value=mock_ctx
+    ):
         response = post_action(client, activity.id)
     assert response.status_code == 400
     assert "bad action" in response.json()["detail"]
@@ -80,7 +82,9 @@ def test_action_validation_error(client: TestClient, activity: PageActivity) -> 
 
 def test_action_success(client: TestClient, activity: PageActivity) -> None:
     mock_ctx = MagicMock()
-    with patch("xpla.notebook.app.load_activity", return_value=mock_ctx):
+    with patch(
+        "xpla.notebook.views.activity_runtime.load_any_activity", return_value=mock_ctx
+    ):
         response = post_action(client, activity.id)
     assert response.status_code == 200
     mock_ctx.on_action.assert_called_once_with(

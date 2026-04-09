@@ -6,14 +6,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+type ExtraMenuItem = { label: string; onClick: () => void };
+
 type ItemActionsProps = {
   title: string;
   onRename: (title: string) => Promise<void>;
   onDelete: () => Promise<void>;
   renderTitle: (title: string, startRename: () => void) => React.ReactNode;
+  extraMenuItems?: ExtraMenuItem[];
 };
 
-export function ItemActions({ title, onRename, onDelete, renderTitle }: ItemActionsProps) {
+export function ItemActions({ title, onRename, onDelete, renderTitle, extraMenuItems }: ItemActionsProps) {
   const [renaming, setRenaming] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -41,6 +44,9 @@ export function ItemActions({ title, onRename, onDelete, renderTitle }: ItemActi
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>⋯</DropdownMenuTrigger>
         <DropdownMenuContent>
+          {extraMenuItems?.map((item) => (
+            <DropdownMenuItem key={item.label} onClick={item.onClick}>{item.label}</DropdownMenuItem>
+          ))}
           <DropdownMenuItem onClick={() => { setEditValue(title); setRenaming(true); }}>Rename</DropdownMenuItem>
           <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">Delete</DropdownMenuItem>
         </DropdownMenuContent>

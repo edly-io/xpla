@@ -50,3 +50,21 @@ export const uploadActivityType = (name: string, file: File) => {
   fd.append("file", file);
   return request<void>("/api/activity-types", { method: "POST", body: fd });
 };
+
+// Course dashboard
+export type CourseDashboard = { id: string; title: string; activities: Activity[]; activity_types: string[] };
+export const getCourseDashboard = (courseId: string) => request<CourseDashboard>(`/api/courses/${courseId}/dashboard`);
+export const createCourseActivity = (courseId: string, activity_type: string) => request<Activity>(`/api/courses/${courseId}/dashboard/activities`, json({ activity_type }));
+export const getCourseActivity = (id: string, permission: string) => request<Activity>(`/api/course-activities/${id}/${permission}`);
+export const deleteCourseActivity = (id: string) => request<void>(`/api/course-activities/${id}`, { method: "DELETE" });
+export const moveCourseActivity = (id: string, direction: string, course_id: string) => request<{ activities: Activity[] }>(`/api/course-activities/${id}/move`, json({ direction, course_id }));
+
+// Course activity type management
+export const getCourseActivityTypes = () => request<string[]>("/api/course-activity-types");
+export const deleteCourseActivityType = (name: string) => request<void>(`/api/course-activity-types/${name}`, { method: "DELETE" });
+export const uploadCourseActivityType = (name: string, file: File) => {
+  const fd = new FormData();
+  fd.append("name", name);
+  fd.append("file", file);
+  return request<void>("/api/course-activity-types", { method: "POST", body: fd });
+};

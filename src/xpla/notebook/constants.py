@@ -8,6 +8,7 @@ if not DIST_DIR.exists():
     DIST_DIR.mkdir()
 
 ACTIVITIES_DIR = DIST_DIR / "xpln" / "activities"
+COURSE_ACTIVITIES_DIR = DIST_DIR / "xpln" / "course_activities"
 
 FRONTEND_DIR = CURRENT_DIR / "frontend" / "out"
 

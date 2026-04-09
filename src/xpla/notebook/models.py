@@ -21,3 +21,10 @@ class PageActivity(SQLModel, table=True):
     page_id: str = Field(foreign_key="page.id")
     activity_type: str
     position: int = 0
+
+
+class CourseActivity(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True)
+    course_id: str = Field(foreign_key="course.id")
+    activity_type: str
+    position: int = 0

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { HomePage } from "@/components/views/home-page";
 import { ActivitiesPage } from "@/components/views/activities-page";
 import { CourseDetailPage } from "@/components/views/course-detail-page";
+import { CourseDashboardPage } from "@/components/views/course-dashboard-page";
 import { PageDetailPage } from "@/components/views/page-detail-page";
 
 export function ClientRouter() {
@@ -16,6 +17,10 @@ export function ClientRouter() {
 
   if (segments[0] === "activities" && segments.length === 1) {
     return <ActivitiesPage />;
+  }
+
+  if (segments[0] === "courses" && segments.length === 3 && segments[2] === "dashboard") {
+    return <CourseDashboardPage courseId={segments[1]} />;
   }
 
   if (segments[0] === "courses" && segments.length === 2) {

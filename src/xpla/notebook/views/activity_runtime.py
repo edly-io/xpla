@@ -1,0 +1,190 @@
+import logging
+import mimetypes
+from typing import NamedTuple
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel
+from sqlmodel import Session
+
+from xpla.lib.actions import ActionValidationError
+from xpla.lib.capabilities import CapabilityError
+from xpla.lib.event_bus import EventBus
+from xpla.lib.file_storage import FileStorageError
+from xpla.lib.permission import Permission
+from xpla.lib.runtime import ActivityRuntime, AssetAccessError, SandboxContext
+from xpla.notebook.db import get_session
+from xpla.notebook.models import CourseActivity, Page, PageActivity
+from xpla.notebook.views.activities import load_activity
+from xpla.notebook.views.course_activities import load_course_activity
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+USER_ID = "student"
+
+event_bus = EventBus()
+
+
+class ActivityAction(BaseModel):
+    name: str
+    value: object
+
+
+class ActivityInfo(NamedTuple):
+    id: str
+    activity_type: str
+    course_id: str
+    is_course_activity: bool
+
+
+def resolve_activity(session: Session, activity_id: str) -> ActivityInfo:
+    """Look up an activity in both PageActivity and CourseActivity tables."""
+    pa = session.get(PageActivity, activity_id)
+    if pa:
+        page = session.get(Page, pa.page_id)
+        if not page:
+            raise HTTPException(status_code=404, detail="Page not found")
+        return ActivityInfo(pa.id, pa.activity_type, page.course_id, False)
+    ca = session.get(CourseActivity, activity_id)
+    if ca:
+        return ActivityInfo(ca.id, ca.activity_type, ca.course_id, True)
+    raise HTTPException(status_code=404, detail="Activity not found")
+
+
+def load_any_activity(info: ActivityInfo, permission: Permission) -> ActivityRuntime:
+    """Load the runtime for either a page or course activity."""
+    if info.is_course_activity:
+        return load_course_activity(
+            info.activity_type, info.id, info.course_id, permission
+        )
+    return load_activity(info.activity_type, info.id, info.course_id, permission)
+
+
+@router.get(
+    "/a/{activity_id}/{file_path:path}",
+    summary="Serve an activity static asset",
+)
+async def activity_asset(
+    activity_id: str, file_path: str, session: Session = Depends(get_session)
+) -> FileResponse:
+    info = resolve_activity(session, activity_id)
+    ctx = load_any_activity(info, Permission.play)
+    try:
+        full_path = ctx.get_asset_path(file_path)
+    except AssetAccessError as e:
+        raise HTTPException(status_code=404, detail="Access denied") from e
+    return FileResponse(full_path)
+
+
+@router.get(
+    "/activity/{activity_id}/storage/{storage_name}/{file_path:path}",
+    summary="Serve a file from activity storage",
+)
+async def storage_file(
+    activity_id: str,
+    storage_name: str,
+    file_path: str,
+    session: Session = Depends(get_session),
+    activity_id_override: str | None = Query(None, alias="activity_id"),
+    course_id_override: str | None = Query(None, alias="course_id"),
+    user_id_override: str | None = Query(None, alias="user_id"),
+) -> Response:
+    info = resolve_activity(session, activity_id)
+    ctx = load_any_activity(info, Permission.play)
+    context: SandboxContext | None = None
+    if activity_id_override or course_id_override or user_id_override:
+        context = {
+            "activity-id": activity_id_override,
+            "course-id": course_id_override,
+            "user-id": user_id_override,
+        }
+    try:
+        content = ctx.storage_read(storage_name, file_path, context)
+    except CapabilityError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except FileStorageError as e:
+        raise HTTPException(status_code=404, detail="File not found") from e
+    media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+    return Response(content=content, media_type=media_type)
+
+
+@router.post(
+    "/api/activity/{activity_id}/{permission}/actions",
+    summary="Trigger an action",
+)
+async def activity_actions(
+    activity_id: str,
+    permission: Permission,
+    action: ActivityAction,
+    session: Session = Depends(get_session),
+) -> None:
+    """Trigger an activity action."""
+    info = resolve_activity(session, activity_id)
+
+    ctx = load_any_activity(info, permission)
+    try:
+        ctx.on_action(action.name, action.value)
+    except ActionValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid action: {e}") from e
+
+    events = ctx.clear_pending_events()
+    await event_bus.publish(info.activity_type, events)
+
+
+@router.websocket("/api/activity/{activity_id}/{permission}/ws")
+async def activity_ws(
+    websocket: WebSocket,
+    activity_id: str,
+    permission: Permission,
+    session: Session = Depends(get_session),
+) -> None:
+    policy_violation_code = 1008
+    try:
+        info = resolve_activity(session, activity_id)
+    except HTTPException:
+        await websocket.close(code=policy_violation_code)
+        return
+    await websocket.accept()
+
+    subscriber = event_bus.subscribe(
+        info.activity_type,
+        websocket,
+        USER_ID,
+        permission,
+        info.course_id,
+        activity_id,
+    )
+
+    while True:
+        try:
+            data = await websocket.receive_json()
+        except WebSocketDisconnect:
+            event_bus.unsubscribe(info.activity_type, subscriber)
+            return
+
+        try:
+            action_name = data["action"]
+            action_value = data["value"]
+        except KeyError:
+            # TODO raise error?
+            continue
+
+        ctx = load_any_activity(info, permission)
+        try:
+            ctx.on_action(action_name, action_value)
+        except ActionValidationError as e:
+            # TODO should we return an error to the frontend?
+            logger.warning("WS action validation error: %s", e)
+            continue
+
+        events = ctx.clear_pending_events()
+        await event_bus.publish(info.activity_type, events)

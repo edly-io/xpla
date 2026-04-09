@@ -46,6 +46,9 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
         title={course.title}
         onRename={handleRename}
         onDelete={handleDelete}
+        extraMenuItems={[
+          { label: "Dashboard", onClick: () => router.push(`/courses/${courseId}/dashboard`) },
+        ]}
         renderTitle={(title) => <h1 className="text-2xl font-bold">{title}</h1>}
       />
       <div className="mt-4">
