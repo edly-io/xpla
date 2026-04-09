@@ -52,6 +52,7 @@ The Next.js app lives in [frontend/](./frontend/). Key areas:
 From the project root:
 
 ```bash
+npm install src/xpla/notebook/frontend/
 make notebook-frontend-build   # Build the frontend static export
 make notebook-server            # FastAPI server on port 9753
 ```
