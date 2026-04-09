@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this directory.
+This file provides guidance to AI agents when working with code in this directory.
 
 See [README.md](./README.md) for the full architecture and simulation features.
 

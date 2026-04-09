@@ -1,6 +1,6 @@
-# CLAUDE.md
+# xPLA Notebook application
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this directory.
+This file provides guidance to AI agents when working with code in this directory.
 
 See [README.md](./README.md) for the full architecture, data model, and API documentation.
 
@@ -39,3 +39,9 @@ Migration env imports models from both `models.py` and `field_store.py` — add 
 - **Field store composite key**: `(course_id, activity_name, activity_id, user_id, key)` — all five segments are needed to locate a value. Three backing tables: `FieldEntry` (scalars), `FieldLogEntry` (append-only logs), `FieldLogSeq` (sequence counters).
 - **Frontend static export**: Next.js builds to `frontend/out/`. FastAPI serves it and falls back to `index.html` for client-side routing. The catch-all route `[[...path]]` with `ClientRouter` handles all navigation client-side.
 - **WebSocket events**: the `EventBus` routes sandbox events to connected clients filtered by permission level.
+
+## Development guidelines
+
+- Always run `make notebook-frontend-build` after changes to the frontend code.
+- Update this `AGENTS.md` file after any change that affect the project structure.
+- After major changes, check `README.md` and update the information if needed.

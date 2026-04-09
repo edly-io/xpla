@@ -1,6 +1,6 @@
-# CLAUDE.md
+# xPLA 
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI agents when working with code in this repository.
 
 ## What is xPLA
 
@@ -67,3 +67,9 @@ Fields are typed state declared in `manifest.json`. Each field has a scope (e.g.
 - Types: `mypy src/` (strict mode, pydantic plugin)
 - Lint: `pylint src/`
 - All three must pass — `make test` runs them all
+
+## Development guidelines
+
+- Always run `make samples` after changes to the manifest.schema.json or to sample activities.
+- Always create unit tests when implementing a feature, fixing a bug or changing some behaviour. Unit tests are stored in the `tests/` folders of each application.
+- Always update the xPLA documentation when making feature changes to the src/xpla/lib application.
