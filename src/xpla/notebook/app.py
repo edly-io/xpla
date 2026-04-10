@@ -1,8 +1,9 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import os
+
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from xpla.notebook import constants
@@ -16,6 +17,24 @@ from xpla.notebook.views import (
 )
 
 
+class SPAStaticFiles(StaticFiles):
+    """Static file server with SPA fallback to index.html.
+
+    The Next.js frontend is a single-page app: all client-side routes (e.g.
+    /courses/123) are handled by JavaScript in index.html. When the browser
+    requests such a path directly (reload, deep link, prefetch), there is no
+    matching file on disk. This subclass detects that and returns index.html
+    so the client-side router can take over.
+    """
+
+    def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        full_path, stat_result = super().lookup_path(path)
+        if stat_result is None:
+            # No static file matches — fall back to index.html for SPA routing.
+            return super().lookup_path("index.html")
+        return full_path, stat_result
+
+
 @asynccontextmanager
 async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     run_migrations()
@@ -26,27 +45,15 @@ app = FastAPI(title="xPLN", version="0.1.0", lifespan=app_lifespan)
 
 app.mount("/static", StaticFiles(directory=constants.STATIC_DIR), name="static")
 
-if constants.FRONTEND_DIR.is_dir():
-    app.mount(
-        "/_next",
-        StaticFiles(directory=constants.FRONTEND_DIR / "_next"),
-        name="next-assets",
-    )
-
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(activities.router)
 app.include_router(activity_runtime.router)
 app.include_router(course_activities.router)
 
-
-@app.get("/{path:path}", include_in_schema=False)
-async def spa_fallback(path: str) -> HTMLResponse:  # pylint: disable=unused-argument
-    """Serve the frontend index.html for any unmatched GET request (SPA fallback)."""
-    index = constants.FRONTEND_DIR / "index.html"
-    if not index.is_file():
-        return HTMLResponse(
-            "<h1>Frontend not built</h1><p>Run <code>make notebook-frontend-build</code></p>",
-            status_code=503,
-        )
-    return HTMLResponse(index.read_text())
+if constants.FRONTEND_DIR.is_dir():
+    app.mount(
+        "/",
+        SPAStaticFiles(directory=constants.FRONTEND_DIR, html=True),
+        name="frontend",
+    )
