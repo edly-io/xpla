@@ -3,10 +3,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
 
+from xpla.lib.permission import Permission
 from xpla.notebook.auth import get_current_user
 from xpla.notebook.db import get_session
-from xpla.notebook.models import Course, CourseActivity, Page, PageActivity, User
-from xpla.notebook.runtime import delete_activity_by
+from xpla.notebook.models import Course, Page, User
+from xpla.notebook.views.activities import load_activity
+from xpla.notebook.views.course_activities import load_course_activity
 
 router = APIRouter()
 
@@ -32,11 +34,7 @@ def get_course_or_404(session: Session, course_id: str, user: User) -> Course:
 
 def get_page_or_404(session: Session, page_id: str, user: User) -> Page:
     page = session.get(Page, page_id)
-    if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
-    # Enforce ownership via the parent course.
-    course = session.get(Course, page.course_id)
-    if not course or course.owner_id != user.id:
+    if not page or page.course.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Page not found")
     return page
 
@@ -112,21 +110,17 @@ async def delete_course(
 ) -> None:
     """Delete a course and all its pages and activity instances."""
     course = get_course_or_404(session, course_id, current_user)
-    pages = session.exec(select(Page).where(Page.course_id == course_id)).all()
-    for page in pages:
-        activities = session.exec(
-            select(PageActivity).where(PageActivity.page_id == page.id)
-        ).all()
-        for act in activities:
-            delete_activity_by(activity_id=act.id, course_id=course_id)
-            session.delete(act)
-        session.delete(page)
-    course_activities = session.exec(
-        select(CourseActivity).where(CourseActivity.course_id == course_id)
-    ).all()
-    for ca in course_activities:
-        delete_activity_by(activity_id=ca.id, course_id=course_id)
-        session.delete(ca)
+    for page in course.pages:
+        for act in page.activities:
+            ctx = load_activity(
+                act.activity_type, act.id, course_id, current_user.id, Permission.edit
+            )
+            ctx.delete_storage()
+    for ca in course.course_activities:
+        ctx = load_course_activity(
+            ca.activity_type, ca.id, course_id, current_user.id, Permission.edit
+        )
+        ctx.delete_storage()
     session.delete(course)
     session.commit()
 
@@ -223,12 +217,11 @@ async def delete_page(
 ) -> None:
     """Delete a page and all its activity instances."""
     page = get_page_or_404(session, page_id, current_user)
-    activities = session.exec(
-        select(PageActivity).where(PageActivity.page_id == page_id)
-    ).all()
-    for act in activities:
-        delete_activity_by(activity_id=act.id, course_id=page.course_id)
-        session.delete(act)
+    for act in page.activities:
+        ctx = load_activity(
+            act.activity_type, act.id, page.course_id, current_user.id, Permission.edit
+        )
+        ctx.delete_storage()
     session.delete(page)
     session.commit()
 

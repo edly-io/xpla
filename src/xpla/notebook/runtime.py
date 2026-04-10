@@ -2,8 +2,9 @@ from pathlib import Path
 
 from xpla.lib.file_storage import LocalFileStorage
 from xpla.lib.permission import Permission
+from xpla.lib.manifest_types import Scope
 from xpla.lib.runtime import ActivityRuntime
-from xpla.notebook import constants, field_store
+from xpla.notebook import constants
 from xpla.notebook.field_store import SQLiteFieldStore
 
 FILE_STORAGE = LocalFileStorage(constants.DIST_DIR / "xpln" / "storage")
@@ -29,15 +30,18 @@ class NotebookActivityRuntime(ActivityRuntime):
             permission,
         )
 
+    def delete_storage(self) -> None:
+        """Delete all file storage scoped to this activity instance."""
+        if not self.manifest.capabilities or not self.manifest.capabilities.storage:
+            return
+        for storage_name, storage_def in self.manifest.capabilities.storage.items():
+            if storage_def.scope in (Scope.activity, Scope.user_activity):
+                self._file_storage.delete(
+                    f"{self.manifest.name}/{storage_name}"
+                    f"/{self._course_id}/{self._activity_id}"
+                )
 
-def delete_activity_by(
-    activity_id: str | None = None,
-    activity_name: str | None = None,
-    course_id: str | None = None,
-) -> None:
-    """Delete all data (fields and storage) for matching activities."""
-    field_store.delete_fields_by(
-        activity_id=activity_id, activity_name=activity_name, course_id=course_id
-    )
-    if activity_name:
-        FILE_STORAGE.delete(activity_name)
+
+def delete_type_storage(activity_name: str) -> None:
+    """Delete all file storage for an activity type."""
+    FILE_STORAGE.delete(activity_name)

@@ -15,7 +15,7 @@ from xpla.notebook import constants
 from xpla.notebook.auth import get_current_user
 from xpla.notebook.db import get_session
 from xpla.notebook.models import Course, CourseActivity, User
-from xpla.notebook.runtime import NotebookActivityRuntime, delete_activity_by
+from xpla.notebook.runtime import NotebookActivityRuntime, delete_type_storage
 
 router = APIRouter()
 
@@ -83,12 +83,9 @@ def get_course_activity_or_404(
     session: Session, activity_id: str, user: User
 ) -> tuple[CourseActivity, Course]:
     ca = session.get(CourseActivity, activity_id)
-    if not ca:
+    if not ca or ca.course.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Course activity not found")
-    course = session.get(Course, ca.course_id)
-    if not course or course.owner_id != user.id:
-        raise HTTPException(status_code=404, detail="Course activity not found")
-    return ca, course
+    return ca, ca.course
 
 
 def course_activity_dict(
@@ -215,7 +212,7 @@ async def delete_course_activity_type(
     activities = session.exec(
         select(CourseActivity).where(CourseActivity.activity_type == activity_type_str)
     ).all()
-    delete_activity_by(activity_name=activity_type_str)
+    delete_type_storage(activity_type_str)
     for ca in activities:
         session.delete(ca)
     session.commit()
@@ -312,7 +309,10 @@ async def delete_course_activity_instance(
 ) -> None:
     """Remove a course activity instance."""
     ca, _course = get_course_activity_or_404(session, activity_id, current_user)
-    delete_activity_by(activity_id=ca.id, course_id=ca.course_id)
+    ctx = load_course_activity(
+        ca.activity_type, ca.id, ca.course_id, current_user.id, Permission.edit
+    )
+    ctx.delete_storage()
     session.delete(ca)
     session.commit()
 

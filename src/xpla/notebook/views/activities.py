@@ -16,7 +16,7 @@ from xpla.notebook import constants, llms
 from xpla.notebook.auth import get_current_user
 from xpla.notebook.db import get_session
 from xpla.notebook.models import Course, Page, PageActivity, User
-from xpla.notebook.runtime import NotebookActivityRuntime, delete_activity_by
+from xpla.notebook.runtime import NotebookActivityRuntime, delete_type_storage
 
 router = APIRouter()
 
@@ -82,12 +82,9 @@ def get_page_and_course_or_404(
     session: Session, page_id: str, user: User
 ) -> tuple[Page, Course]:
     page = session.get(Page, page_id)
-    if not page:
+    if not page or page.course.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Page not found")
-    course = session.get(Course, page.course_id)
-    if not course or course.owner_id != user.id:
-        raise HTTPException(status_code=404, detail="Page not found")
-    return page, course
+    return page, page.course
 
 
 def get_activity_or_404(
@@ -208,7 +205,10 @@ async def delete_activity(
 ) -> None:
     """Remove an activity instance from its page."""
     pa, _page, course = get_activity_or_404(session, activity_id, current_user)
-    delete_activity_by(activity_id=pa.id, course_id=course.id)
+    ctx = load_activity(
+        pa.activity_type, pa.id, course.id, current_user.id, Permission.edit
+    )
+    ctx.delete_storage()
     session.delete(pa)
     session.commit()
 
@@ -403,7 +403,7 @@ async def delete_activity_type(
     activities = session.exec(
         select(PageActivity).where(PageActivity.activity_type == activity_type_str)
     ).all()
-    delete_activity_by(activity_name=activity_type_str)
+    delete_type_storage(activity_type_str)
     for pa in activities:
         session.delete(pa)
     session.commit()

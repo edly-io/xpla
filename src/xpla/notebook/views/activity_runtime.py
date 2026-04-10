@@ -22,7 +22,7 @@ from xpla.lib.permission import Permission
 from xpla.lib.runtime import ActivityRuntime, AssetAccessError, SandboxContext
 from xpla.notebook.auth import SESSION_COOKIE, get_current_user, lookup_user
 from xpla.notebook.db import get_session
-from xpla.notebook.models import Course, CourseActivity, Page, PageActivity, User
+from xpla.notebook.models import CourseActivity, PageActivity, User
 from xpla.notebook.views.activities import load_activity
 from xpla.notebook.views.course_activities import load_course_activity
 
@@ -50,22 +50,16 @@ def resolve_activity(session: Session, activity_id: str, user: User) -> Activity
     ensure the authenticated user owns the parent course."""
     pa = session.get(PageActivity, activity_id)
     if pa:
-        page = session.get(Page, pa.page_id)
-        if not page:
-            raise HTTPException(status_code=404, detail="Page not found")
-        _ensure_owner(session, page.course_id, user)
-        return ActivityInfo(pa.id, pa.activity_type, page.course_id, False)
+        course = pa.page.course
+        if course.owner_id != user.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return ActivityInfo(pa.id, pa.activity_type, course.id, False)
     ca = session.get(CourseActivity, activity_id)
     if ca:
-        _ensure_owner(session, ca.course_id, user)
+        if ca.course.owner_id != user.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
         return ActivityInfo(ca.id, ca.activity_type, ca.course_id, True)
     raise HTTPException(status_code=404, detail="Activity not found")
-
-
-def _ensure_owner(session: Session, course_id: str, user: User) -> None:
-    course = session.get(Course, course_id)
-    if not course or course.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 def load_any_activity(

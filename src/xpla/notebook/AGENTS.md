@@ -47,3 +47,4 @@ Migration env imports models from both `models.py` and `field_store.py` — add 
 - Always run `make notebook-frontend-build` after changes to the frontend code.
 - Update this `AGENTS.md` file after any change that affect the project structure.
 - After major changes, check `README.md` and update the information if needed.
+- Never make changes to the upstream `xpla/lib` when making changes that affect only this notebook application.

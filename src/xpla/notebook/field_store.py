@@ -3,6 +3,8 @@
 import json
 from typing import Any
 
+from sqlalchemy import delete as sa_delete
+from sqlalchemy import event
 from sqlmodel import Field, Session, SQLModel, UniqueConstraint, col, select
 
 from xpla.lib.field_store import FieldStore
@@ -352,3 +354,20 @@ def delete_fields_by(
             for entry in entries:
                 session.delete(entry)
         session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Automatic field cleanup when activities are deleted via the ORM
+# ---------------------------------------------------------------------------
+# pylint: disable=wrong-import-position
+from xpla.notebook.models import CourseActivity, PageActivity
+
+
+def _on_activity_delete(_mapper: Any, connection: Any, target: Any) -> None:
+    """Remove field store entries when an activity row is deleted."""
+    for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
+        connection.execute(sa_delete(model).where(col(model.activity_id) == target.id))
+
+
+event.listen(PageActivity, "after_delete", _on_activity_delete)
+event.listen(CourseActivity, "after_delete", _on_activity_delete)
