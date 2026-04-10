@@ -29,7 +29,10 @@ dev = [
 where = ["src"]
 
 [tool.pylint.MAIN]
-ignore-paths=["src/xpla/notebook/frontend"]
+ignore-paths=[
+    "src/xpla/notebook/frontend",
+    "src/xpla/notebook/migrations",
+]
 
 [tool.pylint.'MESSAGES CONTROL']
 disable=[
@@ -50,7 +53,10 @@ plugins = ['pydantic.mypy']
 warn_unused_configs = true
 ignore_missing_imports = true
 strict = true
-exclude = ["src/xpla/notebook/frontend"]
+exclude = [
+    "src/xpla/notebook/frontend",
+    "src/xpla/notebook/migrations",
+]
 
 [tool.black]
-extend-exclude = "src/xpla/notebook/frontend"
+extend-exclude = "src/xpla/notebook/frontend, src/xpla/notebook/migrations"
