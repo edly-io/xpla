@@ -3,8 +3,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, col, desc, select
 
+from xpla.notebook.auth import get_current_user
 from xpla.notebook.db import get_session
-from xpla.notebook.models import Course, CourseActivity, Page, PageActivity
+from xpla.notebook.models import Course, CourseActivity, Page, PageActivity, User
 from xpla.notebook.runtime import delete_activity_by
 
 router = APIRouter()
@@ -22,16 +23,20 @@ class ReorderPagesBody(BaseModel):
     page_ids: list[str]
 
 
-def get_course_or_404(session: Session, course_id: str) -> Course:
+def get_course_or_404(session: Session, course_id: str, user: User) -> Course:
     course = session.get(Course, course_id)
-    if not course:
+    if not course or course.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Course not found")
     return course
 
 
-def get_page_or_404(session: Session, page_id: str) -> Page:
+def get_page_or_404(session: Session, page_id: str, user: User) -> Page:
     page = session.get(Page, page_id)
     if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    # Enforce ownership via the parent course.
+    course = session.get(Course, page.course_id)
+    if not course or course.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Page not found")
     return page
 
@@ -42,9 +47,14 @@ def get_page_or_404(session: Session, page_id: str) -> Page:
 @router.get("/api/courses", summary="List all courses")
 async def list_courses(
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
-    """Return all courses ordered by position."""
-    courses = session.exec(select(Course).order_by(col(Course.position))).all()
+    """Return the current user's courses ordered by position."""
+    courses = session.exec(
+        select(Course)
+        .where(Course.owner_id == current_user.id)
+        .order_by(col(Course.position))
+    ).all()
     return JSONResponse(
         [{"id": c.id, "title": c.title, "position": c.position} for c in courses]
     )
@@ -54,12 +64,19 @@ async def list_courses(
 async def create_course(
     body: TitleBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
-    """Create a new course. It is appended at the end of the list."""
+    """Create a new course owned by the current user."""
     max_pos = session.exec(
-        select(Course.position).order_by(desc(col(Course.position)))
+        select(Course.position)
+        .where(Course.owner_id == current_user.id)
+        .order_by(desc(col(Course.position)))
     ).first()
-    course = Course(title=body.title, position=(max_pos or 0) + 1)
+    course = Course(
+        title=body.title,
+        position=(max_pos or 0) + 1,
+        owner_id=current_user.id,
+    )
     session.add(course)
     session.commit()
     session.refresh(course)
@@ -74,9 +91,10 @@ async def update_course(
     course_id: str,
     body: TitleBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Update the title of an existing course."""
-    course = get_course_or_404(session, course_id)
+    course = get_course_or_404(session, course_id, current_user)
     course.title = body.title
     session.add(course)
     session.commit()
@@ -90,9 +108,10 @@ async def update_course(
 async def delete_course(
     course_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a course and all its pages and activity instances."""
-    course = get_course_or_404(session, course_id)
+    course = get_course_or_404(session, course_id, current_user)
     pages = session.exec(select(Page).where(Page.course_id == course_id)).all()
     for page in pages:
         activities = session.exec(
@@ -116,10 +135,11 @@ async def delete_course(
 async def reorder_courses(
     body: ReorderCoursesBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Set course positions from the given ordered list of IDs."""
     for i, course_id in enumerate(body.course_ids):
-        course = get_course_or_404(session, course_id)
+        course = get_course_or_404(session, course_id, current_user)
         course.position = i
         session.add(course)
     session.commit()
@@ -133,9 +153,10 @@ async def reorder_courses(
 async def get_course(
     course_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Return course details including the ordered list of pages."""
-    course = get_course_or_404(session, course_id)
+    course = get_course_or_404(session, course_id, current_user)
     pages = session.exec(
         select(Page).where(Page.course_id == course_id).order_by(col(Page.position))
     ).all()
@@ -159,8 +180,10 @@ async def create_page(
     course_id: str,
     body: TitleBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Create a new page appended at the end of the course."""
+    get_course_or_404(session, course_id, current_user)
     max_pos = session.exec(
         select(Page.position)
         .where(Page.course_id == course_id)
@@ -181,9 +204,10 @@ async def update_page(
     page_id: str,
     body: TitleBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Update the title of an existing page."""
-    page = get_page_or_404(session, page_id)
+    page = get_page_or_404(session, page_id, current_user)
     page.title = body.title
     session.add(page)
     session.commit()
@@ -195,9 +219,10 @@ async def update_page(
 async def delete_page(
     page_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a page and all its activity instances."""
-    page = get_page_or_404(session, page_id)
+    page = get_page_or_404(session, page_id, current_user)
     activities = session.exec(
         select(PageActivity).where(PageActivity.page_id == page_id)
     ).all()
@@ -212,10 +237,11 @@ async def delete_page(
 async def reorder_pages(
     body: ReorderPagesBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Set page positions from the given ordered list of IDs."""
     for i, page_id in enumerate(body.page_ids):
-        page = get_page_or_404(session, page_id)
+        page = get_page_or_404(session, page_id, current_user)
         page.position = i
         session.add(page)
     session.commit()

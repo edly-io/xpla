@@ -8,6 +8,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -19,6 +20,7 @@ import {
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { getCourses, getCourse, reorderPages, type CourseItem, type PageItem } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 function SortablePage({ page, isActive }: { page: PageItem; isActive: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: page.id });
@@ -41,6 +43,7 @@ function SortablePage({ page, isActive }: { page: PageItem; isActive: boolean })
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [pages, setPages] = useState<PageItem[]>([]);
@@ -133,6 +136,16 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="flex items-center justify-between gap-2 px-2 py-1 text-xs">
+          <span className="truncate text-muted-foreground" title={user?.email}>
+            {user?.email}
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => logout()}>
+            Log out
+          </Button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

@@ -29,11 +29,17 @@ xPLN is a courseware management application built on top of the [xPLA](../xpla/)
 
 Defined in [models.py](./models.py):
 
-- **Course** — top-level container with title and position
+- **User** — account with email + pbkdf2-hashed password
+- **UserSession** — opaque session token backing the `xpln_session` cookie
+- **Course** — top-level container owned by a single user (`owner_id`); private to its owner
 - **Page** — belongs to a course, contains activities
-- **PageActivity** — an instance of an activity type on a page
+- **PageActivity** / **CourseActivity** — instances of an activity type on a page or on the course dashboard
 
 Field persistence (learner state, scores, etc.) is handled by [field_store.py](./field_store.py), which implements the xPLA `FieldStore` interface using three SQLite tables for scalar values, log entries, and sequence counters.
+
+## Authentication
+
+Email/password auth with a DB-backed session token. See [auth.py](./auth.py) and [views/auth.py](./views/auth.py) for the endpoints (`/api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `/api/me`). All course/page/activity routes require an authenticated user, and each course is private to its `owner_id`.
 
 ## API
 

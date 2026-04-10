@@ -7,7 +7,13 @@ from fastapi.staticfiles import StaticFiles
 
 from xpla.notebook import constants
 from xpla.notebook.db import run_migrations
-from xpla.notebook.views import activities, activity_runtime, course_activities, courses
+from xpla.notebook.views import (
+    activities,
+    activity_runtime,
+    auth,
+    course_activities,
+    courses,
+)
 
 
 @asynccontextmanager
@@ -27,6 +33,7 @@ if constants.FRONTEND_DIR.is_dir():
         name="next-assets",
     )
 
+app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(activities.router)
 app.include_router(activity_runtime.router)

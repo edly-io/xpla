@@ -1,6 +1,21 @@
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const res = await fetch(path, { credentials: "include", ...init });
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch { /* ignore */ }
+    throw new ApiError(res.status, detail);
+  }
   if (res.status === 204) return undefined as T;
   return res.json();
 }
@@ -12,6 +27,13 @@ function json(body: unknown): RequestInit {
 function jsonMethod(method: string, body: unknown): RequestInit {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
+
+// Auth
+export type Me = { id: string; email: string };
+export const getMe = () => request<Me>("/api/me");
+export const signup = (email: string, password: string) => request<Me>("/api/auth/signup", json({ email, password }));
+export const login = (email: string, password: string) => request<Me>("/api/auth/login", json({ email, password }));
+export const logout = () => request<void>("/api/auth/logout", { method: "POST" });
 
 // Courses
 export type CourseItem = { id: string; title: string; position: number };

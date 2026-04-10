@@ -13,13 +13,12 @@ from sqlmodel import Session, col, desc, select
 from xpla.lib.manifest_types import XplaActivityManifest
 from xpla.lib.permission import Permission
 from xpla.notebook import constants, llms
+from xpla.notebook.auth import get_current_user
 from xpla.notebook.db import get_session
-from xpla.notebook.models import Page, PageActivity
+from xpla.notebook.models import Course, Page, PageActivity, User
 from xpla.notebook.runtime import NotebookActivityRuntime, delete_activity_by
 
 router = APIRouter()
-
-USER_ID = "student"
 
 ACTIVITY_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -66,6 +65,7 @@ def load_activity(
     activity_type: str,
     activity_id: str,
     course_id: str,
+    user_id: str,
     permission: Permission,
 ) -> NotebookActivityRuntime:
     activity_dir = find_activity_dir(activity_type)
@@ -73,32 +73,40 @@ def load_activity(
         activity_dir,
         activity_id,
         course_id,
-        USER_ID,
+        user_id,
         permission,
     )
 
 
-def get_activity_or_404(session: Session, activity_id: str) -> PageActivity:
-    page_activity = session.get(PageActivity, activity_id)
-    if not page_activity:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    return page_activity
-
-
-def get_page_or_404(session: Session, page_id: str) -> Page:
+def get_page_and_course_or_404(
+    session: Session, page_id: str, user: User
+) -> tuple[Page, Course]:
     page = session.get(Page, page_id)
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
-    return page
+    course = session.get(Course, page.course_id)
+    if not course or course.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return page, course
+
+
+def get_activity_or_404(
+    session: Session, activity_id: str, user: User
+) -> tuple[PageActivity, Page, Course]:
+    page_activity = session.get(PageActivity, activity_id)
+    if not page_activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    page, course = get_page_and_course_or_404(session, page_activity.page_id, user)
+    return page_activity, page, course
 
 
 def activity_dict(
     pa: PageActivity,
-    session: Session,
+    page: Page,
+    user_id: str,
     permission: Permission = Permission.play,
 ) -> dict[str, object]:
-    page = get_page_or_404(session, pa.page_id)
-    ctx = load_activity(pa.activity_type, pa.id, page.course_id, permission)
+    ctx = load_activity(pa.activity_type, pa.id, page.course_id, user_id, permission)
     return {
         "id": pa.id,
         "page_id": page.id,
@@ -108,7 +116,7 @@ def activity_dict(
         "state": ctx.get_state(),
         "permission": ctx.permission.name,
         "context": {
-            "user_id": USER_ID,
+            "user_id": user_id,
             "course_id": page.course_id,
             "activity_id": pa.id,
         },
@@ -122,22 +130,23 @@ def activity_dict(
 async def get_page(
     page_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Return page details, its activity instances, and available activity types."""
-    page = get_page_or_404(session, page_id)
+    page, _course = get_page_and_course_or_404(session, page_id, current_user)
     page_activities = session.exec(
         select(PageActivity)
         .where(PageActivity.page_id == page_id)
         .order_by(col(PageActivity.position))
     ).all()
-    activities = [activity_dict(pa, session) for pa in page_activities]
+    activities = [activity_dict(pa, page, current_user.id) for pa in page_activities]
     return JSONResponse(
         {
             "id": page.id,
             "title": page.title,
             "course_id": page.course_id,
             "activities": activities,
-            "activity_types": list_activity_types(USER_ID),
+            "activity_types": list_activity_types(current_user.id),
         }
     )
 
@@ -151,8 +160,10 @@ async def create_activity(
     page_id: str,
     body: ActivityTypeBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Create a new activity instance of the given type on the page."""
+    page, _course = get_page_and_course_or_404(session, page_id, current_user)
     find_activity_dir(body.activity_type)
     max_pos = session.exec(
         select(PageActivity.position)
@@ -167,7 +178,7 @@ async def create_activity(
     session.add(pa)
     session.commit()
     session.refresh(pa)
-    return JSONResponse(activity_dict(pa, session), status_code=201)
+    return JSONResponse(activity_dict(pa, page, current_user.id), status_code=201)
 
 
 @router.get(
@@ -178,10 +189,11 @@ async def get_activity(
     activity_id: str,
     permission: Permission,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Return activity state and metadata for the given permission level."""
-    pa = get_activity_or_404(session, activity_id)
-    return JSONResponse(activity_dict(pa, session, permission))
+    pa, page, _course = get_activity_or_404(session, activity_id, current_user)
+    return JSONResponse(activity_dict(pa, page, current_user.id, permission))
 
 
 @router.delete(
@@ -192,11 +204,11 @@ async def get_activity(
 async def delete_activity(
     activity_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Remove an activity instance from its page."""
-    pa = get_activity_or_404(session, activity_id)
-    page = get_page_or_404(session, pa.page_id)
-    delete_activity_by(activity_id=pa.id, course_id=page.course_id)
+    pa, _page, course = get_activity_or_404(session, activity_id, current_user)
+    delete_activity_by(activity_id=pa.id, course_id=course.id)
     session.delete(pa)
     session.commit()
 
@@ -210,12 +222,16 @@ async def activity_llms_txt(
     permission: Permission,
     request: Request,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> PlainTextResponse:
-    activity = get_activity_or_404(session, activity_id)
-    page = get_page_or_404(session, activity.page_id)
+    activity, page, _course = get_activity_or_404(session, activity_id, current_user)
 
     runtime = load_activity(
-        activity.activity_type, activity_id, page.course_id, permission
+        activity.activity_type,
+        activity_id,
+        page.course_id,
+        current_user.id,
+        permission,
     )
     base_url = str(request.base_url).rstrip("/")
 
@@ -249,9 +265,11 @@ async def move_activity(
     activity_id: str,
     body: MoveActivityBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Swap the activity with its neighbor in the given direction."""
-    _pa = get_activity_or_404(session, activity_id)
+    get_activity_or_404(session, activity_id, current_user)
+    page, _course = get_page_and_course_or_404(session, body.page_id, current_user)
 
     items = list(
         session.exec(
@@ -279,16 +297,20 @@ async def move_activity(
             .order_by(col(PageActivity.position))
         ).all()
     )
-    return JSONResponse({"activities": [activity_dict(r, session) for r in refreshed]})
+    return JSONResponse(
+        {"activities": [activity_dict(r, page, current_user.id) for r in refreshed]}
+    )
 
 
 # ---- activity type API ----
 
 
 @router.get("/api/activity-types", summary="List available activity types")
-async def get_activity_types() -> JSONResponse:
+async def get_activity_types(
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
     """Return all activity types: built-in samples and current user's uploads."""
-    return JSONResponse(list_activity_types(USER_ID))
+    return JSONResponse(list_activity_types(current_user.id))
 
 
 @router.post(
@@ -299,6 +321,7 @@ async def get_activity_types() -> JSONResponse:
 async def upload_activity_type(
     file: UploadFile,
     name: str = Form(),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Upload a zip archive as a new activity type for the current user."""
     if not ACTIVITY_NAME_RE.match(name):
@@ -356,7 +379,7 @@ async def upload_activity_type(
                     detail=f"Static file '{asset_path}' not found in zip",
                 )
 
-        target_dir = constants.ACTIVITIES_DIR / USER_ID / name
+        target_dir = constants.ACTIVITIES_DIR / current_user.id / name
         if target_dir.exists():
             shutil.rmtree(target_dir)
         target_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -373,9 +396,10 @@ async def upload_activity_type(
 async def delete_activity_type(
     name: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a user-uploaded activity type and cascade-remove all instances."""
-    activity_type_str = f"@{USER_ID}/{name}"
+    activity_type_str = f"@{current_user.id}/{name}"
     activities = session.exec(
         select(PageActivity).where(PageActivity.activity_type == activity_type_str)
     ).all()
@@ -384,6 +408,6 @@ async def delete_activity_type(
         session.delete(pa)
     session.commit()
 
-    target_dir = constants.ACTIVITIES_DIR / USER_ID / name
+    target_dir = constants.ACTIVITIES_DIR / current_user.id / name
     if target_dir.exists():
         shutil.rmtree(target_dir)

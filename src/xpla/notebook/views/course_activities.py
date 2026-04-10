@@ -12,13 +12,12 @@ from sqlmodel import Session, col, desc, select
 from xpla.lib.manifest_types import XplaActivityManifest
 from xpla.lib.permission import Permission
 from xpla.notebook import constants
+from xpla.notebook.auth import get_current_user
 from xpla.notebook.db import get_session
-from xpla.notebook.models import Course, CourseActivity
+from xpla.notebook.models import Course, CourseActivity, User
 from xpla.notebook.runtime import NotebookActivityRuntime, delete_activity_by
 
 router = APIRouter()
-
-USER_ID = "student"
 
 ACTIVITY_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -32,9 +31,9 @@ class MoveCourseActivityBody(BaseModel):
     course_id: str
 
 
-def get_course_or_404(session: Session, course_id: str) -> Course:
+def get_course_or_404(session: Session, course_id: str, user: User) -> Course:
     course = session.get(Course, course_id)
-    if not course:
+    if not course or course.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Course not found")
     return course
 
@@ -67,6 +66,7 @@ def load_course_activity(
     activity_type: str,
     activity_id: str,
     course_id: str,
+    user_id: str,
     permission: Permission,
 ) -> NotebookActivityRuntime:
     activity_dir = find_course_activity_dir(activity_type)
@@ -74,23 +74,31 @@ def load_course_activity(
         activity_dir,
         activity_id,
         course_id,
-        USER_ID,
+        user_id,
         permission,
     )
 
 
-def get_course_activity_or_404(session: Session, activity_id: str) -> CourseActivity:
+def get_course_activity_or_404(
+    session: Session, activity_id: str, user: User
+) -> tuple[CourseActivity, Course]:
     ca = session.get(CourseActivity, activity_id)
     if not ca:
         raise HTTPException(status_code=404, detail="Course activity not found")
-    return ca
+    course = session.get(Course, ca.course_id)
+    if not course or course.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Course activity not found")
+    return ca, course
 
 
 def course_activity_dict(
     ca: CourseActivity,
+    user_id: str,
     permission: Permission = Permission.play,
 ) -> dict[str, object]:
-    ctx = load_course_activity(ca.activity_type, ca.id, ca.course_id, permission)
+    ctx = load_course_activity(
+        ca.activity_type, ca.id, ca.course_id, user_id, permission
+    )
     return {
         "id": ca.id,
         "course_id": ca.course_id,
@@ -100,7 +108,7 @@ def course_activity_dict(
         "state": ctx.get_state(),
         "permission": ctx.permission.name,
         "context": {
-            "user_id": USER_ID,
+            "user_id": user_id,
             "course_id": ca.course_id,
             "activity_id": ca.id,
         },
@@ -111,9 +119,11 @@ def course_activity_dict(
 
 
 @router.get("/api/course-activity-types", summary="List course activity types")
-async def get_course_activity_types() -> JSONResponse:
+async def get_course_activity_types(
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
     """Return all course activity types uploaded by the current user."""
-    return JSONResponse(list_course_activity_types(USER_ID))
+    return JSONResponse(list_course_activity_types(current_user.id))
 
 
 @router.post(
@@ -124,6 +134,7 @@ async def get_course_activity_types() -> JSONResponse:
 async def upload_course_activity_type(
     file: UploadFile,
     name: str = Form(),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Upload a zip archive as a new course activity type."""
     if not ACTIVITY_NAME_RE.match(name):
@@ -180,7 +191,7 @@ async def upload_course_activity_type(
                     detail=f"Static file '{asset_path}' not found in zip",
                 )
 
-        target_dir = constants.COURSE_ACTIVITIES_DIR / USER_ID / name
+        target_dir = constants.COURSE_ACTIVITIES_DIR / current_user.id / name
         if target_dir.exists():
             shutil.rmtree(target_dir)
         target_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -197,9 +208,10 @@ async def upload_course_activity_type(
 async def delete_course_activity_type(
     name: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a course activity type and cascade-remove all instances."""
-    activity_type_str = f"@{USER_ID}/{name}"
+    activity_type_str = f"@{current_user.id}/{name}"
     activities = session.exec(
         select(CourseActivity).where(CourseActivity.activity_type == activity_type_str)
     ).all()
@@ -208,7 +220,7 @@ async def delete_course_activity_type(
         session.delete(ca)
     session.commit()
 
-    target_dir = constants.COURSE_ACTIVITIES_DIR / USER_ID / name
+    target_dir = constants.COURSE_ACTIVITIES_DIR / current_user.id / name
     if target_dir.exists():
         shutil.rmtree(target_dir)
 
@@ -223,21 +235,22 @@ async def delete_course_activity_type(
 async def get_course_dashboard(
     course_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Return course details, dashboard activities, and available types."""
-    course = get_course_or_404(session, course_id)
+    course = get_course_or_404(session, course_id, current_user)
     cas = session.exec(
         select(CourseActivity)
         .where(CourseActivity.course_id == course_id)
         .order_by(col(CourseActivity.position))
     ).all()
-    activities = [course_activity_dict(ca) for ca in cas]
+    activities = [course_activity_dict(ca, current_user.id) for ca in cas]
     return JSONResponse(
         {
             "id": course.id,
             "title": course.title,
             "activities": activities,
-            "activity_types": list_course_activity_types(USER_ID),
+            "activity_types": list_course_activity_types(current_user.id),
         }
     )
 
@@ -251,9 +264,10 @@ async def create_course_activity(
     course_id: str,
     body: ActivityTypeBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Create a new course activity instance on the dashboard."""
-    get_course_or_404(session, course_id)
+    get_course_or_404(session, course_id, current_user)
     find_course_activity_dir(body.activity_type)
     max_pos = session.exec(
         select(CourseActivity.position)
@@ -268,7 +282,7 @@ async def create_course_activity(
     session.add(ca)
     session.commit()
     session.refresh(ca)
-    return JSONResponse(course_activity_dict(ca), status_code=201)
+    return JSONResponse(course_activity_dict(ca, current_user.id), status_code=201)
 
 
 @router.get(
@@ -279,10 +293,11 @@ async def get_course_activity(
     activity_id: str,
     permission: Permission,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Return course activity state and metadata."""
-    ca = get_course_activity_or_404(session, activity_id)
-    return JSONResponse(course_activity_dict(ca, permission))
+    ca, _course = get_course_activity_or_404(session, activity_id, current_user)
+    return JSONResponse(course_activity_dict(ca, current_user.id, permission))
 
 
 @router.delete(
@@ -293,9 +308,10 @@ async def get_course_activity(
 async def delete_course_activity_instance(
     activity_id: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Remove a course activity instance."""
-    ca = get_course_activity_or_404(session, activity_id)
+    ca, _course = get_course_activity_or_404(session, activity_id, current_user)
     delete_activity_by(activity_id=ca.id, course_id=ca.course_id)
     session.delete(ca)
     session.commit()
@@ -309,9 +325,11 @@ async def move_course_activity(
     activity_id: str,
     body: MoveCourseActivityBody,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
     """Swap the course activity with its neighbor."""
-    _ca = get_course_activity_or_404(session, activity_id)
+    get_course_activity_or_404(session, activity_id, current_user)
+    get_course_or_404(session, body.course_id, current_user)
 
     items = list(
         session.exec(
@@ -339,4 +357,6 @@ async def move_course_activity(
             .order_by(col(CourseActivity.position))
         ).all()
     )
-    return JSONResponse({"activities": [course_activity_dict(r) for r in refreshed]})
+    return JSONResponse(
+        {"activities": [course_activity_dict(r, current_user.id) for r in refreshed]}
+    )

@@ -20,16 +20,15 @@ from xpla.lib.event_bus import EventBus
 from xpla.lib.file_storage import FileStorageError
 from xpla.lib.permission import Permission
 from xpla.lib.runtime import ActivityRuntime, AssetAccessError, SandboxContext
+from xpla.notebook.auth import SESSION_COOKIE, get_current_user, lookup_user
 from xpla.notebook.db import get_session
-from xpla.notebook.models import CourseActivity, Page, PageActivity
+from xpla.notebook.models import Course, CourseActivity, Page, PageActivity, User
 from xpla.notebook.views.activities import load_activity
 from xpla.notebook.views.course_activities import load_course_activity
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-USER_ID = "student"
 
 event_bus = EventBus()
 
@@ -46,27 +45,40 @@ class ActivityInfo(NamedTuple):
     is_course_activity: bool
 
 
-def resolve_activity(session: Session, activity_id: str) -> ActivityInfo:
-    """Look up an activity in both PageActivity and CourseActivity tables."""
+def resolve_activity(session: Session, activity_id: str, user: User) -> ActivityInfo:
+    """Look up an activity in both PageActivity and CourseActivity tables and
+    ensure the authenticated user owns the parent course."""
     pa = session.get(PageActivity, activity_id)
     if pa:
         page = session.get(Page, pa.page_id)
         if not page:
             raise HTTPException(status_code=404, detail="Page not found")
+        _ensure_owner(session, page.course_id, user)
         return ActivityInfo(pa.id, pa.activity_type, page.course_id, False)
     ca = session.get(CourseActivity, activity_id)
     if ca:
+        _ensure_owner(session, ca.course_id, user)
         return ActivityInfo(ca.id, ca.activity_type, ca.course_id, True)
     raise HTTPException(status_code=404, detail="Activity not found")
 
 
-def load_any_activity(info: ActivityInfo, permission: Permission) -> ActivityRuntime:
+def _ensure_owner(session: Session, course_id: str, user: User) -> None:
+    course = session.get(Course, course_id)
+    if not course or course.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def load_any_activity(
+    info: ActivityInfo, user_id: str, permission: Permission
+) -> ActivityRuntime:
     """Load the runtime for either a page or course activity."""
     if info.is_course_activity:
         return load_course_activity(
-            info.activity_type, info.id, info.course_id, permission
+            info.activity_type, info.id, info.course_id, user_id, permission
         )
-    return load_activity(info.activity_type, info.id, info.course_id, permission)
+    return load_activity(
+        info.activity_type, info.id, info.course_id, user_id, permission
+    )
 
 
 @router.get(
@@ -74,10 +86,13 @@ def load_any_activity(info: ActivityInfo, permission: Permission) -> ActivityRun
     summary="Serve an activity static asset",
 )
 async def activity_asset(
-    activity_id: str, file_path: str, session: Session = Depends(get_session)
+    activity_id: str,
+    file_path: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> FileResponse:
-    info = resolve_activity(session, activity_id)
-    ctx = load_any_activity(info, Permission.play)
+    info = resolve_activity(session, activity_id, current_user)
+    ctx = load_any_activity(info, current_user.id, Permission.play)
     try:
         full_path = ctx.get_asset_path(file_path)
     except AssetAccessError as e:
@@ -94,12 +109,13 @@ async def storage_file(
     storage_name: str,
     file_path: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
     activity_id_override: str | None = Query(None, alias="activity_id"),
     course_id_override: str | None = Query(None, alias="course_id"),
     user_id_override: str | None = Query(None, alias="user_id"),
 ) -> Response:
-    info = resolve_activity(session, activity_id)
-    ctx = load_any_activity(info, Permission.play)
+    info = resolve_activity(session, activity_id, current_user)
+    ctx = load_any_activity(info, current_user.id, Permission.play)
     context: SandboxContext | None = None
     if activity_id_override or course_id_override or user_id_override:
         context = {
@@ -126,11 +142,12 @@ async def activity_actions(
     permission: Permission,
     action: ActivityAction,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Trigger an activity action."""
-    info = resolve_activity(session, activity_id)
+    info = resolve_activity(session, activity_id, current_user)
 
-    ctx = load_any_activity(info, permission)
+    ctx = load_any_activity(info, current_user.id, permission)
     try:
         ctx.on_action(action.name, action.value)
     except ActionValidationError as e:
@@ -148,8 +165,15 @@ async def activity_ws(
     session: Session = Depends(get_session),
 ) -> None:
     policy_violation_code = 1008
+
+    token = websocket.cookies.get(SESSION_COOKIE)
+    current_user = lookup_user(session, token)
+    if not current_user:
+        await websocket.close(code=policy_violation_code)
+        return
+
     try:
-        info = resolve_activity(session, activity_id)
+        info = resolve_activity(session, activity_id, current_user)
     except HTTPException:
         await websocket.close(code=policy_violation_code)
         return
@@ -158,7 +182,7 @@ async def activity_ws(
     subscriber = event_bus.subscribe(
         info.activity_type,
         websocket,
-        USER_ID,
+        current_user.id,
         permission,
         info.course_id,
         activity_id,
@@ -178,7 +202,7 @@ async def activity_ws(
             # TODO raise error?
             continue
 
-        ctx = load_any_activity(info, permission)
+        ctx = load_any_activity(info, current_user.id, permission)
         try:
             ctx.on_action(action_name, action_value)
         except ActionValidationError as e:

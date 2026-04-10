@@ -9,8 +9,9 @@ from sqlmodel.pool import StaticPool
 
 from xpla.lib.actions import ActionValidationError
 from xpla.notebook.app import app
+from xpla.notebook.auth import hash_password
 from xpla.notebook.db import get_session
-from xpla.notebook.models import Course, Page, PageActivity
+from xpla.notebook.models import Course, Page, PageActivity, User
 
 
 @pytest.fixture(name="session")
@@ -25,19 +26,39 @@ def session_fixture() -> Generator[Session, None, None]:
         yield session
 
 
+@pytest.fixture(name="user")
+def user_fixture(session: Session) -> User:
+    password_hash, password_salt = hash_password("password123")
+    user = User(
+        email="test@example.com",
+        password_hash=password_hash,
+        password_salt=password_salt,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
 @pytest.fixture(name="client")
-def client_fixture(session: Session) -> Generator[TestClient, None, None]:
+def client_fixture(session: Session, user: User) -> Generator[TestClient, None, None]:
     def override_get_session() -> Generator[Session, None, None]:
         yield session
 
     app.dependency_overrides[get_session] = override_get_session
-    yield TestClient(app)
+    client = TestClient(app)
+    login = client.post(
+        "/api/auth/login",
+        json={"email": user.email, "password": "password123"},
+    )
+    assert login.status_code == 200
+    yield client
     app.dependency_overrides.clear()
 
 
 @pytest.fixture(name="activity")
-def activity_fixture(session: Session) -> PageActivity:
-    course = Course(title="Test Course")
+def activity_fixture(session: Session, user: User) -> PageActivity:
+    course = Course(title="Test Course", owner_id=user.id)
     session.add(course)
     session.commit()
     page = Page(title="Test Page", course_id=course.id)
