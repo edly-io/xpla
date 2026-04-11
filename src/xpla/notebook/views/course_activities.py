@@ -76,6 +76,7 @@ def load_course_activity(
         course_id,
         user_id,
         permission,
+        is_course_activity=True,
     )
 
 

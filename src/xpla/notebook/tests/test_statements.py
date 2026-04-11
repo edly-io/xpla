@@ -12,20 +12,29 @@ from xpla.notebook.runtime import NotebookActivityRuntime
 from xpla.notebook.tests.conftest import _make_engine
 
 
-def _make_notebook_runtime(tmp_path: Path, engine: object) -> NotebookActivityRuntime:
+def _make_notebook_runtime(
+    tmp_path: Path,
+    engine: object,
+    *,
+    is_course_activity: bool = False,
+    activity_id: str = "a1",
+    course_id: str = "c1",
+    user_id: str = "u1",
+) -> NotebookActivityRuntime:
     """Create a NotebookActivityRuntime backed by an in-memory DB."""
     activity_dir = tmp_path / "activity"
-    activity_dir.mkdir()
+    activity_dir.mkdir(exist_ok=True)
     manifest = {"name": "test-activity", "client": "client.js", "capabilities": {}}
     (activity_dir / "manifest.json").write_text(json.dumps(manifest))
 
     with patch("xpla.notebook.runtime.engine", engine):
         return NotebookActivityRuntime(
             activity_dir,
-            activity_id="a1",
-            course_id="c1",
-            user_id="u1",
+            activity_id=activity_id,
+            course_id=course_id,
+            user_id=user_id,
             permission=Permission.play,
+            is_course_activity=is_course_activity,
         )
 
 
@@ -113,3 +122,113 @@ class TestActivityStatements:
             ).all()
             assert len(rows) == 3
             assert [r.verb for r in rows] == ["progressed", "completed", "passed"]
+
+
+class TestReportQuery:
+    def _setup(self, tmp_path: Path, engine: object) -> NotebookActivityRuntime:
+        """Create a course-activity runtime and seed some statements."""
+        rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
+        rt.report_completed()
+        rt.report_passed(0.8)
+        rt.report_failed(0.3)
+        return rt
+
+    def test_empty_result(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
+            results = json.loads(rt.report_query("{}"))
+        assert results == []
+
+    def test_returns_all_course_statements(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            results = json.loads(rt.report_query("{}"))
+        assert len(results) == 3
+        assert [r["verb"] for r in results] == ["completed", "passed", "failed"]
+
+    def test_filter_by_verb(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            results = json.loads(rt.report_query('{"verb": "passed"}'))
+        assert len(results) == 1
+        assert results[0]["verb"] == "passed"
+        assert results[0]["score"] == 0.8
+
+    def test_filter_by_user_id(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            results = json.loads(rt.report_query('{"user_id": "u1"}'))
+            assert len(results) == 3
+            results = json.loads(rt.report_query('{"user_id": "other"}'))
+            assert len(results) == 0
+
+    def test_filter_by_activity_id(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            results = json.loads(rt.report_query('{"activity_id": "a1"}'))
+            assert len(results) == 3
+            results = json.loads(rt.report_query('{"activity_id": "other"}'))
+            assert len(results) == 0
+
+    def test_filter_by_activity_name(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            results = json.loads(rt.report_query('{"activity_name": "test-activity"}'))
+            assert len(results) == 3
+            results = json.loads(rt.report_query('{"activity_name": "other"}'))
+            assert len(results) == 0
+
+    def test_course_scoping(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt_c1 = _make_notebook_runtime(
+                tmp_path, engine, is_course_activity=True, course_id="c1"
+            )
+            rt_c1.report_completed()
+            rt_c2 = _make_notebook_runtime(
+                tmp_path, engine, is_course_activity=True, course_id="c2"
+            )
+            rt_c2.report_passed(0.9)
+            # c1 should only see its own statement
+            results = json.loads(rt_c1.report_query("{}"))
+            assert len(results) == 1
+            assert results[0]["verb"] == "completed"
+            # c2 should only see its own statement
+            results = json.loads(rt_c2.report_query("{}"))
+            assert len(results) == 1
+            assert results[0]["verb"] == "passed"
+
+    def test_pagination_after_id(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            all_results = json.loads(rt.report_query("{}"))
+            first_id = all_results[0]["id"]
+            results = json.loads(rt.report_query(json.dumps({"after_id": first_id})))
+            assert len(results) == 2
+            assert all(r["id"] > first_id for r in results)
+
+    def test_pagination_limit(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = self._setup(tmp_path, engine)
+            results = json.loads(rt.report_query('{"limit": 2}'))
+            assert len(results) == 2
+
+    def test_not_registered_for_page_activity(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=False)
+            assert "report-query" not in rt.host_functions()
+
+    def test_registered_for_course_activity(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
+            assert "report-query" in rt.host_functions()
