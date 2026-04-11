@@ -73,3 +73,14 @@ class CourseActivity(SQLModel, table=True):
     position: int = 0
 
     course: Course = Relationship(back_populates="course_activities")
+
+
+class ActivityStatement(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    course_id: str = Field(index=True)
+    activity_id: str = Field(index=True)
+    activity_name: str = Field(index=True)
+    user_id: str = Field(index=True)
+    verb: str
+    score: float | None = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow)

@@ -183,6 +183,11 @@ class ActivityRuntime:
             "log-delete": self.log_delete,
             "log-delete-range": self.log_delete_range,
             "submit-grade": self.submit_grade,
+            "report-completed": self.report_completed,
+            "report-passed": self.report_passed,
+            "report-failed": self.report_failed,
+            "report-progressed": self.report_progressed,
+            "report-scored": self.report_scored,
         }
         if self.capability_checker.is_http_requested():
             host_functions.update(
@@ -607,6 +612,52 @@ class ActivityRuntime:
     def submit_grade(self, score: float) -> bool:
         # TODO actually submit grade
         logger.info("submitted score: %f", score)
+        return True
+
+    # ── Report host functions ──────────────────────────────────────────
+
+    def report_completed(self) -> bool:
+        logger.info(
+            "report completed: user=%s activity=%s",
+            self._user_id,
+            self._activity_id,
+        )
+        return True
+
+    def report_passed(self, score: float | None) -> bool:
+        logger.info(
+            "report passed: user=%s activity=%s score=%s",
+            self._user_id,
+            self._activity_id,
+            score,
+        )
+        return True
+
+    def report_failed(self, score: float | None) -> bool:
+        logger.info(
+            "report failed: user=%s activity=%s score=%s",
+            self._user_id,
+            self._activity_id,
+            score,
+        )
+        return True
+
+    def report_progressed(self, progress: float) -> bool:
+        logger.info(
+            "report progressed: user=%s activity=%s progress=%f",
+            self._user_id,
+            self._activity_id,
+            progress,
+        )
+        return True
+
+    def report_scored(self, score: float) -> bool:
+        logger.info(
+            "report scored: user=%s activity=%s score=%f",
+            self._user_id,
+            self._activity_id,
+            score,
+        )
         return True
 
     # ── Storage host functions ──────────────────────────────────────────

@@ -47,7 +47,7 @@ Activities optionally include server-side logic compiled to WASM Component Model
 - `samples/*/server.js` → bundled with esbuild → compiled to `server.component.wasm` via `componentize-js`
 - WASM components are loaded by `SandboxComponentExecutor` (`src/xpla/lib/sandbox.py`) using the `wasmtime` Python bindings
 - Components import host functions from `xpla:sandbox/host` (defined in `xpla.wit`) and export `on-action` and `get-state`
-- Host functions (field access, events, HTTP, storage) are provided by `ActivityRuntime` (`src/xpla/lib/runtime.py`)
+- Host functions (field access, events, HTTP, storage, reporting) are provided by `ActivityRuntime` (`src/xpla/lib/runtime.py`)
 
 ### Capability system
 

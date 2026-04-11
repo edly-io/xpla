@@ -22,6 +22,7 @@ interface host {
     set-field: func(name: string, value: string, context: option<context>) -> bool;
 
     submit-grade: func(score: f64) -> bool;
+    report-scored: func(score: f64) -> bool;
 }
 
 world activity {

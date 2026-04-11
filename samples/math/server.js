@@ -5,6 +5,7 @@ import {
   getField,
   setField,
   submitGrade,
+  reportScored,
 } from "xpla:sandbox/host";
 
 // Return state visible to the current user.
@@ -36,6 +37,14 @@ export function onAction(name, data, context, permission) {
       const wrongCount = JSON.parse(getField("wrong_answers")) + 1;
       setField("wrong_answers", JSON.stringify(wrongCount));
       sendEvent("fields.change.wrong_answers", JSON.stringify(wrongCount), null, "play");
+    }
+
+    // Report score as ratio of correct / total answers
+    const correctCount = JSON.parse(getField("correct_answers"));
+    const wrongCount = JSON.parse(getField("wrong_answers"));
+    const total = correctCount + wrongCount;
+    if (total > 0) {
+      reportScored(correctCount / total);
     }
 
     // Send feedback event

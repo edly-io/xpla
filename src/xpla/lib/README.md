@@ -251,6 +251,7 @@ import {
   sendEvent,
   getField, setField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
+  reportCompleted, reportPassed, reportFailed, reportProgressed, reportScored,
   storageRead, storageWrite, storageExists, storageUrl, storageList, storageDelete,
 } from "xpla:sandbox/host";
 
@@ -377,6 +378,16 @@ Optional host functions for which access must be granted via the `"capabilities"
 
 - `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs). Requires the `http` capability.
 - `submitGrade(score: float)`: to be defined.
+
+Report host functions — always available, used to track learner progress (inspired by xAPI/cmi5 verbs):
+
+- `reportCompleted() -> bool`: The learner completed the activity.
+- `reportPassed(score: option<f64>) -> bool`: The learner passed. `score` is optional, in the range [0.0, 1.0].
+- `reportFailed(score: option<f64>) -> bool`: The learner failed. `score` is optional, in the range [0.0, 1.0].
+- `reportProgressed(progress: f64) -> bool`: Progress update. `progress` is in the range [0.0, 1.0].
+- `reportScored(score: f64) -> bool`: Score without pass/fail judgment. `score` is in the range [0.0, 1.0].
+
+The base `ActivityRuntime` logs report statements to stdout. Platform implementations should override these methods to persist statements (e.g. to a database).
 
 Storage host functions (require the `storage` capability). Each function takes the storage `name`, a relative `path`, and an optional `context` (pass `null` to use the current context):
 

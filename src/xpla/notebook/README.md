@@ -34,6 +34,7 @@ Defined in [models.py](./models.py):
 - **Course** — top-level container owned by a single user (`owner_id`); private to its owner
 - **Page** — belongs to a course, contains activities
 - **PageActivity** / **CourseActivity** — instances of an activity type on a page or on the course dashboard
+- **ActivityStatement** — report statements (completed, passed, failed, progressed, scored) emitted by activity sandboxes, with optional score and timestamp
 
 Field persistence (learner state, scores, etc.) is handled by [field_store.py](./field_store.py), which implements the xPLA `FieldStore` interface using three SQLite tables for scalar values, log entries, and sequence counters.
 
