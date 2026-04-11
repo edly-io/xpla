@@ -4,6 +4,10 @@ samples/**/*.wasm
 samples/**/*.wasm.bin
 samples/**/*.bundle.js
 samples/*/static/
+src/xpla/notebook/samples/**/*.wasm
+src/xpla/notebook/samples/**/*.wasm.bin
+src/xpla/notebook/samples/**/*.bundle.js
+src/xpla/notebook/samples/**/static
 
 # Python
 __pycache__/

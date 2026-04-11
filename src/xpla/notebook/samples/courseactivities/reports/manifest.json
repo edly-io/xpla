@@ -1,0 +1,54 @@
+{
+  "name": "reports",
+  "client": "client.bundle.js",
+  "server": "server.component.wasm",
+  "fields": {
+    "config": {
+      "type": "object",
+      "scope": "activity",
+      "properties": {
+        "title": { "type": "string" },
+        "activity_id": { "type": "string" },
+        "activity_name": { "type": "string" },
+        "user_id": { "type": "string" },
+        "verb": { "type": "string" },
+        "before_date": { "type": "string" },
+        "after_date": { "type": "string" },
+        "chart_type": { "type": "string" }
+      },
+      "default": {}
+    }
+  },
+  "actions": {
+    "config.save": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "activity_id": { "type": "string" },
+        "activity_name": { "type": "string" },
+        "user_id": { "type": "string" },
+        "verb": { "type": "string" },
+        "before_date": { "type": "string" },
+        "after_date": { "type": "string" },
+        "chart_type": { "type": "string" }
+      }
+    },
+    "data.refresh": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  "events": {
+    "fields.change.config": {
+      "type": "object",
+      "properties": {}
+    },
+    "data.result": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}
