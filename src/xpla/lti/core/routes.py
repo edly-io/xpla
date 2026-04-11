@@ -29,6 +29,7 @@ def create_lti_router(
     launch_handler: Callable[[LaunchData, Request], Awaitable[Response]],
     base_url: str,
     templates: Jinja2Templates,
+    prefix: str = "",
 ) -> APIRouter:
     """Create the LTI core router."""
     router = APIRouter()
@@ -121,7 +122,7 @@ def create_lti_router(
 
         return await launch_handler(launch_data, request)
 
-    _register_admin_routes(router, db_engine, base_url, templates)
+    _register_admin_routes(router, db_engine, base_url, templates, prefix)
     return router
 
 
@@ -130,6 +131,7 @@ def _register_admin_routes(
     db_engine: Engine,
     base_url: str,
     templates: Jinja2Templates,
+    prefix: str,
 ) -> None:
     """Register admin CRUD routes on the router."""
 
@@ -140,7 +142,11 @@ def _register_admin_routes(
         return templates.TemplateResponse(
             request=request,
             name="admin/platforms.html",
-            context={"platforms": platforms, "base_url": base_url},
+            context={
+                "platforms": platforms,
+                "base_url": base_url,
+                "prefix": prefix,
+            },
         )
 
     @router.get("/admin/platforms/new", response_class=HTMLResponse)
@@ -148,7 +154,11 @@ def _register_admin_routes(
         return templates.TemplateResponse(
             request=request,
             name="admin/platform_form.html",
-            context={"platform": None, "action": "/admin/platforms"},
+            context={
+                "platform": None,
+                "action": f"{prefix}/admin/platforms",
+                "prefix": prefix,
+            },
         )
 
     @router.post("/admin/platforms")
@@ -171,7 +181,7 @@ def _register_admin_routes(
         with Session(db_engine) as session:
             session.add(platform)
             session.commit()
-        return RedirectResponse(url="/admin/platforms", status_code=303)
+        return RedirectResponse(url=f"{prefix}/admin/platforms", status_code=303)
 
     @router.get("/admin/platforms/{platform_id}/edit", response_class=HTMLResponse)
     async def admin_edit_platform(request: Request, platform_id: int) -> HTMLResponse:
@@ -184,7 +194,8 @@ def _register_admin_routes(
             name="admin/platform_form.html",
             context={
                 "platform": platform,
-                "action": f"/admin/platforms/{platform_id}",
+                "action": f"{prefix}/admin/platforms/{platform_id}",
+                "prefix": prefix,
             },
         )
 
@@ -210,7 +221,7 @@ def _register_admin_routes(
             platform.access_token_url = access_token_url
             session.add(platform)
             session.commit()
-        return RedirectResponse(url="/admin/platforms", status_code=303)
+        return RedirectResponse(url=f"{prefix}/admin/platforms", status_code=303)
 
     @router.post("/admin/platforms/{platform_id}/delete")
     async def admin_delete_platform(platform_id: int) -> RedirectResponse:
@@ -219,7 +230,7 @@ def _register_admin_routes(
             if platform is not None:
                 session.delete(platform)
                 session.commit()
-        return RedirectResponse(url="/admin/platforms", status_code=303)
+        return RedirectResponse(url=f"{prefix}/admin/platforms", status_code=303)
 
 
 def _find_platform(engine: Engine, issuer: str, client_id: str) -> Platform | None:

@@ -95,6 +95,9 @@ async def activity_page(request: Request, token: str) -> HTMLResponse:
         "course_id": ctx.course_id,
         "activity_id": ctx.activity_id,
     }
+    host = request.headers.get("host", "localhost:9754")
+    ws_scheme = "wss" if request.scope["scheme"] == "https" else "ws"
+    ws_url = f"{ws_scheme}://{host}/activity/{token}/ws"
     return templates.TemplateResponse(
         request=request,
         name="activity_render.html",
@@ -104,6 +107,7 @@ async def activity_page(request: Request, token: str) -> HTMLResponse:
             "scope_json": json.dumps(scope),
             "permission": ctx.permission.value,
             "token": token,
+            "ws_url": ws_url,
         },
     )
 

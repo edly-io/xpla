@@ -14,6 +14,7 @@ from xpla.notebook.views import (
     auth,
     course_activities,
     courses,
+    lti,
 )
 
 
@@ -50,6 +51,7 @@ app.include_router(courses.router)
 app.include_router(activities.router)
 app.include_router(activity_runtime.router)
 app.include_router(course_activities.router)
+app.include_router(lti.router, prefix="/lti")
 
 if constants.FRONTEND_DIR.is_dir():
     app.mount(

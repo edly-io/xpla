@@ -4,7 +4,7 @@
 
 {% block body %}
 <h1>Registered Platforms</h1>
-<p><a class="btn" href="/admin/platforms/new">Add Platform</a></p>
+<p><a class="btn" href="{{ prefix }}/admin/platforms/new">Add Platform</a></p>
 
 {% if platforms %}
 <table>
@@ -23,8 +23,8 @@
             <td>{{ p.issuer }}</td>
             <td>{{ p.client_id }}</td>
             <td>
-                <a href="/admin/platforms/{{ p.id }}/edit">Edit</a>
-                <form method="post" action="/admin/platforms/{{ p.id }}/delete" style="display:inline">
+                <a href="{{ prefix }}/admin/platforms/{{ p.id }}/edit">Edit</a>
+                <form method="post" action="{{ prefix }}/admin/platforms/{{ p.id }}/delete" style="display:inline">
                     <button type="submit" class="btn btn-danger" onclick="return confirm('Delete?')">Delete</button>
                 </form>
             </td>

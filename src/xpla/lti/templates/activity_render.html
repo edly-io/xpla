@@ -13,6 +13,6 @@ customElements.define("xpl-activity", XPLA);
     data-state="{{ state_json | escape }}"
     data-permission="{{ permission }}"
     data-action-url="{{ url_for('send_action', token=token, action_name='__NAME__') }}"
-    data-ws-url="ws://{{ request.headers.get('host', 'localhost:9754') }}/activity/{{ token }}/ws"
+    data-ws-url="{{ ws_url }}"
 ></xpl-activity>
 {% endblock %}
