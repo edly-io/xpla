@@ -3,7 +3,7 @@
 
 ###### Development
 
-SAMPLE_DIRS := $(dir $(wildcard samples/*/Makefile))
+SAMPLE_DIRS := $(dir $(wildcard samples/*/Makefile)) $(dir $(wildcard src/xpla/notebook/samples/courseactivities/*/Makefile))
 
 samples: ## Build all sample activities
 	@for dir in $(SAMPLE_DIRS); do echo "Building $$dir" && $(MAKE) -C $$dir build || exit 1; done
@@ -35,7 +35,7 @@ test-format: ## Run formatting tests
 	black --check src/
 
 test-manifests: ## Validate all manifest.json files
-	@for f in samples/*/manifest.json; do echo "$$f" && ./src/xpla/tools/validate_manifest.py "$$f" || exit 1; done
+	@for f in samples/*/manifest.json src/xpla/notebook/samples/courseactivities/*/manifest.json; do echo "$$f" && ./src/xpla/tools/validate_manifest.py "$$f" || exit 1; done
 
 test-codegen: ## Make sure that manifest types are up-to-date
 	$(MAKE) --always-make manifest-types CODEGEN_OPTIONS="--check"

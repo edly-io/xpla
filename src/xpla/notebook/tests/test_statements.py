@@ -1,6 +1,7 @@
 """Tests for activity report statements persisted in the notebook app."""
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,6 +9,10 @@ from sqlmodel import Session, col, select
 
 from xpla.lib.permission import Permission
 from xpla.notebook.models import ActivityStatement
+from xpla.notebook.views.course_activities import (
+    find_course_activity_dir,
+    list_course_activity_types,
+)
 from xpla.notebook.runtime import NotebookActivityRuntime
 from xpla.notebook.tests.conftest import _make_engine
 
@@ -232,3 +237,58 @@ class TestReportQuery:
         with patch("xpla.notebook.runtime.engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
             assert "report-query" in rt.host_functions()
+
+    def test_filter_before_date(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
+            rt.report_completed()
+        # Set the created_at to a known time for testing
+        with Session(engine) as session:
+            row = session.exec(select(ActivityStatement)).one()
+            row.created_at = datetime(2026, 1, 15, tzinfo=timezone.utc)
+            session.add(row)
+            session.commit()
+        with patch("xpla.notebook.runtime.engine", engine):
+            # before_date excludes the row
+            results = json.loads(
+                rt.report_query('{"before_date": "2026-01-01T00:00:00+00:00"}')
+            )
+            assert len(results) == 0
+            # before_date includes the row
+            results = json.loads(
+                rt.report_query('{"before_date": "2026-02-01T00:00:00+00:00"}')
+            )
+            assert len(results) == 1
+
+    def test_filter_after_date(self, tmp_path: Path) -> None:
+        engine = _make_engine()
+        with patch("xpla.notebook.runtime.engine", engine):
+            rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
+            rt.report_completed()
+        with Session(engine) as session:
+            row = session.exec(select(ActivityStatement)).one()
+            row.created_at = datetime(2026, 1, 15, tzinfo=timezone.utc)
+            session.add(row)
+            session.commit()
+        with patch("xpla.notebook.runtime.engine", engine):
+            # after_date excludes the row
+            results = json.loads(
+                rt.report_query('{"after_date": "2026-02-01T00:00:00+00:00"}')
+            )
+            assert len(results) == 0
+            # after_date includes the row
+            results = json.loads(
+                rt.report_query('{"after_date": "2026-01-01T00:00:00+00:00"}')
+            )
+            assert len(results) == 1
+
+
+class TestCourseActivityDiscovery:
+    def test_list_includes_builtin_samples(self) -> None:
+        types = list_course_activity_types("nonexistent-user")
+        assert "reports" in types
+
+    def test_find_builtin_course_activity(self) -> None:
+        activity_dir = find_course_activity_dir("reports")
+        assert (activity_dir / "manifest.json").exists()

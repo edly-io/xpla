@@ -39,14 +39,17 @@ def get_course_or_404(session: Session, course_id: str, user: User) -> Course:
 
 
 def find_course_activity_dir(activity_type: str) -> Path:
-    parts = activity_type[1:].split("/", 1)
-    if not activity_type.startswith("@") or len(parts) != 2:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Course activity '{activity_type}' not found",
-        )
-    user_id, name = parts
-    activity_dir = constants.COURSE_ACTIVITIES_DIR / user_id / name
+    if activity_type.startswith("@"):
+        parts = activity_type[1:].split("/", 1)
+        if len(parts) != 2:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Course activity '{activity_type}' not found",
+            )
+        user_id, name = parts
+        activity_dir = constants.COURSE_ACTIVITIES_DIR / user_id / name
+    else:
+        activity_dir = constants.COURSE_ACTIVITY_SAMPLES_DIR / activity_type
     if not (activity_dir / "manifest.json").exists():
         raise HTTPException(
             status_code=404,
@@ -56,10 +59,21 @@ def find_course_activity_dir(activity_type: str) -> Path:
 
 
 def list_course_activity_types(user_id: str) -> list[str]:
+    builtins: list[str] = []
+    samples_dir = constants.COURSE_ACTIVITY_SAMPLES_DIR
+    if samples_dir.is_dir():
+        builtins = sorted(
+            d.name
+            for d in samples_dir.iterdir()
+            if d.is_dir() and (d / "manifest.json").exists()
+        )
+    user_uploads: list[str] = []
     user_dir = constants.COURSE_ACTIVITIES_DIR / user_id
-    if not user_dir.is_dir():
-        return []
-    return sorted(f"@{user_id}/{d.name}" for d in user_dir.iterdir() if d.is_dir())
+    if user_dir.is_dir():
+        user_uploads = sorted(
+            f"@{user_id}/{d.name}" for d in user_dir.iterdir() if d.is_dir()
+        )
+    return builtins + user_uploads
 
 
 def load_course_activity(

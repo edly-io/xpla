@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -98,6 +99,16 @@ class NotebookActivityRuntime(ActivityRuntime):
             query = query.where(ActivityStatement.user_id == parsed["user_id"])
         if "verb" in parsed:
             query = query.where(ActivityStatement.verb == parsed["verb"])
+        if "before_date" in parsed:
+            query = query.where(
+                ActivityStatement.created_at
+                < datetime.fromisoformat(parsed["before_date"])
+            )
+        if "after_date" in parsed:
+            query = query.where(
+                ActivityStatement.created_at
+                >= datetime.fromisoformat(parsed["after_date"])
+            )
         if "after_id" in parsed:
             query = query.where(col(ActivityStatement.id) > int(parsed["after_id"]))
         limit = min(
