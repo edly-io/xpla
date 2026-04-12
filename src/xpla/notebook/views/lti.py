@@ -24,7 +24,7 @@ from xpla.lti.core.launch import LaunchData
 from xpla.lti.core.routes import create_lti_router
 from xpla.notebook import constants
 from xpla.notebook.db import engine
-from xpla.notebook.models import Page, PageActivity
+from xpla.notebook.models import CourseActivity, Page, PageActivity
 from xpla.notebook.runtime import NotebookActivityRuntime
 from xpla.notebook.views.activities import find_activity_dir
 
@@ -61,18 +61,19 @@ def _is_instructor(roles: list[str]) -> bool:
     return bool(set(roles) & _INSTRUCTOR_ROLES)
 
 
-def _resolve_page_activity(
-    activity_id: str,
-) -> tuple[PageActivity, str]:
-    """Look up a PageActivity and return it with its course_id."""
+def _resolve_activity(activity_id: str) -> tuple[str, str, bool]:
+    """Look up an activity and return (activity_type, course_id, is_course_activity)."""
     with Session(engine) as session:
         pa = session.get(PageActivity, activity_id)
-        if pa is None:
-            raise HTTPException(status_code=404, detail="Activity not found")
-        page = session.get(Page, pa.page_id)
-        if page is None:
-            raise HTTPException(status_code=404, detail="Page not found")
-        return pa, page.course_id
+        if pa is not None:
+            page = session.get(Page, pa.page_id)
+            if page is None:
+                raise HTTPException(status_code=404, detail="Page not found")
+            return pa.activity_type, page.course_id, False
+        ca = session.get(CourseActivity, activity_id)
+        if ca is not None:
+            return ca.activity_type, ca.course_id, True
+        raise HTTPException(status_code=404, detail="Activity not found")
 
 
 def _make_session_token(
@@ -81,14 +82,16 @@ def _make_session_token(
     activity_type: str,
     course_id: str,
     permission: Permission,
+    is_course_activity: bool,
 ) -> str:
     now = int(time.time())
-    payload = {
+    payload: dict[str, object] = {
         "sub": user_id,
         "activity_id": activity_id,
         "activity_type": activity_type,
         "course_id": course_id,
         "permission": permission.value,
+        "is_course_activity": is_course_activity,
         "iat": now,
         "exp": now + 7200,
     }
@@ -96,8 +99,8 @@ def _make_session_token(
     return token
 
 
-def _decode_session_token(token: str) -> dict[str, str]:
-    claims: dict[str, str] = jwt.decode(token, _session_secret, algorithms=["HS256"])
+def _decode_session_token(token: str) -> dict[str, object]:
+    claims: dict[str, object] = jwt.decode(token, _session_secret, algorithms=["HS256"])
     return claims
 
 
@@ -114,14 +117,19 @@ async def _launch_handler(
             status_code=400,
         )
 
-    pa, course_id = _resolve_page_activity(activity_id)
-    find_activity_dir(pa.activity_type)  # validate it exists
+    activity_type, course_id, is_course_activity = _resolve_activity(activity_id)
+    find_activity_dir(activity_type)  # validate it exists
 
     permission = (
         Permission.edit if _is_instructor(launch_data.roles) else Permission.play
     )
     token = _make_session_token(
-        launch_data.user_id, pa.id, pa.activity_type, course_id, permission
+        launch_data.user_id,
+        activity_id,
+        activity_type,
+        course_id,
+        permission,
+        is_course_activity,
     )
     return RedirectResponse(
         url=f"{constants.LTI_BASE_URL}/activity/{token}", status_code=303
@@ -133,13 +141,14 @@ async def _launch_handler(
 
 def _load_activity_from_token(token: str) -> NotebookActivityRuntime:
     claims = _decode_session_token(token)
-    activity_dir = find_activity_dir(claims["activity_type"])
+    activity_dir = find_activity_dir(str(claims["activity_type"]))
     return NotebookActivityRuntime(
         activity_dir,
-        activity_id=claims["activity_id"],
-        course_id=claims["course_id"],
-        user_id=claims["sub"],
-        permission=Permission(claims["permission"]),
+        activity_id=str(claims["activity_id"]),
+        course_id=str(claims["course_id"]),
+        user_id=str(claims["sub"]),
+        permission=Permission(str(claims["permission"])),
+        is_course_activity=bool(claims.get("is_course_activity", False)),
     )
 
 

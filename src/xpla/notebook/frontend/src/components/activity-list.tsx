@@ -19,6 +19,7 @@ type ActivityListProps = {
 
 export function ActivityList({ activities, onMove, onDelete, onTogglePermission }: ActivityListProps) {
   const [shareActivity, setShareActivity] = useState<{ id: string; permission: string } | null>(null);
+  const [ltiActivity, setLtiActivity] = useState<{ id: string } | null>(null);
 
   return (
     <div>
@@ -38,6 +39,7 @@ export function ActivityList({ activities, onMove, onDelete, onTogglePermission 
                     {a.permission === "play" ? "Edit" : "Play"}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShareActivity({ id: a.id, permission: a.permission })}>Share with AI agent</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLtiActivity({ id: a.id })}>Embed via LTI</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onDelete(a.id)} className="text-destructive">Delete</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -72,6 +74,50 @@ export function ActivityList({ activities, onMove, onDelete, onTogglePermission 
               })()}
             </>
           )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={ltiActivity !== null} onOpenChange={(open) => { if (!open) setLtiActivity(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Embed this activity via LTI</AlertDialogTitle>
+            <AlertDialogDescription>
+              Register this tool in your LTI 1.3 platform (e.g., Open edX) with the URLs below, then add a resource link with the custom parameter shown.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {ltiActivity && (() => {
+            const origin = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+            const loginUrl = `${origin}/lti/auth/login`;
+            const redirectUri = `${origin}/lti/auth/callback`;
+            const jwksUrl = `${origin}/lti/.well-known/jwks.json`;
+            const customParam = `activity_id=${ltiActivity.id}`;
+            return (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">OIDC Login URL</label>
+                  <Input readOnly value={loginUrl} onFocus={(e) => e.target.select()} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Redirect URI</label>
+                  <Input readOnly value={redirectUri} onFocus={(e) => e.target.select()} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Public JWKS URL</label>
+                  <Input readOnly value={jwksUrl} onFocus={(e) => e.target.select()} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Custom parameter</label>
+                  <Input readOnly value={customParam} onFocus={(e) => e.target.select()} />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Register the platform at <a href={`${origin}/lti/admin/platforms`} target="_blank" rel="noreferrer" className="underline">/lti/admin/platforms</a> before launching.
+                </p>
+              </div>
+            );
+          })()}
           <AlertDialogFooter>
             <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>

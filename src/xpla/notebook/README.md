@@ -68,6 +68,13 @@ Then open http://localhost:9753.
 
 For active frontend development with HMR, you can run `cd src/xpla/notebook/frontend && npm run dev` alongside the FastAPI server.
 
+### LTI integration
+
+It is possible to integrate notebook learning activities in other platforms via LTI 1.3. The `XPLN_LTI_BASE_URL` environment variable must be defined:
+
+    # In development
+    XPLN_LTI_BASE_URL=http://my-ip-address:9753/lti fastapi dev src/xpla/notebook/app.py --host=0.0.0.0 --port=9753
+
 ## How Activities Work
 
 1. Activity types are discovered by scanning `samples/` for directories containing a `manifest.json`
