@@ -98,6 +98,7 @@ async def activity_page(request: Request, token: str) -> HTMLResponse:
     host = request.headers.get("host", "localhost:9754")
     ws_scheme = "wss" if request.scope["scheme"] == "https" else "ws"
     ws_url = f"{ws_scheme}://{host}/activity/{token}/ws"
+    asset_base_url = f"/activity/{token}/assets"
     return templates.TemplateResponse(
         request=request,
         name="activity_render.html",
@@ -108,6 +109,7 @@ async def activity_page(request: Request, token: str) -> HTMLResponse:
             "permission": ctx.permission.value,
             "token": token,
             "ws_url": ws_url,
+            "asset_base_url": asset_base_url,
         },
     )
 

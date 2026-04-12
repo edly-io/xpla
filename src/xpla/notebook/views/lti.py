@@ -168,6 +168,7 @@ async def lti_activity_page(request: Request, token: str) -> HTMLResponse:
     host = request.headers.get("host", "localhost:9753")
     ws_scheme = "wss" if request.scope["scheme"] == "https" else "ws"
     ws_url = f"{ws_scheme}://{host}{LTI_PREFIX}/activity/{token}/ws"
+    asset_base_url = f"{LTI_PREFIX}/activity/{token}/assets"
     return _lti_templates.TemplateResponse(
         request=request,
         name="activity_render.html",
@@ -178,6 +179,7 @@ async def lti_activity_page(request: Request, token: str) -> HTMLResponse:
             "permission": ctx.permission.value,
             "token": token,
             "ws_url": ws_url,
+            "asset_base_url": asset_base_url,
         },
     )
 

@@ -59,6 +59,9 @@ export class XPLA extends HTMLElement {
       this._initShadow();
     }
 
+    this._wsUrl = this.getAttribute("data-ws-url");
+    this._assetBaseUrl = this.getAttribute("data-asset-base-url");
+
     const stateAttr = this.getAttribute("data-state");
     if (stateAttr) {
       this.state = JSON.parse(stateAttr);
@@ -151,6 +154,7 @@ export class XPLA extends HTMLElement {
   }
 
   _getWebsocketUrl() {
+    if (this._wsUrl) return this._wsUrl;
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${location.host}/api/activity/${this.context.activity_id}/ws`;
   }
@@ -236,6 +240,7 @@ export class XPLA extends HTMLElement {
   }
 
   getAssetUrl(path) {
+    if (this._assetBaseUrl) return `${this._assetBaseUrl}/${path}`;
     return new URL(`/a/${this.context.activity_id}/${path}`, location.href).href;
   }
 

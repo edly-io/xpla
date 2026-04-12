@@ -75,6 +75,14 @@ It is possible to integrate notebook learning activities in other platforms via 
     # In development
     XPLN_LTI_BASE_URL=http://my-ip-address:9753/lti fastapi dev src/xpla/notebook/app.py --host=0.0.0.0 --port=9753
 
+In Open edX, the LTI 1.3 unit needs to be configured with the following settings:
+
+- "Tool Launch URL" and "Tool Initiate Login URL" same as "OIDC Login URL"
+- "Registered Redirect URIs" must include the "Redirect URI"
+- "Tool Public Key Mode" set as "Keyset URL"
+- "Tool Keyset URL" same as "Public JWKS URL"
+- "Custom Parameters" must include "activity_id=..."
+
 ## How Activities Work
 
 1. Activity types are discovered by scanning `samples/` for directories containing a `manifest.json`
