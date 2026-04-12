@@ -9,6 +9,12 @@ This is information that your user has sent to you to better interact with this 
 
 This is a learning platform. It has multiple courses. Each course has multiple pages. Each page has multiple learning activities.
 
+## Authentication
+
+All API requests require authentication. Include the user's API token in the Authorization header:
+
+    Authorization: Bearer {api_token}
+
 ## Documentation
 
 Before you decide to make any change, you *must* read the API documentation of the platform.

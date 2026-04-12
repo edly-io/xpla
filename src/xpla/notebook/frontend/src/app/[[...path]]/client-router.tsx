@@ -6,6 +6,7 @@ import { ActivitiesPage } from "@/components/views/activities-page";
 import { CourseDetailPage } from "@/components/views/course-detail-page";
 import { CourseDashboardPage } from "@/components/views/course-dashboard-page";
 import { PageDetailPage } from "@/components/views/page-detail-page";
+import { SettingsPage } from "@/components/views/settings-page";
 
 export function ClientRouter() {
   const pathname = usePathname();
@@ -17,6 +18,10 @@ export function ClientRouter() {
 
   if (segments[0] === "activities" && segments.length === 1) {
     return <ActivitiesPage />;
+  }
+
+  if (segments[0] === "settings" && segments.length === 1) {
+    return <SettingsPage />;
   }
 
   if (segments[0] === "courses" && segments.length === 3 && segments[2] === "dashboard") {

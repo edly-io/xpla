@@ -13,7 +13,7 @@ from sqlmodel import Session, col, desc, select
 from xpla.lib.manifest_types import XplaActivityManifest
 from xpla.lib.permission import Permission
 from xpla.notebook import constants, llms
-from xpla.notebook.auth import get_current_user
+from xpla.notebook.auth import get_current_user, get_or_create_api_token
 from xpla.notebook.db import get_session
 from xpla.notebook.models import Course, Page, PageActivity, User
 from xpla.notebook.runtime import NotebookActivityRuntime, delete_type_storage
@@ -234,6 +234,7 @@ async def activity_llms_txt(
         permission,
     )
     base_url = str(request.base_url).rstrip("/")
+    api_token = get_or_create_api_token(session, current_user.id)
 
     manifest_actions = {}
     if runtime.manifest.actions:
@@ -253,6 +254,7 @@ async def activity_llms_txt(
         activity_state=json.dumps(state, indent=2),
         activity_type=activity.activity_type,
         page_id=activity.page_id,
+        api_token=api_token,
     )
     return PlainTextResponse(information)
 

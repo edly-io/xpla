@@ -18,6 +18,9 @@ class User(SQLModel, table=True):
     sessions: list["UserSession"] = Relationship(
         back_populates="user", cascade_delete=True
     )
+    api_tokens: list["ApiToken"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
     # No cascade_delete — user deletion is not a supported operation; DB-level
     # CASCADE acts as a safety net only.
     courses: list["Course"] = Relationship(back_populates="owner")
@@ -30,6 +33,14 @@ class UserSession(SQLModel, table=True):
     expires_at: datetime
 
     user: User = Relationship(back_populates="sessions")
+
+
+class ApiToken(SQLModel, table=True):
+    token: str = Field(primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+    user: "User" = Relationship(back_populates="api_tokens")
 
 
 class Course(SQLModel, table=True):

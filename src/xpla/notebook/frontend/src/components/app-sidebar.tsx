@@ -103,6 +103,7 @@ export function AppSidebar() {
             <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>⋯</DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem render={<Link href="/activities" />}>My Activities</DropdownMenuItem>
+              <DropdownMenuItem render={<Link href="/settings" />}>Settings</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

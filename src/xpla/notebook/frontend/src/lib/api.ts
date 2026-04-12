@@ -35,6 +35,11 @@ export const signup = (email: string, password: string) => request<Me>("/api/aut
 export const login = (email: string, password: string) => request<Me>("/api/auth/login", json({ email, password }));
 export const logout = () => request<void>("/api/auth/logout", { method: "POST" });
 
+// API token
+export type ApiTokenResponse = { token: string };
+export const getApiToken = () => request<ApiTokenResponse>("/api/settings/api-token");
+export const regenerateApiToken = () => request<ApiTokenResponse>("/api/settings/api-token", { method: "POST" });
+
 // Courses
 export type CourseItem = { id: string; title: string; position: number };
 export type CourseDetail = CourseItem & { pages: PageItem[] };

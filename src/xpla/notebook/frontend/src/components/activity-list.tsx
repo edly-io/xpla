@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { XplActivity } from "@/components/xpl-activity";
-import type { Activity } from "@/lib/api";
+import { getApiToken, type Activity } from "@/lib/api";
 
 type ActivityListProps = {
   activities: Activity[];
@@ -20,6 +20,11 @@ type ActivityListProps = {
 export function ActivityList({ activities, onMove, onDelete, onTogglePermission }: ActivityListProps) {
   const [shareActivity, setShareActivity] = useState<{ id: string; permission: string } | null>(null);
   const [ltiActivity, setLtiActivity] = useState<{ id: string } | null>(null);
+  const [apiToken, setApiToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    getApiToken().then((r) => setApiToken(r.token));
+  }, []);
 
   return (
     <div>
@@ -58,17 +63,18 @@ export function ActivityList({ activities, onMove, onDelete, onTogglePermission 
           {shareActivity && (
             <>
               {(() => {
-                const llmsUrl = `${process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "")}/api/activities/${shareActivity.id}/${shareActivity.permission}/llms.txt`;
+                const origin = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+                const llmsUrl = `${origin}/api/activities/${shareActivity.id}/${shareActivity.permission}/llms.txt`;
+                const prompt = apiToken
+                  ? `Fetch the content of this page ${llmsUrl} using the HTTP header "Authorization: Bearer ${apiToken}" and use the information to help me work with this activity`
+                  : `Fetch the content of this page ${llmsUrl} and use the information to help me work with this activity`;
                 return (
                   <>
                     <Input
                       readOnly
-                      value={llmsUrl}
+                      value={prompt}
                       onFocus={(e) => e.target.select()}
                     />
-                    <p className="text-sm text-muted-foreground">
-                      For instance: &quot;Fetch the content of this page {llmsUrl} and use the information to help me work with this activity&quot;
-                    </p>
                   </>
                 );
               })()}
