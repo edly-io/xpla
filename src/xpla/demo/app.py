@@ -168,6 +168,17 @@ async def activity_embed(request: Request, activity_type: str) -> HTMLResponse:
     )
 
 
+@app.get("/a/{activity_type}/client.js")
+async def activity_client_js(request: Request, activity_type: str) -> FileResponse:
+    """Serve the client script for an activity."""
+    activity_context = load_activity(request.cookies, activity_type)
+    try:
+        full_path = activity_context.get_client_js_path()
+    except AssetAccessError as e:
+        raise HTTPException(status_code=404, detail="Access denied") from e
+    return FileResponse(full_path)
+
+
 @app.get("/a/{activity_type}/{file_path:path}")
 async def activity_asset(
     request: Request, activity_type: str, file_path: str

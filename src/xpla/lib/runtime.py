@@ -208,6 +208,12 @@ class ActivityRuntime:
             )
         return host_functions
 
+    def get_client_js_path(self) -> Path:
+        full_path = self._activity_dir / self.manifest.client
+        if not full_path.exists() or not full_path.is_file():
+            raise AssetAccessError("Client script does not exist")
+        return full_path
+
     def get_asset_path(self, file_path: str) -> Path:
         full_path = self._activity_dir / file_path
         try:
@@ -215,10 +221,8 @@ class ActivityRuntime:
         except ValueError as e:
             raise AssetAccessError("Incorrect path") from e
 
-        # Only serve files declared in manifest
-        if file_path not in (self.manifest.client, "manifest.json"):
-            if file_path not in [item.root for item in (self.manifest.assets or [])]:
-                raise AssetAccessError("Undeclared asset")
+        if file_path not in [item.root for item in (self.manifest.assets or [])]:
+            raise AssetAccessError("Undeclared asset")
 
         if not full_path.exists() or not full_path.is_file():
             raise AssetAccessError("Asset does not exist")

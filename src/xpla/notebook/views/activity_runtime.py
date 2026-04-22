@@ -76,6 +76,24 @@ def load_any_activity(
 
 
 @router.get(
+    "/a/{activity_id}/client.js",
+    summary="Serve the activity client script",
+)
+async def activity_client_js(
+    activity_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FileResponse:
+    info = resolve_activity(session, activity_id, current_user)
+    ctx = load_any_activity(info, current_user.id, Permission.play)
+    try:
+        full_path = ctx.get_client_js_path()
+    except AssetAccessError as e:
+        raise HTTPException(status_code=404, detail="Access denied") from e
+    return FileResponse(full_path)
+
+
+@router.get(
     "/a/{activity_id}/{file_path:path}",
     summary="Serve an activity static asset",
 )

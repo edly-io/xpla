@@ -114,6 +114,17 @@ async def activity_page(request: Request, token: str) -> HTMLResponse:
     )
 
 
+@app.get("/activity/{token}/client.js")
+async def activity_client_js(token: str) -> FileResponse:
+    """Serve the client script for an activity."""
+    ctx = _load_activity_from_token(token)
+    try:
+        full_path = ctx.get_client_js_path()
+    except AssetAccessError as e:
+        raise HTTPException(status_code=404, detail="Access denied") from e
+    return FileResponse(full_path)
+
+
 @app.get("/activity/{token}/assets/{file_path:path}")
 async def activity_asset(token: str, file_path: str) -> FileResponse:
     """Serve static files from an activity directory."""

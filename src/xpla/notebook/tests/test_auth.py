@@ -171,11 +171,15 @@ def test_regenerate_api_token(client: TestClient) -> None:
     # Old token no longer valid
     client.cookies.clear()
     assert (
-        client.get("/api/me", headers={"Authorization": f"Bearer {old_token}"}).status_code
+        client.get(
+            "/api/me", headers={"Authorization": f"Bearer {old_token}"}
+        ).status_code
         == 401
     )
     # New token works
     assert (
-        client.get("/api/me", headers={"Authorization": f"Bearer {new_token}"}).status_code
+        client.get(
+            "/api/me", headers={"Authorization": f"Bearer {new_token}"}
+        ).status_code
         == 200
     )
