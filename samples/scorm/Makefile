@@ -2,13 +2,13 @@ REPO_ROOT := ../..
 SANDBOX_LIB := $(wildcard $(REPO_ROOT)/src/xpla/lib/sandbox/*.js)
 
 
-build: server.component.wasm
+build: sandbox.wasm
 
 node_modules: package.json
 	npm install
 
-server.bundle.js: server.js node_modules
-	npx esbuild server.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=server.bundle.js
+sandbox.bundle.js: sandbox.js node_modules
+	npx esbuild sandbox.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=sandbox.bundle.js
 
-server.component.wasm: server.bundle.js xpla.wit
-	npx componentize-js server.bundle.js --wit xpla.wit --world-name activity --disable http --disable fetch-event -o server.component.wasm
+sandbox.wasm: sandbox.bundle.js xpla.wit
+	npx componentize-js sandbox.bundle.js --wit xpla.wit --world-name activity --disable http --disable fetch-event -o sandbox.wasm

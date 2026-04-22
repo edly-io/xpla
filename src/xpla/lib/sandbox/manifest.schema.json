@@ -4,22 +4,22 @@
   "title": "xPLA Activity Manifest",
   "description": "Manifest for a xPLA learning activity, declaring capabilities and fields.",
   "type": "object",
-  "required": ["name", "client"],
+  "required": ["name", "ui"],
   "additionalProperties": false,
   "properties": {
     "name": {
       "type": "string",
       "description": "Unique identifier for the activity."
     },
-    "client": {
+    "ui": {
       "type": "string",
       "pattern": "^(?!/)(?!.*\\.\\.).+$",
-      "description": "Path to the client-side JavaScript file, relative to activity directory."
+      "description": "Path to the UI script, relative to activity directory."
     },
-    "server": {
+    "sandbox": {
       "type": "string",
       "pattern": "^(?!/)(?!.*\\.\\.).+$",
-      "description": "Path to the server-side WASM file, relative to activity directory."
+      "description": "Path to the sandboxed WASM component, relative to activity directory."
     },
     "capabilities": {
       "type": "object",

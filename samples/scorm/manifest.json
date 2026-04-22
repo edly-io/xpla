@@ -1,10 +1,10 @@
 {
   "name": "scorm",
-  "client": "client.js",
-  "server": "server.component.wasm",
   "capabilities": {
     "storage": {
-      "content": { "scope": "activity" }
+      "content": {
+        "scope": "activity"
+      }
     }
   },
   "fields": {
@@ -18,12 +18,20 @@
     "scorm.upload": {
       "type": "object",
       "properties": {
-        "data": { "type": "string" }
+        "data": {
+          "type": "string"
+        }
       },
-      "required": ["data"]
+      "required": [
+        "data"
+      ]
     }
   },
   "events": {
-    "scorm.ready": { "type": "string" }
-  }
+    "scorm.ready": {
+      "type": "string"
+    }
+  },
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm"
 }

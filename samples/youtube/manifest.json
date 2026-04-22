@@ -1,8 +1,6 @@
 {
   "name": "youtube",
-  "client": "client.js",
-  "server": "server.component.wasm",
-    "fields": {
+  "fields": {
     "video_id": {
       "type": "string",
       "scope": "activity",
@@ -13,11 +11,17 @@
     "config.save": {
       "type": "object",
       "properties": {
-        "video_id": { "type": "string" }
+        "video_id": {
+          "type": "string"
+        }
       }
     }
   },
   "events": {
-    "fields.change.video_id": { "type": "string" }
-  }
+    "fields.change.video_id": {
+      "type": "string"
+    }
+  },
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm"
 }

@@ -109,7 +109,7 @@ def activity_dict(
         "page_id": page.id,
         "activity_type": pa.activity_type,
         "position": pa.position,
-        "client_path": ctx.client_path,
+        "ui_path": ctx.ui_path,
         "state": ctx.get_state(),
         "permission": ctx.permission.name,
         "context": {
@@ -361,16 +361,16 @@ async def upload_activity_type(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid manifest: {e}") from e
 
-        if not (extract_dir / manifest.client).exists():
+        if not (extract_dir / manifest.ui).exists():
             raise HTTPException(
                 status_code=400,
-                detail=f"Client file '{manifest.client}' not found in zip",
+                detail=f"UI file '{manifest.ui}' not found in zip",
             )
 
-        if manifest.server and not (extract_dir / manifest.server).exists():
+        if manifest.sandbox and not (extract_dir / manifest.sandbox).exists():
             raise HTTPException(
                 status_code=400,
-                detail=f"Server file '{manifest.server}' not found in zip",
+                detail=f"Sandbox file '{manifest.sandbox}' not found in zip",
             )
 
         for asset in manifest.assets or []:

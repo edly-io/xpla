@@ -1,6 +1,6 @@
 # Sample Activities
 
-This directory contains reference xPLA activities that demonstrate the standard. Each subdirectory is a self-contained activity with a `manifest.json` and a client-side script. Most also include a server-side script (`server.js`) that is compiled to WebAssembly (`server.wasm`).
+This directory contains reference xPLA activities that demonstrate the standard. Each subdirectory is a self-contained activity with a `manifest.json` and a client-side script. Most also include a server-side sandbox script (`sandbox.js`) that is compiled to a WebAssembly component (`sandbox.wasm`).
 
 For the full specification of the activity format, see the [Activity API Reference](../src/xpla/lib/README.md#activity-api-reference).
 
@@ -37,4 +37,4 @@ make -C samples/my-activity build
 
 ## Creating a New Activity
 
-An activity needs at minimum a `manifest.json` and a `client.js`. See the [mcq](./mcq/) activity for a straightforward example with server-side grading, or [quiz](./quiz/) for a minimal client-only activity.
+An activity needs at minimum a `manifest.json` and a `ui.js`. See the [mcq](./mcq/) activity for a straightforward example with server-side grading, or [quiz](./quiz/) for a minimal client-only activity.

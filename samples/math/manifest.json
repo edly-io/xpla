@@ -1,8 +1,6 @@
 {
   "name": "math",
-  "client": "client.js",
-  "server": "server.component.wasm",
-    "fields": {
+  "fields": {
     "correct_answers": {
       "type": "integer",
       "scope": "user,activity",
@@ -18,8 +16,12 @@
     "answer.submit": {
       "type": "object",
       "properties": {
-        "question": { "type": "string" },
-        "answer": { "type": "string" }
+        "question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        }
       }
     }
   },
@@ -27,11 +29,21 @@
     "answer.result": {
       "type": "object",
       "properties": {
-        "correct": { "type": "boolean" },
-        "feedback": { "type": "string" }
+        "correct": {
+          "type": "boolean"
+        },
+        "feedback": {
+          "type": "string"
+        }
       }
     },
-    "fields.change.correct_answers": { "type": "integer" },
-    "fields.change.wrong_answers": { "type": "integer" }
-  }
+    "fields.change.correct_answers": {
+      "type": "integer"
+    },
+    "fields.change.wrong_answers": {
+      "type": "integer"
+    }
+  },
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm"
 }

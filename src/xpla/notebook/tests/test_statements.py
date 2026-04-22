@@ -29,7 +29,7 @@ def _make_notebook_runtime(
     """Create a NotebookActivityRuntime backed by an in-memory DB."""
     activity_dir = tmp_path / "activity"
     activity_dir.mkdir(exist_ok=True)
-    manifest = {"name": "test-activity", "client": "client.js", "capabilities": {}}
+    manifest = {"name": "test-activity", "ui": "ui.js", "capabilities": {}}
     (activity_dir / "manifest.json").write_text(json.dumps(manifest))
 
     with patch("xpla.notebook.runtime.engine", engine):

@@ -31,7 +31,7 @@ def fixtures_samples_dir(
         # Create manifest
         manifest: dict[str, Any] = {
             "name": "test-activity",
-            "client": "client.js",
+            "ui": "ui.js",
             "capabilities": {},
             "assets": ["index.html"],
         }
@@ -113,7 +113,7 @@ class TestActionEndpoint:
         activity_path = samples_dir / "test-activity"
         manifest: dict[str, Any] = {
             "name": "test-activity",
-            "client": "client.js",
+            "ui": "ui.js",
             "capabilities": {},
             "actions": {
                 "known.action": {"type": "object", "properties": {}},
@@ -134,7 +134,7 @@ class TestActionEndpoint:
         activity_path = samples_dir / "test-activity"
         manifest: dict[str, Any] = {
             "name": "test-activity",
-            "client": "client.js",
+            "ui": "ui.js",
             "capabilities": {},
             "actions": {
                 "typed.action": {"type": "integer"},

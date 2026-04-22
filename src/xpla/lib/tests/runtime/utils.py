@@ -14,17 +14,17 @@ def create_manifest(
     fields: dict[str, Any] | None = None,
     actions: dict[str, Any] | None = None,
     events: dict[str, Any] | None = None,
-    client: str = "client.js",
-    server: str | None = None,
+    ui: str = "ui.js",
+    sandbox: str | None = None,
 ) -> dict[str, Any]:
     """Helper to create a manifest dict."""
     manifest: dict[str, Any] = {
         "name": name,
-        "client": client,
+        "ui": ui,
         "capabilities": capabilities or {},
     }
-    if server is not None:
-        manifest["server"] = server
+    if sandbox is not None:
+        manifest["sandbox"] = sandbox
     if fields is not None:
         manifest["fields"] = fields
     if actions is not None:

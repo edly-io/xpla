@@ -114,10 +114,10 @@ class ActivityRuntime:
 
         # Sandboxed code
         self.sandbox: SandboxExecutor | None = None
-        server_path = self.manifest.server
-        if server_path is not None:
+        sandbox_path = self.manifest.sandbox
+        if sandbox_path is not None:
             # Note: we know that this is a safe path thanks to path constraints in the manifests
-            wasm_path = self._activity_dir / server_path
+            wasm_path = self._activity_dir / sandbox_path
             self.sandbox = get_sandbox_executor(wasm_path, self.host_functions())
 
         # Storage directories are created on demand by storage_write.
@@ -159,13 +159,13 @@ class ActivityRuntime:
         return self.manifest.name
 
     @property
-    def client_path(self) -> str:
+    def ui_path(self) -> str:
         """
-        Path to client script, relative to activity directory.
+        Path to UI script, relative to activity directory.
 
         Note that this is a safe path thanks to schema constraints.
         """
-        return self.manifest.client
+        return self.manifest.ui
 
     def host_functions(self) -> dict[str, Callable[..., Any]]:
         """
@@ -208,10 +208,10 @@ class ActivityRuntime:
             )
         return host_functions
 
-    def get_client_js_path(self) -> Path:
-        full_path = self._activity_dir / self.manifest.client
+    def get_ui_path(self) -> Path:
+        full_path = self._activity_dir / self.manifest.ui
         if not full_path.exists() or not full_path.is_file():
-            raise AssetAccessError("Client script does not exist")
+            raise AssetAccessError("UI script does not exist")
         return full_path
 
     def get_asset_path(self, file_path: str) -> Path:

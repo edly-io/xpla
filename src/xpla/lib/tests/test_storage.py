@@ -30,7 +30,7 @@ def _make_runtime(
     activity_dir = Path(tempfile.mkdtemp())
     manifest = {
         "name": "test-activity",
-        "client": "client.js",
+        "ui": "ui.js",
         "capabilities": capabilities or {},
     }
     (activity_dir / "manifest.json").write_text(json.dumps(manifest))

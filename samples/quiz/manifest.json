@@ -1,4 +1,4 @@
 {
   "name": "quiz",
-  "client": "client.js"
+  "ui": "ui.js"
 }

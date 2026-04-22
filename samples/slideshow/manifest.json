@@ -1,8 +1,6 @@
 {
   "name": "slideshow",
-  "client": "client.js",
-  "server": "server.component.wasm",
-    "fields": {
+  "fields": {
     "slides_html": {
       "type": "string",
       "scope": "activity",
@@ -13,12 +11,16 @@
     "config.save": {
       "type": "object",
       "properties": {
-        "slides_html": { "type": "string" }
+        "slides_html": {
+          "type": "string"
+        }
       }
     }
   },
   "events": {
-    "fields.change.slides_html": { "type": "string" }
+    "fields.change.slides_html": {
+      "type": "string"
+    }
   },
   "assets": [
     "assets/reveal/reset.css",
@@ -29,5 +31,7 @@
     "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro-italic.woff",
     "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro-regular.woff",
     "assets/reveal/theme/fonts/source-sans-pro/source-sans-pro-semibold.woff"
-  ]
+  ],
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm"
 }

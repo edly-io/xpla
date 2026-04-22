@@ -1,7 +1,5 @@
 {
   "name": "collab-editor",
-  "client": "client.bundle.js",
-  "server": "server.component.wasm",
   "fields": {
     "doc_state": {
       "type": "string",
@@ -23,39 +21,61 @@
     "config.save": {
       "type": "object",
       "properties": {
-        "render_markdown": {"type": "integer"}
+        "render_markdown": {
+          "type": "integer"
+        }
       }
     },
     "doc.update": {
       "type": "object",
       "properties": {
-        "data": {"type": "string"}
+        "data": {
+          "type": "string"
+        }
       }
     },
     "cursor.move": {
       "type": "object",
       "properties": {
-        "index": {"type": "integer"},
-        "length": {"type": "integer"}
+        "index": {
+          "type": "integer"
+        },
+        "length": {
+          "type": "integer"
+        }
       }
     }
   },
   "events": {
-    "fields.change.render_markdown": { "type": "integer" },
+    "fields.change.render_markdown": {
+      "type": "integer"
+    },
     "doc.update": {
       "type": "object",
       "properties": {
-        "data": {"type": "string"},
-        "user": {"type": "string"}
+        "data": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
       }
     },
     "cursor.move": {
       "type": "object",
       "properties": {
-        "user": {"type": "string"},
-        "index": {"type": "integer"},
-        "length": {"type": "integer"}
+        "user": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "length": {
+          "type": "integer"
+        }
       }
     }
-  }
+  },
+  "ui": "ui.bundle.js",
+  "sandbox": "sandbox.wasm"
 }

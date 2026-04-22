@@ -1,8 +1,6 @@
 {
   "name": "video",
-  "client": "client.bundle.js",
-  "server": "server.component.wasm",
-    "fields": {
+  "fields": {
     "video_url": {
       "type": "string",
       "scope": "activity",
@@ -13,11 +11,17 @@
     "config.save": {
       "type": "object",
       "properties": {
-        "video_url": { "type": "string" }
+        "video_url": {
+          "type": "string"
+        }
       }
     }
   },
   "events": {
-    "fields.change.video_url": { "type": "string" }
-  }
+    "fields.change.video_url": {
+      "type": "string"
+    }
+  },
+  "ui": "ui.bundle.js",
+  "sandbox": "sandbox.wasm"
 }

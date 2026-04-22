@@ -1,7 +1,7 @@
 {
   "name": "reports",
-  "client": "client.bundle.js",
-  "server": "server.component.wasm",
+  "ui": "ui.bundle.js",
+  "sandbox": "sandbox.wasm",
   "fields": {
     "config": {
       "type": "object",

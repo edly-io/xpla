@@ -66,7 +66,7 @@ def test_non_owner_cannot_load_activity_asset(client: TestClient) -> None:
     client.cookies.clear()
     _signup(client, "b@example.com")
 
-    response = client.get(f"/a/{activity_id}/client.js")
+    response = client.get(f"/a/{activity_id}/ui.js")
     assert response.status_code == 403
 
 

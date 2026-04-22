@@ -61,9 +61,9 @@ class TestActivityRuntimeInit:
         self, mock_sandbox_executor: MagicMock, tmp_path: Path
     ) -> None:
         """Should create SandboxComponentExecutor when server is declared in manifest."""
-        manifest = create_manifest(server="server.component.wasm")
+        manifest = create_manifest(sandbox="sandbox.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.component.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "sandbox.wasm").write_bytes(b"fake wasm")
 
         ctx = ActivityRuntime(
             activity_dir,
@@ -89,12 +89,12 @@ class TestActivityRuntimeProperties:
 
         assert ctx.name == "quiz-activity"
 
-    def test_client_path_property(self, tmp_path: Path) -> None:
-        """Should return client path from manifest."""
-        manifest = create_manifest(client="src/my-client.js")
+    def test_ui_path_property(self, tmp_path: Path) -> None:
+        """Should return UI path from manifest."""
+        manifest = create_manifest(ui="src/my-ui.js")
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        assert ctx.client_path == "src/my-client.js"
+        assert ctx.ui_path == "src/my-ui.js"
 
 
 class TestHostFunctions:
@@ -677,9 +677,9 @@ class TestGetState:
         self, mock_sandbox_class: MagicMock, tmp_path: Path
     ) -> None:
         """Should call sandbox get-state when available."""
-        manifest = create_manifest(server="server.component.wasm")
+        manifest = create_manifest(sandbox="sandbox.wasm")
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.component.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "sandbox.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
         mock_sandbox.call_function.return_value = b'{"question": "test"}'
@@ -709,7 +709,7 @@ class TestGetState:
     ) -> None:
         """Should raise error when get-state raises SandboxRuntimeError."""
         manifest = create_manifest(
-            server="server.component.wasm",
+            sandbox="sandbox.wasm",
             fields={
                 "score": {
                     "type": "integer",
@@ -719,7 +719,7 @@ class TestGetState:
             },
         )
         activity_dir = setup_activity_dir(tmp_path, manifest)
-        (activity_dir / "server.component.wasm").write_bytes(b"fake wasm")
+        (activity_dir / "sandbox.wasm").write_bytes(b"fake wasm")
 
         mock_sandbox = MagicMock()
         mock_sandbox.call_function.side_effect = SandboxRuntimeError(

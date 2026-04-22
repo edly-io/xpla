@@ -4,7 +4,6 @@ type Context = { user_id: string; course_id: string; activity_id: string };
 
 type XplActivityProps = {
   context: Context;
-  clientPath: string;
   state: unknown;
   permission: string;
 };
@@ -26,13 +25,13 @@ declare global {
   }
 }
 
-export function XplActivity({ context, clientPath, state, permission }: XplActivityProps) {
+export function XplActivity({ context, state, permission }: XplActivityProps) {
   return (
     <xpl-activity
       data-context={JSON.stringify(context)}
       data-state={JSON.stringify(state)}
       data-permission={permission}
-      data-src={`/a/${context.activity_id}/${clientPath}`}
+      data-src={`/a/${context.activity_id}/ui.js`}
     />
   );
 }

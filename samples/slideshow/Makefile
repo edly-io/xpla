@@ -4,13 +4,13 @@ SANDBOX_LIB := $(wildcard $(REPO_ROOT)/src/xpla/lib/sandbox/*.js)
 
 REVEAL_SRC := node_modules/reveal.js/dist
 
-build: server.component.wasm assets/reveal/reveal.js
+build: sandbox.wasm assets/reveal/reveal.js
 
-server.bundle.js: server.js
-	npx esbuild server.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=server.bundle.js
+sandbox.bundle.js: sandbox.js
+	npx esbuild sandbox.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=sandbox.bundle.js
 
-server.component.wasm: server.bundle.js xpla.wit
-	npx componentize-js server.bundle.js --wit xpla.wit --world-name activity --disable http --disable fetch-event -o server.component.wasm
+sandbox.wasm: sandbox.bundle.js xpla.wit
+	npx componentize-js sandbox.bundle.js --wit xpla.wit --world-name activity --disable http --disable fetch-event -o sandbox.wasm
 
 assets/reveal/reveal.js: node_modules
 	mkdir -p assets/reveal/theme/fonts

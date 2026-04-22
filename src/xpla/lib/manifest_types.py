@@ -116,17 +116,17 @@ class XplaActivityManifest(BaseModel):
         regex_engine="python-re",
     )
     name: Annotated[str, Field(description="Unique identifier for the activity.")]
-    client: Annotated[
+    ui: Annotated[
         str,
         Field(
-            description="Path to the client-side JavaScript file, relative to activity directory.",
+            description="Path to the UI script, relative to activity directory.",
             pattern="^(?!/)(?!.*\\.\\.).+$",
         ),
     ]
-    server: Annotated[
+    sandbox: Annotated[
         str | None,
         Field(
-            description="Path to the server-side WASM file, relative to activity directory.",
+            description="Path to the sandboxed WASM component, relative to activity directory.",
             pattern="^(?!/)(?!.*\\.\\.).+$",
         ),
     ] = None

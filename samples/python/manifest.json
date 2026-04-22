@@ -1,8 +1,6 @@
 {
   "name": "python",
-  "client": "client.bundle.js",
-  "server": "server.component.wasm",
-    "fields": {
+  "fields": {
     "instructions": {
       "type": "string",
       "scope": "activity",
@@ -57,10 +55,18 @@
     }
   },
   "events": {
-    "fields.change.user_code": { "type": "string" },
-    "fields.change.instructions": { "type": "string" },
-    "fields.change.test_code": { "type": "string" },
-    "fields.change.starter_code": { "type": "string" }
+    "fields.change.user_code": {
+      "type": "string"
+    },
+    "fields.change.instructions": {
+      "type": "string"
+    },
+    "fields.change.test_code": {
+      "type": "string"
+    },
+    "fields.change.starter_code": {
+      "type": "string"
+    }
   },
   "assets": [
     "assets/pyodide/pyodide.mjs",
@@ -68,5 +74,7 @@
     "assets/pyodide/pyodide.asm.wasm",
     "assets/pyodide/pyodide.asm.js",
     "assets/pyodide/python_stdlib.zip"
-  ]
+  ],
+  "ui": "ui.bundle.js",
+  "sandbox": "sandbox.wasm"
 }

@@ -1,10 +1,10 @@
 REPO_ROOT := ../..
 
 
-build: server.component.wasm
+build: sandbox.wasm
 
-server.component.wasm: xpla.wit server.py
-	componentize-py --wit-path=xpla.wit --world=activity componentize --output server.component.wasm server
+sandbox.wasm: xpla.wit server.py
+	componentize-py --wit-path=xpla.wit --world=activity componentize --output sandbox.wasm server
 
 # Generate bindings to better integrate with the IDE.
 bindings: xpla.wit

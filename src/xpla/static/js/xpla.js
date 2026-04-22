@@ -245,7 +245,7 @@ export class XPLA extends HTMLElement {
   }
 
   onEvent(name, value) {
-    // Default no-op. Override in client.js to handle events.
+    // Default no-op. Override in ui.js to handle events.
   }
 
   disconnectedCallback() {

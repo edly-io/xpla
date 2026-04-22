@@ -184,12 +184,12 @@ async def lti_activity_page(request: Request, token: str) -> HTMLResponse:
     )
 
 
-@activity_router.get("/activity/{token}/client.js", name="activity_client_js")
-async def lti_activity_client_js(token: str) -> FileResponse:
-    """Serve the client script for an activity."""
+@activity_router.get("/activity/{token}/ui.js", name="activity_ui")
+async def lti_activity_ui(token: str) -> FileResponse:
+    """Serve the UI script for an activity."""
     ctx = _load_activity_from_token(token)
     try:
-        full_path = ctx.get_client_js_path()
+        full_path = ctx.get_ui_path()
     except AssetAccessError as e:
         raise HTTPException(status_code=404, detail="Access denied") from e
     return FileResponse(full_path)

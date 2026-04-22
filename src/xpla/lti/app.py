@@ -114,12 +114,12 @@ async def activity_page(request: Request, token: str) -> HTMLResponse:
     )
 
 
-@app.get("/activity/{token}/client.js")
-async def activity_client_js(token: str) -> FileResponse:
-    """Serve the client script for an activity."""
+@app.get("/activity/{token}/ui.js")
+async def activity_ui(token: str) -> FileResponse:
+    """Serve the UI script for an activity."""
     ctx = _load_activity_from_token(token)
     try:
-        full_path = ctx.get_client_js_path()
+        full_path = ctx.get_ui_path()
     except AssetAccessError as e:
         raise HTTPException(status_code=404, detail="Access denied") from e
     return FileResponse(full_path)

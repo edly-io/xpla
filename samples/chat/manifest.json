@@ -1,15 +1,17 @@
 {
   "name": "chat",
-  "client": "client.js",
-  "server": "server.component.wasm",
   "fields": {
     "messages": {
       "type": "log",
       "items": {
         "type": "object",
         "properties": {
-          "user": {"type": "string"},
-          "text": {"type": "string"}
+          "user": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
         }
       },
       "scope": "activity"
@@ -19,7 +21,9 @@
     "chat.post": {
       "type": "object",
       "properties": {
-        "text": {"type": "string"}
+        "text": {
+          "type": "string"
+        }
       }
     }
   },
@@ -27,10 +31,18 @@
     "chat.new": {
       "type": "object",
       "properties": {
-        "id": {"type": "integer"},
-        "user": {"type": "string"},
-        "text": {"type": "string"}
+        "id": {
+          "type": "integer"
+        },
+        "user": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
       }
     }
-  }
+  },
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm"
 }

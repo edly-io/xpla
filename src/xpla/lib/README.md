@@ -71,8 +71,8 @@ The typical file hierarchy of an activity is the following:
 ```
 my-activity/
   manifest.json
-  client.js
-  server.js
+  ui.js
+  sandbox.js
 ```
 
 ### `manifest.json` (required)
@@ -80,8 +80,8 @@ my-activity/
 ```json
 {
   "name": "my-activity",
-  "client": "client.js",
-  "server": "server.component.wasm",
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm",
   "capabilities": {},
   "fields": {},
   "actions": {},
@@ -90,8 +90,8 @@ my-activity/
 ```
 
 - `name` (required): Activity slug, which will be used in quite a few places, including the key/value store, url, etc. Otherwise not user-visible.
-- `client` (required): Path to the client-side JavaScript module, relative to `manifest.json`.
-- `server` (optional): Path to the server-side WebAssembly sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
+- `ui` (required): Path to the client-side JavaScript user interface module, relative to `manifest.json`.
+- `sandbox` (optional): Path to the server-side WebAssembly component sandbox, relative to `manifest.json`. If omitted, the activity has no backend logic.
 - `capabilities` (optional, defaults to `{}`): Defines the capabilities that are granted to the sandboxed environment, including: HTTP host requests and file storage. For more details, check the [`capabilities.py`](./capabilities.py) module. Capabilities are enforced at runtime. See [Storage](#storage) below for the storage capability.
 - `fields` (optional, defaults to `{}`): Declares activity fields with type and scope. Fields are validated at runtime.
 - `actions` (optional, defaults to `{}`): Declares actions the client can send to the server sandbox. Each action maps a name to a payload type schema. Validated at runtime.
@@ -324,7 +324,7 @@ Each sample has its own Makefile with a `build` target:
 make -C samples/my-activity build
 ```
 
-This produces `server.component.wasm` in the sample directory.
+This produces `sandbox.wasm` in the sample directory.
 
 To build all samples at once:
 

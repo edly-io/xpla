@@ -9,7 +9,7 @@ customElements.define("xpl-activity", XPLA);
 </script>
 <xpl-activity
     data-context="{{ scope_json | escape }}"
-    data-src="{{ url_for('activity_client_js', token=token) }}"
+    data-src="{{ url_for('activity_ui', token=token) }}"
     data-state="{{ state_json | escape }}"
     data-permission="{{ permission }}"
     data-action-url="{{ url_for('send_action', token=token, action_name='__NAME__') }}"

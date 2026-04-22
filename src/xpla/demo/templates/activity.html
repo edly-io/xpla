@@ -43,7 +43,7 @@ customElements.define("xpl-activity", XPLA);
 </script>
 <div id="activity-container">
   <xpl-activity data-context="{{ context_json | escape }}"
-    data-src="{{ url_for('activity_client_js', activity_type=activity_context.name) }}"
+    data-src="{{ url_for('activity_ui', activity_type=activity_context.name) }}"
     data-state="{{ state_json | escape }}" data-permission="{{ current_permission }}"></xpl-activity>
 </div>
 <script>
