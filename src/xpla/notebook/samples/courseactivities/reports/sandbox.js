@@ -1,11 +1,7 @@
 // Reports course activity — queries report statements and returns data for charting
 
-import {
-  sendEvent,
-  getField,
-  setField,
-  reportQuery,
-} from "xpla:sandbox/host";
+import { reportQuery } from "xpla:sandbox/analytics";
+import { getField, sendEvent, setField } from "xpla:sandbox/state";
 
 function getConfig() {
   return JSON.parse(getField("config"));

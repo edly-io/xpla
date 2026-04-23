@@ -5,11 +5,7 @@
 // - code.run: Save user_code (play only)
 // - code.check: Save user_code (play only)
 
-import {
-  sendEvent,
-  getField,
-  setField,
-} from "xpla:sandbox/host";
+import { getField, sendEvent, setField } from "xpla:sandbox/state";
 
 function saveUserCode(code) {
   setField("user_code", JSON.stringify(code));

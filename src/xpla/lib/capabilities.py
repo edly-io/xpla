@@ -1,5 +1,6 @@
-"""Capability validation and enforcement for HTTP, AI, and storage access."""
+"""Capability validation and enforcement for HTTP, storage, grading access."""
 
+from enum import Enum
 from urllib.parse import urlparse
 
 from xpla.lib.manifest_types import Capabilities, Scope
@@ -7,7 +8,17 @@ from xpla.lib.manifest_types import Capabilities, Scope
 __all__ = [
     "CapabilityChecker",
     "CapabilityError",
+    "InterfaceName",
 ]
+
+
+class InterfaceName(str, Enum):
+    """WIT host interface names wired by SandboxComponentExecutor."""
+
+    state = "state"
+    grading = "grading"
+    http = "http"
+    storage = "storage"
 
 
 class CapabilityError(Exception):
@@ -20,12 +31,20 @@ class CapabilityChecker:
     def __init__(self, capabilities: Capabilities | None) -> None:
         self._caps = capabilities or Capabilities()
 
-    def is_http_requested(self) -> bool:
+    def is_interface_requested(self, interface: InterfaceName) -> bool:
+        """Whether the manifest requests the given host interface.
+
+        `state` is always available. Other interfaces opt in via the matching
+        entry under `capabilities` in the manifest.
         """
-        Check if http access is requested for this activity.
-        """
-        if self._caps.http and self._caps.http.allowed_hosts:
+        if interface is InterfaceName.state:
             return True
+        if interface is InterfaceName.http:
+            return bool(self._caps.http and self._caps.http.allowed_hosts)
+        if interface is InterfaceName.storage:
+            return bool(self._caps.storage)
+        if interface is InterfaceName.grading:
+            return self._caps.grading is not None
         return False
 
     def check_http_request(self, url: str) -> None:
@@ -43,14 +62,6 @@ class CapabilityChecker:
                 f"HTTP requests to {parsed.hostname} not allowed. "
                 f"Allowed hosts: {sorted(allowed_hosts)}"
             )
-
-    def is_storage_requested(self) -> bool:
-        """
-        Check if storage access is requested for this activity.
-        """
-        if self._caps and self._caps.storage:
-            return True
-        return False
 
     def check_storage(self, name: str) -> None:
         """Check if the named storage is declared.

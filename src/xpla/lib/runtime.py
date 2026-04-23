@@ -16,7 +16,7 @@ import urllib.parse
 import urllib.request
 
 from xpla.lib.actions import ActionChecker
-from xpla.lib.capabilities import CapabilityChecker, CapabilityError
+from xpla.lib.capabilities import CapabilityChecker, CapabilityError, InterfaceName
 from xpla.lib.events import EventChecker
 from xpla.lib.field_store import FieldStore
 from xpla.lib.file_storage import FileStorage, FileStorageError
@@ -167,46 +167,51 @@ class ActivityRuntime:
         """
         return self.manifest.ui
 
-    def host_functions(self) -> dict[str, Callable[..., Any]]:
+    def host_functions(self) -> dict[str, dict[str, Callable[..., Any]]]:
         """
-        Host functions that will be made available to the sandbox.
+        Host functions that will be made available to the sandbox, grouped by
+        WIT interface name.
 
-        Keys are WIT-style kebab-case names matching xpla.wit.
+        The outer dict is keyed by interface (e.g. "state", "grading"); the
+        inner dict is keyed by kebab-case function name matching xpla.wit.
+        Interfaces beyond `state` are only included when declared in the
+        manifest capabilities.
         """
-        host_functions: dict[str, Callable[..., Any]] = {
-            "send-event": self.send_event,
-            "get-field": self.get_field,
-            "set-field": self.set_field,
-            "log-get": self.log_get,
-            "log-get-range": self.log_get_range,
-            "log-append": self.log_append,
-            "log-delete": self.log_delete,
-            "log-delete-range": self.log_delete_range,
-            "submit-grade": self.submit_grade,
-            "report-completed": self.report_completed,
-            "report-passed": self.report_passed,
-            "report-failed": self.report_failed,
-            "report-progressed": self.report_progressed,
-            "report-scored": self.report_scored,
+        interfaces: dict[str, dict[str, Callable[..., Any]]] = {
+            InterfaceName.state.value: {
+                "send-event": self.send_event,
+                "get-field": self.get_field,
+                "set-field": self.set_field,
+                "log-get": self.log_get,
+                "log-get-range": self.log_get_range,
+                "log-append": self.log_append,
+                "log-delete": self.log_delete,
+                "log-delete-range": self.log_delete_range,
+            },
         }
-        if self.capability_checker.is_http_requested():
-            host_functions.update(
-                {
-                    "http-request": self.http_request,
-                }
-            )
-        if self.capability_checker.is_storage_requested():
-            host_functions.update(
-                {
-                    "storage-read": self.storage_read,
-                    "storage-exists": self.storage_exists,
-                    "storage-url": self.storage_url,
-                    "storage-list": self.storage_list,
-                    "storage-write": self.storage_write,
-                    "storage-delete": self.storage_delete,
-                }
-            )
-        return host_functions
+        if self.capability_checker.is_interface_requested(InterfaceName.grading):
+            interfaces[InterfaceName.grading.value] = {
+                "submit-grade": self.submit_grade,
+                "report-completed": self.report_completed,
+                "report-passed": self.report_passed,
+                "report-failed": self.report_failed,
+                "report-progressed": self.report_progressed,
+                "report-scored": self.report_scored,
+            }
+        if self.capability_checker.is_interface_requested(InterfaceName.http):
+            interfaces[InterfaceName.http.value] = {
+                "http-request": self.http_request,
+            }
+        if self.capability_checker.is_interface_requested(InterfaceName.storage):
+            interfaces[InterfaceName.storage.value] = {
+                "storage-read": self.storage_read,
+                "storage-exists": self.storage_exists,
+                "storage-url": self.storage_url,
+                "storage-list": self.storage_list,
+                "storage-write": self.storage_write,
+                "storage-delete": self.storage_delete,
+            }
+        return interfaces
 
     def get_ui_path(self) -> Path:
         full_path = self._activity_dir / self.manifest.ui

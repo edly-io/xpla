@@ -46,12 +46,12 @@ Activities optionally include server-side logic compiled to WASM Component Model
 
 - `samples/*/sandbox.js` → bundled with esbuild → compiled to `sandbox.wasm` via `componentize-js`
 - WASM components are loaded by `SandboxComponentExecutor` (`src/xpla/lib/sandbox.py`) using the `wasmtime` Python bindings
-- Components import host functions from `xpla:sandbox/host` (defined in `xpla.wit`) and export `on-action` and `get-state`
-- Host functions (field access, events, HTTP, storage, reporting) are provided by `ActivityRuntime` (`src/xpla/lib/runtime.py`)
+- Components import host functions from per-area WIT interfaces under `xpla:sandbox` (`state`, `grading`, `http`, `storage`; canonical definitions in `src/xpla/lib/sandbox/xpla.wit`) and export `on-action` and `get-state`
+- Host functions (field access, events, HTTP, storage, reporting) are provided by `ActivityRuntime` (`src/xpla/lib/runtime.py`), grouped by interface name
 
 ### Capability system
 
-Activities declare needed capabilities in `manifest.json`. The runtime only exposes host functions for granted capabilities (e.g., `http-request` is only available if `capabilities.http` is declared). Capabilities are validated by `CapabilityChecker` (`src/xpla/lib/capabilities.py`).
+Activities declare needed capabilities in `manifest.json`; each capability maps 1:1 to a host interface. `state` is always wired; `grading`, `http`, and `storage` are opt-in. `SandboxComponentExecutor` registers one `linker.add_instance("xpla:sandbox/<name>")` per declared interface, so a sandbox that imports an undeclared interface fails fast at instantiation. `CapabilityChecker.is_interface_requested(InterfaceName)` (`src/xpla/lib/capabilities.py`) is the single gating predicate. Downstream apps (e.g. the notebook's `analytics` interface for course-level reporting) extend this by overriding `host_functions()`.
 
 ### Field system
 

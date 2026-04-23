@@ -29,7 +29,8 @@ def _make_notebook_runtime(
     """Create a NotebookActivityRuntime backed by an in-memory DB."""
     activity_dir = tmp_path / "activity"
     activity_dir.mkdir(exist_ok=True)
-    manifest = {"name": "test-activity", "ui": "ui.js", "capabilities": {}}
+    capabilities: dict[str, object] = {}
+    manifest = {"name": "test-activity", "ui": "ui.js", "capabilities": capabilities}
     (activity_dir / "manifest.json").write_text(json.dumps(manifest))
 
     with patch("xpla.notebook.runtime.engine", engine):
@@ -230,13 +231,13 @@ class TestReportQuery:
         engine = _make_engine()
         with patch("xpla.notebook.runtime.engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=False)
-            assert "report-query" not in rt.host_functions()
+            assert "analytics" not in rt.host_functions()
 
     def test_registered_for_course_activity(self, tmp_path: Path) -> None:
         engine = _make_engine()
         with patch("xpla.notebook.runtime.engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
-            assert "report-query" in rt.host_functions()
+            assert "report-query" in rt.host_functions()["analytics"]
 
     def test_filter_before_date(self, tmp_path: Path) -> None:
         engine = _make_engine()

@@ -7,14 +7,30 @@
       "type": "object",
       "scope": "activity",
       "properties": {
-        "title": { "type": "string" },
-        "activity_id": { "type": "string" },
-        "activity_name": { "type": "string" },
-        "user_id": { "type": "string" },
-        "verb": { "type": "string" },
-        "before_date": { "type": "string" },
-        "after_date": { "type": "string" },
-        "chart_type": { "type": "string" }
+        "title": {
+          "type": "string"
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "activity_name": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "verb": {
+          "type": "string"
+        },
+        "before_date": {
+          "type": "string"
+        },
+        "after_date": {
+          "type": "string"
+        },
+        "chart_type": {
+          "type": "string"
+        }
       },
       "default": {}
     }
@@ -23,14 +39,30 @@
     "config.save": {
       "type": "object",
       "properties": {
-        "title": { "type": "string" },
-        "activity_id": { "type": "string" },
-        "activity_name": { "type": "string" },
-        "user_id": { "type": "string" },
-        "verb": { "type": "string" },
-        "before_date": { "type": "string" },
-        "after_date": { "type": "string" },
-        "chart_type": { "type": "string" }
+        "title": {
+          "type": "string"
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "activity_name": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "verb": {
+          "type": "string"
+        },
+        "before_date": {
+          "type": "string"
+        },
+        "after_date": {
+          "type": "string"
+        },
+        "chart_type": {
+          "type": "string"
+        }
       }
     },
     "data.refresh": {

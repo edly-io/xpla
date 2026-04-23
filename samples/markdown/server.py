@@ -7,7 +7,7 @@ from markdown.extensions import Extension
 
 
 import wit_world
-from wit_world.imports import host
+from wit_world.imports import state as host
 from wit_world.imports.types import Context, Permission
 
 

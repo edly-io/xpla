@@ -1,9 +1,42 @@
 import pytest
-from xpla.lib.capabilities import CapabilityChecker, CapabilityError
+from xpla.lib.capabilities import CapabilityChecker, CapabilityError, InterfaceName
 from xpla.lib.manifest_types import (
     Capabilities,
     Http,
+    StorageDefinition,
+    Scope,
 )
+
+
+class TestInterfaceRequested:
+    """Tests for CapabilityChecker.is_interface_requested."""
+
+    def test_state_always_requested(self) -> None:
+        assert CapabilityChecker(None).is_interface_requested(InterfaceName.state)
+        assert CapabilityChecker(Capabilities()).is_interface_requested(
+            InterfaceName.state
+        )
+
+    def test_http_requires_allowlist(self) -> None:
+        assert not CapabilityChecker(Capabilities()).is_interface_requested(
+            InterfaceName.http
+        )
+        caps = Capabilities(http=Http(allowed_hosts=["api.example.com"]))
+        assert CapabilityChecker(caps).is_interface_requested(InterfaceName.http)
+
+    def test_storage_requires_buckets(self) -> None:
+        assert not CapabilityChecker(Capabilities()).is_interface_requested(
+            InterfaceName.storage
+        )
+        caps = Capabilities(storage={"media": StorageDefinition(scope=Scope.activity)})
+        assert CapabilityChecker(caps).is_interface_requested(InterfaceName.storage)
+
+    def test_grading_opt_in(self) -> None:
+        assert not CapabilityChecker(Capabilities()).is_interface_requested(
+            InterfaceName.grading
+        )
+        caps = Capabilities(grading={})
+        assert CapabilityChecker(caps).is_interface_requested(InterfaceName.grading)
 
 
 class TestCapabilityChecker:

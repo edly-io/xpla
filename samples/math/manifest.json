@@ -45,5 +45,8 @@
     }
   },
   "ui": "ui.js",
-  "sandbox": "sandbox.wasm"
+  "sandbox": "sandbox.wasm",
+  "capabilities": {
+    "grading": {}
+  }
 }

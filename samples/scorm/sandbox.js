@@ -3,15 +3,8 @@
 // Actions handled:
 // - scorm.upload: Receive a base64-encoded zip, decompress, store all files
 
-import {
-  sendEvent,
-  getField,
-  setField,
-  storageUrl,
-  storageWrite,
-  storageDelete,
-  storageList,
-} from "xpla:sandbox/host";
+import { getField, sendEvent, setField } from "xpla:sandbox/state";
+import { storageDelete, storageList, storageUrl, storageWrite } from "xpla:sandbox/storage";
 import { unzipSync } from "fflate";
 
 function base64ToBytes(base64) {

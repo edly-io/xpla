@@ -23,8 +23,7 @@
     },
     "capabilities": {
       "type": "object",
-      "description": "Declared capabilities that the sandbox can use.",
-      "additionalProperties": false,
+      "description": "Declared capabilities that the sandbox can use. Each capability maps to a host interface the executor will wire up. Additional properties are allowed so downstream apps can declare their own interfaces.",
       "properties": {
         "http": {
           "description": "HTTP request capability.",
@@ -44,6 +43,11 @@
           "additionalProperties": {
             "$ref": "#/$defs/storageDefinition"
           }
+        },
+        "grading": {
+          "description": "Grading/reporting capability. Empty object marker — declares the sandbox imports the grading interface (submit-grade, report-*).",
+          "type": "object",
+          "additionalProperties": false
         }
       }
     },

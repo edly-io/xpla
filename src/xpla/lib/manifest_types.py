@@ -76,13 +76,16 @@ class BooleanType(BaseModel):
 
 
 class Capabilities(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     http: Annotated[Http | None, Field(description="HTTP request capability.")] = None
     storage: Annotated[
         dict[str, StorageDefinition] | None,
         Field(description="Named file storage buckets with scope declarations."),
+    ] = None
+    grading: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Grading/reporting capability. Empty object marker — declares the sandbox imports the grading interface (submit-grade, report-*)."
+        ),
     ] = None
 
 
@@ -132,7 +135,9 @@ class XplaActivityManifest(BaseModel):
     ] = None
     capabilities: Annotated[
         Capabilities | None,
-        Field(description="Declared capabilities that the sandbox can use."),
+        Field(
+            description="Declared capabilities that the sandbox can use. Each capability maps to a host interface the executor will wire up. Additional properties are allowed so downstream apps can declare their own interfaces."
+        ),
     ] = None
     fields: Annotated[
         dict[str, FieldDefinition] | None,

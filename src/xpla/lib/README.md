@@ -240,20 +240,24 @@ It is language-agnostic, as the original script can be written in any of the lan
 
 Note that sandboxes do not persist state. Thus, to get access to configuration settings, user-specific fields, etc. the sandbox should have the key-value store read/write capabilities (see `manifest.json` above).
 
-Sandboxes have access to a standard list of host functions. See [Host functions](#host-functions) in the Platform API section below.
+Sandboxes have access to a standard list of host functions. See [Host interfaces](#host-interfaces) in the Platform API section below.
 
 #### Host functions in JavaScript
 
-Activities import host functions directly from the WASM Component Model interface `"xpla:sandbox/host"`. Field values and event payloads are exchanged as JSON strings, so activities must `JSON.stringify` before writing and `JSON.parse` after reading.
+Host functions are grouped into one WIT interface per functional area (see [Host interfaces](#host-interfaces) below). Activities import only the interfaces they use. Field values and event payloads are exchanged as JSON strings, so activities must `JSON.stringify` before writing and `JSON.parse` after reading.
 
 ```javascript
+// Always available
 import {
   sendEvent,
   getField, setField,
   logAppend, logGet, logGetRange, logDelete, logDeleteRange,
-  reportCompleted, reportPassed, reportFailed, reportProgressed, reportScored,
-  storageRead, storageWrite, storageExists, storageUrl, storageList, storageDelete,
-} from "xpla:sandbox/host";
+} from "xpla:sandbox/state";
+
+// Opt-in: declare the matching capability in manifest.json
+import { submitGrade, reportCompleted, reportPassed, reportFailed, reportProgressed, reportScored } from "xpla:sandbox/grading";
+import { httpRequest } from "xpla:sandbox/http";
+import { storageRead, storageWrite, storageExists, storageUrl, storageList, storageDelete } from "xpla:sandbox/storage";
 
 // Send an event to all connected clients in the current activity
 // sendEvent(name, value, context, permission)
@@ -292,7 +296,7 @@ The sandbox script can export the following functions:
 - `get-state(input)`: Called when the activity page loads. The `input` parameter is a JSON string with two keys: `context` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
-import { getField } from "xpla:sandbox/host";
+import { getField } from "xpla:sandbox/state";
 
 export function getState(context, permission) {
   const state = { question: JSON.parse(getField("question")) };
@@ -344,7 +348,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 
 2. **Sandbox execution.** Load the WebAssembly component declared in `manifest.server` and execute its exported functions (`get-state`, `on-action`). We use the [WASM Component Model](https://github.com/WebAssembly/component-model) standard, which is supported by runtimes in many host languages (Python, Go, Rust, Java, etc.) via [wasmtime](https://wasmtime.dev/) and other implementations.
 
-3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host functions](#host-functions) section below. Our implementation is in [`runtime.py`](./runtime.py).
+3. **Host functions.** The sandbox runtime must inject a set of host functions that sandboxed code can call. These are documented in the [Host interfaces](#host-interfaces) section below. Our implementation is in [`runtime.py`](./runtime.py).
 
 4. **Runtime validation.** Actions sent by the frontend and events emitted by the sandbox must be validated against the manifest declarations. Our implementation: [`actions.py`](./actions.py) (actions), [`events.py`](./events.py) (events), [`fields.py`](./fields.py) (fields).
 
@@ -362,41 +366,52 @@ The exact API is platform-specific and does not need to follow a standard. The p
 
 Our reference implementation exposes these as FastAPI endpoints in [the demo application](../demo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
 
-#### Host functions
+#### Host interfaces
 
-Plugins can call host functions which are defined in [`runtime.py`](./runtime.py):
+The host surface is split into one WIT interface per functional area, defined in the canonical [`xpla.wit`](./sandbox/xpla.wit). Sandboxes import only the interfaces they need; the runtime only wires up interfaces declared via manifest capabilities (`state` is always wired). Implementation: [`runtime.py`](./runtime.py), [`capabilities.py`](./capabilities.py).
+
+| Interface | Gating | Functions |
+|---|---|---|
+| `state` | Always available | `sendEvent`, `getField`, `setField`, `logGet`, `logGetRange`, `logAppend`, `logDelete`, `logDeleteRange` |
+| `grading` | `capabilities.grading: {}` | `submitGrade`, `reportCompleted`, `reportPassed`, `reportFailed`, `reportProgressed`, `reportScored` |
+| `http` | `capabilities.http` | `httpRequest` |
+| `storage` | `capabilities.storage` | `storageRead`, `storageWrite`, `storageExists`, `storageUrl`, `storageList`, `storageDelete` |
+
+Downstream apps may register additional interfaces (e.g. the notebook app registers `analytics` for course-level reporting). These are not part of the core schema.
+
+**`state` (always available):**
 
 - `sendEvent(name: str, value: str, context: str, permission: str)`: `context` is a JSON-encoded dict controlling broadcast audience (e.g. `'{"activity_id": "..."}'` or `'{}'` for defaults). `permission` is the minimum permission level to receive the event (`"view"`, `"play"`, or `"edit"`)
 - `getField(name: str, context: str)` / `setField(name: str, value: str, context: str)`: scope resolved from manifest; the `context` parameter is a JSON-encoded dict of dimension overrides, with the following optional keys: `user_id`, `course_id`, `activity_id`. E.g. `{"user_id": "bob"}`. Pass `{}` for default behavior. Raises `FieldValidationError` on `log` fields — use the log functions below instead
 - `logAppend(name: str, value: any, context: str) -> int`: append to a log field, returns the assigned entry ID
-- `log_get(name: str, entry_id: int, context: str) -> any | null`: get a single log entry by ID
+- `logGet(name: str, entry_id: int, context: str) -> any | null`: get a single log entry by ID
 - `logGetRange(name: str, from_id: int, to_id: int, context: str) -> [{id, value}, ...]`: get entries in range `[from_id, to_id)`
 - `logDelete(name: str, entry_id: int, context: str) -> bool`: delete a single entry, returns whether it existed
 - `logDeleteRange(name: str, from_id: int, to_id: int, context: str) -> int`: delete entries in range, returns count deleted
 
-Optional host functions for which access must be granted via the `"capabilities"` field:
+**`grading` (requires `capabilities.grading: {}`)** — used to track learner progress (inspired by xAPI/cmi5 verbs):
 
-- `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs). Requires the `http` capability.
-- `submitGrade(score: float)`: to be defined.
-
-Report host functions — always available, used to track learner progress (inspired by xAPI/cmi5 verbs):
-
-- `reportCompleted() -> bool`: The learner completed the activity.
-- `reportPassed(score: option<f64>) -> bool`: The learner passed. `score` is optional, in the range [0.0, 1.0].
-- `reportFailed(score: option<f64>) -> bool`: The learner failed. `score` is optional, in the range [0.0, 1.0].
-- `reportProgressed(progress: f64) -> bool`: Progress update. `progress` is in the range [0.0, 1.0].
-- `reportScored(score: f64) -> bool`: Score without pass/fail judgment. `score` is in the range [0.0, 1.0].
+- `submitGrade(score: float) -> bool`: submit a final grade.
+- `reportCompleted() -> bool`: the learner completed the activity.
+- `reportPassed(score: option<f64>) -> bool`: the learner passed. `score` is optional, in the range [0.0, 1.0].
+- `reportFailed(score: option<f64>) -> bool`: the learner failed. `score` is optional, in the range [0.0, 1.0].
+- `reportProgressed(progress: f64) -> bool`: progress update. `progress` is in the range [0.0, 1.0].
+- `reportScored(score: f64) -> bool`: score without pass/fail judgment. `score` is in the range [0.0, 1.0].
 
 The base `ActivityRuntime` logs report statements to stdout. Platform implementations should override these methods to persist statements (e.g. to a database).
 
-Storage host functions (require the `storage` capability). Each function takes the storage `name`, a relative `path`, and an optional `context` (pass `null` to use the current context):
+**`http` (requires `capabilities.http`):**
 
-- `storageRead(name: str, path: str, context) -> bytes`: Read a file from the named storage.
-- `storageWrite(name: str, path: str, content: bytes, context) -> bool`: Write a file. Creates parent directories as needed.
-- `storageExists(name: str, path: str, context) -> bool`: Check whether a file exists.
-- `storageUrl(name: str, path: str, context) -> str`: Return the HTTP URL for a storage file (e.g. `"/activity/{activity_id}/storage/media/img.png"`). Context overrides are encoded as query parameters.
-- `storageList(name: str, path: str, context) -> {files: [str], directories: [str]}`: List files and directories.
-- `storageDelete(name: str, path: str, context) -> bool`: Delete a file. Returns `true` if the file existed.
+- `httpRequest(url: str, method: str, body: str, headers: str)` → `{"status": int, "headers": [[k,v],...], "body": str}` (headers is a JSON-encoded list of `[key, value]` pairs).
+
+**`storage` (requires `capabilities.storage`)** — each function takes the storage `name`, a relative `path`, and an optional `context` (pass `null` to use the current context):
+
+- `storageRead(name: str, path: str, context) -> bytes`: read a file from the named storage.
+- `storageWrite(name: str, path: str, content: bytes, context) -> bool`: write a file. Creates parent directories as needed.
+- `storageExists(name: str, path: str, context) -> bool`: check whether a file exists.
+- `storageUrl(name: str, path: str, context) -> str`: return the HTTP URL for a storage file (e.g. `"/activity/{activity_id}/storage/media/img.png"`). Context overrides are encoded as query parameters.
+- `storageList(name: str, path: str, context) -> {files: [str], directories: [str]}`: list files and directories.
+- `storageDelete(name: str, path: str, context) -> bool`: delete a file. Returns `true` if the file existed.
 
 #### Log fields
 

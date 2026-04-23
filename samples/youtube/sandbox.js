@@ -3,7 +3,7 @@
 // Actions handled:
 // - config.save: Save the video_id
 
-import { sendEvent, getField, setField } from "xpla:sandbox/host";
+import { getField, sendEvent, setField } from "xpla:sandbox/state";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);

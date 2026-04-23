@@ -3,7 +3,7 @@
 // Actions handled:
 // - chat.post: Append a message and broadcast it
 
-import { sendEvent, logAppend, logGetRange } from "xpla:sandbox/host";
+import { logAppend, logGetRange, sendEvent } from "xpla:sandbox/state";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);

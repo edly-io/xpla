@@ -98,58 +98,69 @@ class TestActivityRuntimeProperties:
 
 
 class TestHostFunctions:
-    """Tests for host_functions method."""
+    """Tests for host_functions method — grouped by WIT interface."""
 
-    def test_unprivileged_manifests_returns_base_functions(
-        self, tmp_path: Path
-    ) -> None:
-        """Should return dict of WIT-named host function callables."""
+    def test_state_only_by_default(self, tmp_path: Path) -> None:
         manifest = create_manifest()
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        functions = ctx.host_functions()
+        interfaces = ctx.host_functions()
 
-        assert sorted(functions.keys()) == [
+        assert list(interfaces.keys()) == ["state"]
+        assert sorted(interfaces["state"].keys()) == [
             "get-field",
             "log-append",
             "log-delete",
             "log-delete-range",
             "log-get",
             "log-get-range",
+            "send-event",
+            "set-field",
+        ]
+
+    def test_grading_interface_when_declared(self, tmp_path: Path) -> None:
+        manifest = create_manifest(capabilities={"grading": {}})
+        ctx = make_activity_runtime(tmp_path, manifest)
+
+        interfaces = ctx.host_functions()
+
+        assert "grading" in interfaces
+        assert sorted(interfaces["grading"].keys()) == [
             "report-completed",
             "report-failed",
             "report-passed",
             "report-progressed",
             "report-scored",
-            "send-event",
-            "set-field",
             "submit-grade",
         ]
 
-    def test_manifest_with_http_gets_http_base_function(self, tmp_path: Path) -> None:
+    def test_http_interface_when_declared(self, tmp_path: Path) -> None:
         manifest = create_manifest(
             capabilities={"http": {"allowed_hosts": ["example.com"]}}
         )
         ctx = make_activity_runtime(tmp_path, manifest)
 
-        functions = ctx.host_functions()
+        interfaces = ctx.host_functions()
 
-        assert sorted(functions.keys()) == [
-            "get-field",
-            "http-request",
-            "log-append",
-            "log-delete",
-            "log-delete-range",
-            "log-get",
-            "log-get-range",
-            "report-completed",
-            "report-failed",
-            "report-passed",
-            "report-progressed",
-            "report-scored",
-            "send-event",
-            "set-field",
-            "submit-grade",
+        assert "http" in interfaces
+        assert list(interfaces["http"].keys()) == ["http-request"]
+
+    def test_storage_interface_when_declared(self, tmp_path: Path) -> None:
+        manifest = create_manifest(
+            capabilities={"storage": {"media": {"scope": "activity"}}}
+        )
+        ctx = make_activity_runtime(tmp_path, manifest)
+
+        interfaces = ctx.host_functions()
+
+        assert "storage" in interfaces
+        assert sorted(interfaces["storage"].keys()) == [
+            "storage-delete",
+            "storage-exists",
+            "storage-list",
+            "storage-read",
+            "storage-url",
+            "storage-write",
         ]
 
 

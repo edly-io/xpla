@@ -33,10 +33,15 @@ class RecordArg:
 class SandboxExecutor:
     """
     Abstract base class implementation for all sandbox executors.
+
+    ``host_functions`` is keyed by WIT interface name (e.g. "state",
+    "grading") mapping to kebab-case host function names.
     """
 
     def __init__(
-        self, plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
+        self,
+        plugin_path: Path,
+        host_functions: dict[str, dict[str, Callable[..., Any]]],
     ) -> None:
         self._plugin_path = plugin_path
         self._host_functions = host_functions
@@ -55,7 +60,9 @@ class SandboxComponentExecutor(SandboxExecutor):
     MEMORY_LIMIT_BYTES: int = 20 * 10**6
 
     def __init__(
-        self, plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
+        self,
+        plugin_path: Path,
+        host_functions: dict[str, dict[str, Callable[..., Any]]],
     ) -> None:
         super().__init__(plugin_path, host_functions)
 
@@ -92,10 +99,11 @@ class SandboxComponentExecutor(SandboxExecutor):
         # Create component
         component = load_component(store.engine, self._plugin_path)
 
-        # Register host functions
-        with linker.root().add_instance("xpla:sandbox/host") as ctx:
-            for wit_name, func in self._host_functions.items():
-                ctx.add_func(wit_name, make_host_function(func))
+        # Register host functions, one wasmtime instance per WIT interface.
+        for interface_name, funcs in self._host_functions.items():
+            with linker.root().add_instance(f"xpla:sandbox/{interface_name}") as ctx:
+                for wit_name, func in funcs.items():
+                    ctx.add_func(wit_name, make_host_function(func))
 
         # Create instance
         instance = linker.instantiate(store, component)
@@ -192,7 +200,8 @@ def call_sandbox_function(
 
 
 def get_sandbox_executor(
-    plugin_path: Path, host_functions: dict[str, Callable[..., Any]]
+    plugin_path: Path,
+    host_functions: dict[str, dict[str, Callable[..., Any]]],
 ) -> SandboxExecutor:
     """
     Return a sandbox executor for this plugin.

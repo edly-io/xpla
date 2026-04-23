@@ -8,7 +8,7 @@ class TestReportHostFunctions:
     """Tests for report-* host functions on ActivityRuntime."""
 
     def _make_runtime(self, tmp_path: Path) -> ActivityRuntime:
-        manifest = create_manifest()
+        manifest = create_manifest(capabilities={"grading": {}})
         return make_activity_runtime(tmp_path, manifest)
 
     def test_report_completed(self, tmp_path: Path) -> None:
@@ -41,7 +41,7 @@ class TestReportHostFunctions:
 
     def test_report_functions_registered(self, tmp_path: Path) -> None:
         rt = self._make_runtime(tmp_path)
-        hf = rt.host_functions()
+        grading = rt.host_functions()["grading"]
         for name in [
             "report-completed",
             "report-passed",
@@ -49,4 +49,4 @@ class TestReportHostFunctions:
             "report-progressed",
             "report-scored",
         ]:
-            assert name in hf, f"{name} not in host_functions"
+            assert name in grading, f"{name} not in grading interface"

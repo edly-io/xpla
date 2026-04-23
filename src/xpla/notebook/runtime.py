@@ -44,11 +44,11 @@ class NotebookActivityRuntime(ActivityRuntime):
             permission,
         )
 
-    def host_functions(self) -> dict[str, Callable[..., Any]]:
-        funcs = super().host_functions()
+    def host_functions(self) -> dict[str, dict[str, Callable[..., Any]]]:
+        interfaces = super().host_functions()
         if self._is_course_activity:
-            funcs["report-query"] = self.report_query
-        return funcs
+            interfaces["analytics"] = {"report-query": self.report_query}
+        return interfaces
 
     def report_completed(self) -> bool:
         self._record_statement("completed", None)
