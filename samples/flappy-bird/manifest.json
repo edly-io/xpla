@@ -1,0 +1,62 @@
+{
+  "name": "flappy-bird",
+  "ui": "ui.js",
+  "sandbox": "sandbox.wasm",
+  "fields": {
+    "best_score": {
+      "type": "integer",
+      "scope": "user,course",
+      "default": 0
+    },
+    "top_scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": { "type": "string" },
+          "score": { "type": "integer" }
+        }
+      },
+      "scope": "course",
+      "default": []
+    }
+  },
+  "actions": {
+    "game.position": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "alive": { "type": "boolean" }
+      }
+    },
+    "game.over": {
+      "type": "object",
+      "properties": {
+        "score": { "type": "integer" }
+      }
+    }
+  },
+  "events": {
+    "player.position": {
+      "type": "object",
+      "properties": {
+        "user": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "alive": { "type": "boolean" }
+      }
+    },
+    "fields.change.best_score": { "type": "integer" },
+    "fields.change.top_scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": { "type": "string" },
+          "score": { "type": "integer" }
+        }
+      }
+    }
+  }
+}
