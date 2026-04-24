@@ -189,12 +189,23 @@ export class XPLA extends HTMLElement {
       _idbReq(index.getAllKeys(key)),
     ]);
 
-    // Send via WS
+    // Send via WS, falling back to HTTP POST for large payloads.
+    // Uvicorn's websockets implementation caps incoming frames at 1 MiB by
+    // default; a frame above that ceiling closes the connection with code
+    // 1006 before the server can read it. The POST actions endpoint has no
+    // such limit, so we route anything approaching the cap through HTTP.
+    const WS_PAYLOAD_MAX = 512 * 1024;
     const sentKeys = [];
     for (let i = 0; i < records.length; i++) {
-      if (this._ws.readyState !== WebSocket.OPEN) break;
       const { action, value, permission } = records[i];
-      this._ws.send(JSON.stringify({ action, value, permission }));
+      const payload = JSON.stringify({ action, value, permission });
+      if (payload.length > WS_PAYLOAD_MAX) {
+        const ok = await this._postAction(action, value);
+        if (!ok) break;
+      } else {
+        if (this._ws.readyState !== WebSocket.OPEN) break;
+        this._ws.send(payload);
+      }
       sentKeys.push(primaryKeys[i]);
     }
 
@@ -222,6 +233,21 @@ export class XPLA extends HTMLElement {
 
   async sendAction(name, value = "") {
     await this._pushAction({ action: name, value, permission: this.permission });
+  }
+
+  async _postAction(name, value) {
+    const url = `/api/activity/${this.context.activity_id}/actions/${encodeURIComponent(name)}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(value),
+    });
+    if (!response.ok) {
+      console.error("POST action failed:", name, response.status);
+      return false;
+    }
+    return true;
   }
 
   async _pushAction(action) {

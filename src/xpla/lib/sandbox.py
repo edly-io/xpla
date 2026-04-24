@@ -100,10 +100,11 @@ class SandboxComponentExecutor(SandboxExecutor):
         component = load_component(store.engine, self._plugin_path)
 
         # Register host functions, one wasmtime instance per WIT interface.
-        for interface_name, funcs in self._host_functions.items():
-            with linker.root().add_instance(f"xpla:sandbox/{interface_name}") as ctx:
-                for wit_name, func in funcs.items():
-                    ctx.add_func(wit_name, make_host_function(func))
+        with linker.root() as root:
+            for interface_name, funcs in self._host_functions.items():
+                with root.add_instance(f"xpla:sandbox/{interface_name}") as ctx:
+                    for wit_name, func in funcs.items():
+                        ctx.add_func(wit_name, make_host_function(func))
 
         # Create instance
         instance = linker.instantiate(store, component)
