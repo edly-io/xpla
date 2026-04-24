@@ -32,6 +32,9 @@
         "correct": {
           "type": "boolean"
         },
+        "score": {
+          "type": "number"
+        },
         "feedback": {
           "type": "string"
         }

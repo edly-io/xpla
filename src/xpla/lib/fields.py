@@ -61,6 +61,7 @@ def build_type_schema(definition: Any) -> dict[str, Any]:
             "properties": {
                 k: build_type_schema(v.root) for k, v in definition.properties.items()
             },
+            "additionalProperties": False,
         }
     if isinstance(definition, (LogType, LogField)):
         return build_type_schema(definition.items.root)
