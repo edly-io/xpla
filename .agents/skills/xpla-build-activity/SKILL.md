@@ -185,20 +185,15 @@ Each function takes the storage `name`, a relative `path`, and an optional `cont
 
 # Makefile Templates
 
-## Sandbox-only (no UI bundling)
+## Sandbox-only (no UI bundling, no sandbox bundle)
 
 Use when: sandbox.js exists but ui.js has no npm imports.
 
 ```makefile
-WIT := <path-to-xpla.wit>
-
 build: sandbox.wasm
 
-sandbox.bundle.js: sandbox.js
-	npx esbuild sandbox.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=sandbox.bundle.js
-
-sandbox.wasm: sandbox.bundle.js $(WIT)
-	npx componentize-js sandbox.bundle.js --wit $(WIT) --world-name activity --disable http --disable fetch-event -o sandbox.wasm
+sandbox.wasm: sandbox.js xpla.wit
+	npx componentize-js sandbox.js --wit xpla.wit --world-name activity --disable http --disable fetch-event -o sandbox.wasm
 ```
 
 ## Sandbox + UI bundling
@@ -206,15 +201,13 @@ sandbox.wasm: sandbox.bundle.js $(WIT)
 Use when: both sandbox.js and ui.js exist, and ui uses npm imports.
 
 ```makefile
-WIT := <path-to-xpla.wit>
-
 build: sandbox.wasm ui.bundle.js
 
 sandbox.bundle.js: sandbox.js node_modules
 	npx esbuild sandbox.js --bundle --format=esm --platform=neutral '--external:xpla:sandbox/*' --outfile=sandbox.bundle.js
 
-sandbox.wasm: sandbox.bundle.js $(WIT)
-	npx componentize-js sandbox.bundle.js --wit $(WIT) --world-name activity --disable http --disable fetch-event -o sandbox.wasm
+sandbox.wasm: sandbox.bundle.js xpla.wit
+	npx componentize-js sandbox.bundle.js --wit xpla.wit --world-name activity --disable http --disable fetch-event -o sandbox.wasm
 
 ui.bundle.js: ui.js node_modules
 	npx esbuild ui.js --bundle --format=esm --loader:.css=text --loader:.svg=text --outfile=ui.bundle.js
@@ -376,6 +369,7 @@ export function setup(activity) {
   }
 
   function escapeHtml(str) {
+    // Only create this function if actually needed.
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
