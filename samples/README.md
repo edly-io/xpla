@@ -1,8 +1,8 @@
 # Sample Activities
 
-This directory contains reference xPLA activities that demonstrate the standard. Each subdirectory is a self-contained activity with a `manifest.json` and a client-side script. Most also include a server-side sandbox script (`sandbox.js`) that is compiled to a WebAssembly component (`sandbox.wasm`).
+This directory contains reference PXC activities that demonstrate the standard. Each subdirectory is a self-contained activity with a `manifest.json` and a client-side script. Most also include a server-side sandbox script (`sandbox.js`) that is compiled to a WebAssembly component (`sandbox.wasm`).
 
-For the full specification of the activity format, see the [Activity API Reference](../src/xpla/lib/README.md#activity-api-reference).
+For the full specification of the activity format, see the [Activity API Reference](../src/pxc/lib/README.md#activity-api-reference).
 
 ## Activities
 

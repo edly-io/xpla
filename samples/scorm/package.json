@@ -1,5 +1,5 @@
 {
-  "name": "xpla-scorm",
+  "name": "pxc-scorm",
   "private": true,
   "dependencies": {
     "fflate": "^0.8.0"

@@ -4,7 +4,7 @@
 // - game.position: relay the caller's bird position to all players.
 // - game.over: persist best_score (per user) and update the course top-10.
 
-import { getField, setField, sendEvent } from "xpla:sandbox/state";
+import { getField, setField, sendEvent } from "pxc:sandbox/state";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);

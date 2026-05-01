@@ -14,10 +14,10 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from xpla.lti.core.keys import KeySet, load_or_create_key
-from xpla.lti.core.launch import LaunchData
-from xpla.lti.core.models import Platform
-from xpla.lti.core.routes import create_lti_router
+from pxc.lti.core.keys import KeySet, load_or_create_key
+from pxc.lti.core.launch import LaunchData
+from pxc.lti.core.models import Platform
+from pxc.lti.core.routes import create_lti_router
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ def integration_client(
     tmp_path: Path,
 ) -> TestClient:
     """Create TestClient with full LTI routes."""
-    templates_dir = Path(__file__).parent.parent.parent / "xpla" / "lti" / "templates"
+    templates_dir = Path(__file__).parent.parent.parent / "pxc" / "lti" / "templates"
     templates = Jinja2Templates(directory=str(templates_dir))
 
     # Track launch calls
@@ -240,7 +240,7 @@ class TestLaunchCallback:
         mock_signing_key = Mock()
         mock_signing_key.key = integration_platform_key.public_pem
 
-        with patch("xpla.lti.core.launch.PyJWKClient") as mock_client_class:
+        with patch("pxc.lti.core.launch.PyJWKClient") as mock_client_class:
             mock_client = Mock()
             mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
             mock_client_class.return_value = mock_client
@@ -297,7 +297,7 @@ class TestLaunchCallback:
         )
 
         # Store nonce before callback
-        from xpla.lti.core.oidc import store_nonce
+        from pxc.lti.core.oidc import store_nonce
 
         with Session(integration_engine) as session:
             platform_record = session.exec(
@@ -382,7 +382,7 @@ class TestDeepLinkingFlow:
         mock_signing_key = Mock()
         mock_signing_key.key = integration_platform_key.public_pem
 
-        with patch("xpla.lti.core.launch.PyJWKClient") as mock_client_class:
+        with patch("pxc.lti.core.launch.PyJWKClient") as mock_client_class:
             mock_client = Mock()
             mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
             mock_client_class.return_value = mock_client
@@ -443,7 +443,7 @@ class TestDeepLinkingFlow:
         )
 
         # Store nonce
-        from xpla.lti.core.oidc import store_nonce
+        from pxc.lti.core.oidc import store_nonce
 
         with Session(integration_engine) as session:
             platform_record = session.exec(

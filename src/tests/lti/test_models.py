@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlmodel import Session, select
 
-from xpla.lti.core.models import Deployment, Nonce, Platform
+from pxc.lti.core.models import Deployment, Nonce, Platform
 
 
 class TestPlatformModel:

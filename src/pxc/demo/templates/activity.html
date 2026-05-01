@@ -1,0 +1,72 @@
+{% extends "index.html" %}
+
+{% block title %}{{ activity_context.title or "Activity" }}{% endblock %}
+
+{% block body %}
+<script type="module">
+import { PXC } from "{{ url_for('static', path='js/pxc.js') }}";
+customElements.define("pxc-activity", PXC);
+</script>
+<h2>{{ activity_context.name }}</h2>
+<div id="simulation-toolbar" style="margin-bottom: 1em; display: flex; gap: 1em; align-items: center;">
+  <label>User
+    <select id="sim-user">
+      {% for u in simulated_users %}
+      <option value="{{ u }}" {% if u==current_user %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Permission
+    <select id="sim-permission">
+      {% for p in permission_levels %}
+      <option value="{{ p }}" {% if p==current_permission %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Embed
+    <select id="sim-embed">
+      <option value="shadow" selected>Shadow DOM</option>
+      <option value="iframe">iframe</option>
+    </select>
+  </label>
+  <div class="offline-banner">Offline - reconnecting...</div>
+</div>
+<script>
+  document.getElementById("sim-user").addEventListener("change", function () {
+    document.cookie = "{{ USER_ID_COOKIE }}=" + this.value + "; path=/";
+    location.reload();
+  });
+  document.getElementById("sim-permission").addEventListener("change", function () {
+    document.cookie = "pxc_permission=" + this.value + "; path=/";
+    location.reload();
+  });
+</script>
+<div id="activity-container">
+  <pxc-activity data-context="{{ context_json | escape }}"
+    data-src="{{ url_for('activity_ui', activity_type=activity_context.name) }}"
+    data-state="{{ state_json | escape }}" data-permission="{{ current_permission }}"></pxc-activity>
+</div>
+<script>
+  document.getElementById("sim-embed").addEventListener("change", function () {
+    const container = document.getElementById("activity-container");
+    if (this.value === "iframe") {
+      const iframe = document.createElement("iframe");
+      iframe.src = "/a/{{ activity_context.name }}/embed";
+      iframe.style.width = "100%";
+      iframe.style.border = "1px solid #ccc";
+      iframe.style.height = "200px";
+      container.innerHTML = "";
+      container.appendChild(iframe);
+
+      window.addEventListener("message", function (e) {
+        if (e.data && e.data.type === "pxc:resize") {
+          iframe.style.height = e.data.height + "px";
+        }
+      });
+    } else {
+      location.reload();
+    }
+  });
+</script>
+
+{% endblock %}

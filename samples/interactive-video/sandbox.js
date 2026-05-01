@@ -4,7 +4,7 @@
 // - config.save: Save video_id and interactions list
 // - answer.submit: Check if selected answers match correct answers for a given interaction
 
-import { getField, sendEvent, setField } from "xpla:sandbox/state";
+import { getField, sendEvent, setField } from "pxc:sandbox/state";
 
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);

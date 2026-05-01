@@ -1,8 +1,8 @@
-# Cross-Platform Learning Activities (xPLA)
+# Portable, sandboXed Components (PXC)
 
-xPLA is an upcoming standard for online learning activities. It aims at improving other standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability), [H5P](https://h5p.org) or [XBlock](https://github.com/openedx/xblock).
+PXC ("pixie") is an upcoming standard for online learning activities. It aims at improving other standards such as [SCORM](https://en.wikipedia.org/wiki/Sharable_Content_Object_Reference_Model), [LTI](https://en.wikipedia.org/wiki/Learning_Tools_Interoperability), [H5P](https://h5p.org) or [XBlock](https://github.com/openedx/xblock).
 
-As a high-level overview: the xPLA standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe xPLA capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
+As a high-level overview: the PXC standard supports running arbitrary code both on the client (for the learner UI) _and_ the server. Server code is sandboxed in WebAssembly. Activities are portable, which means that they can be transferred from one LMS to another. Activities are also secure, as unsafe PXC capabilities (such as network access) are granted by platform administrators on a case-by-case basis.
 
 Offline mode is supported, with two possible options:
 
@@ -13,13 +13,13 @@ Offline mode is supported, with two possible options:
 
 | Directory | Description |
 |-----------|-------------|
-| [src/xpla/lib/](./src/xpla/lib/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/xpla/lib/README.md#activity-api-reference) and [Platform API](./src/xpla/lib/README.md#platform-api-reference) reference documentation. Refer to this project for more information about the standard. |
-| [src/xpla/demo/](./src/xpla/demo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
-| [src/xpla/notebook/](./src/xpla/notebook/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
-| [src/xpla/lti/](./src/xpla/lti/) | **LTI 1.3 tool provider.** FastAPI app that exposes xPLA activities as LTI 1.3 tools for embedding in Open edX, Canvas, or any LMS. Includes platform registration admin and deep linking support. |
-| [samples/](./samples/) | **Sample activities.** Reference xPLA activities (MCQ, quiz, video, chat, etc.) that demonstrate the standard. |
-| [src/xpla/lib/sandbox/](./src/xpla/lib/sandbox/) | **Sandbox definition.** WIT interface and JSON Schema for the WASM Component Model sandbox. |
-| [src/xpla/static/](./src/xpla/static/) | **Shared static files.** The `XPLA` base class ([xpla.js](./src/xpla/static/js/xpla.js)) that powers the `<xpl-activity>` web component. |
+| [src/pxc/lib/](./src/pxc/lib/) | **Core library.** Platform-agnostic runtime for loading activities, validating manifests, executing WebAssembly sandboxes, and managing field storage. Also contains the full [Activity API](./src/pxc/lib/README.md#activity-api-reference) and [Platform API](./src/pxc/lib/README.md#platform-api-reference) reference documentation. Refer to this project for more information about the standard. |
+| [src/pxc/demo/](./src/pxc/demo/) | **Demo server.** Minimal FastAPI app that serves sample activities with a toolbar for switching users, permissions, and embedding modes. Useful for development and testing. |
+| [src/pxc/notebook/](./src/pxc/notebook/) | **Notebook application.** Full courseware management app (FastAPI + Next.js) for organizing courses, pages, and activities with drag-and-drop, real-time execution, and SQLite persistence. |
+| [src/pxc/lti/](./src/pxc/lti/) | **LTI 1.3 tool provider.** FastAPI app that exposes PXC activities as LTI 1.3 tools for embedding in Open edX, Canvas, or any LMS. Includes platform registration admin and deep linking support. |
+| [samples/](./samples/) | **Sample activities.** Reference PXC activities (MCQ, quiz, video, chat, etc.) that demonstrate the standard. |
+| [src/pxc/lib/sandbox/](./src/pxc/lib/sandbox/) | **Sandbox definition.** WIT interface and JSON Schema for the WASM Component Model sandbox. |
+| [src/pxc/static/](./src/pxc/static/) | **Shared static files.** The `PXC` base class ([pxc.js](./src/pxc/static/js/pxc.js)) that powers the `<pxc-activity>` web component. |
 
 ## Installation
 

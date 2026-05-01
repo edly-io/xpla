@@ -1,6 +1,6 @@
 # LTI 1.3 Tests
 
-Comprehensive test suite for the xPLA LTI 1.3 tool provider implementation.
+Comprehensive test suite for the PXC LTI 1.3 tool provider implementation.
 
 ## Running Tests
 
@@ -23,7 +23,7 @@ pytest src/tests/lti/test_integration.py -v # End-to-end (16 tests)
 
 ### With coverage:
 ```bash
-pytest src/tests/lti/ --cov=src/xpla/lti --cov-report=html
+pytest src/tests/lti/ --cov=src/pxc/lti --cov-report=html
 open htmlcov/index.html
 ```
 

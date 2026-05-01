@@ -13,9 +13,9 @@ from jwcrypto import jwk
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
-from xpla.lti.core.db import create_db
-from xpla.lti.core.keys import KeySet, load_or_create_key
-from xpla.lti.core.models import Platform, Deployment
+from pxc.lti.core.db import create_db
+from pxc.lti.core.keys import KeySet, load_or_create_key
+from pxc.lti.core.models import Platform, Deployment
 
 
 @pytest.fixture
@@ -87,7 +87,7 @@ def platform_key_set() -> KeySet:
 @pytest.fixture(autouse=True)
 def clear_jwks_cache() -> Generator[None, None, None]:
     """Clear JWKS client cache before each test."""
-    from xpla.lti.core import launch
+    from pxc.lti.core import launch
 
     yield
     launch._jwks_clients.clear()
@@ -105,7 +105,7 @@ def mock_platform_jwks(platform_key_set: KeySet) -> Generator[str, None, None]:
     mock_signing_key.key = platform_key_set.public_pem
 
     # Mock the PyJWKClient class
-    with patch("xpla.lti.core.launch.PyJWKClient") as mock_client_class:
+    with patch("pxc.lti.core.launch.PyJWKClient") as mock_client_class:
         mock_client = Mock()
         mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
         mock_client_class.return_value = mock_client
@@ -186,7 +186,7 @@ def deep_linking_id_token(test_platform: Platform, platform_key_set: KeySet) -> 
 def lti_client(tmp_path: Path) -> Generator[TestClient, None, None]:
     """FastAPI TestClient for LTI app with isolated test database."""
     from unittest.mock import patch
-    from xpla.lti import config
+    from pxc.lti import config
 
     # Create temporary paths
     test_data_dir = tmp_path / "data"
@@ -203,7 +203,7 @@ def lti_client(tmp_path: Path) -> Generator[TestClient, None, None]:
         with patch.object(config, "DB_PATH", test_db_path):
             with patch.object(config, "KEY_PATH", test_key_path):
                 # Import app after patching to ensure it uses test config
-                from xpla.lti.app import app as patched_app
+                from pxc.lti.app import app as patched_app
 
                 client = TestClient(patched_app)
                 yield client

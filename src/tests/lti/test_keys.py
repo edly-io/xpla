@@ -4,7 +4,7 @@ from pathlib import Path
 
 import jwt
 
-from xpla.lti.core.keys import KeySet, load_or_create_key
+from pxc.lti.core.keys import KeySet, load_or_create_key
 
 
 class TestLoadOrCreateKey:

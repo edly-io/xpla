@@ -4,8 +4,8 @@ from typing import Any
 
 import jwt
 
-from xpla.lti.core.deep_linking import build_deep_link_response
-from xpla.lti.core.keys import KeySet
+from pxc.lti.core.deep_linking import build_deep_link_response
+from pxc.lti.core.keys import KeySet
 
 
 class TestBuildDeepLinkResponse:

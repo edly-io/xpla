@@ -7,9 +7,9 @@ from typing import Any
 import jwt
 import pytest
 
-from xpla.lti.core.keys import KeySet
-from xpla.lti.core.launch import LaunchData, LaunchError, validate_launch_jwt
-from xpla.lti.core.models import Platform
+from pxc.lti.core.keys import KeySet
+from pxc.lti.core.launch import LaunchData, LaunchError, validate_launch_jwt
+from pxc.lti.core.models import Platform
 
 
 class TestValidateLaunchJWT:

@@ -3,22 +3,22 @@
 
 ###### Development
 
-SAMPLE_DIRS := $(dir $(wildcard samples/*/Makefile)) $(dir $(wildcard src/xpla/notebook/samples/courseactivities/*/Makefile))
+SAMPLE_DIRS := $(dir $(wildcard samples/*/Makefile)) $(dir $(wildcard src/pxc/notebook/samples/courseactivities/*/Makefile))
 
 samples: ## Build all sample activities
 	@for dir in $(SAMPLE_DIRS); do echo "Building $$dir" && $(MAKE) -C $$dir build || exit 1; done
 
 demo-server: ## Run a development server for the demo app
-	fastapi dev src/xpla/demo/app.py --host=127.0.0.1 --port=9752
+	fastapi dev src/pxc/demo/app.py --host=127.0.0.1 --port=9752
 
 lti-server: ## Run the LTI tool provider server (port 9754)
-	python -m xpla.lti --host=0.0.0.0
+	python -m pxc.lti --host=0.0.0.0
 
 notebook-server: ## Run the notebook server (port 9753) — build frontend first with notebook-frontend-build
-	fastapi dev src/xpla/notebook/app.py --host=127.0.0.1 --port=9753
+	fastapi dev src/pxc/notebook/app.py --host=127.0.0.1 --port=9753
 
 notebook-frontend-build: ## Build the notebook frontend static export
-	cd src/xpla/notebook/frontend && npm run build
+	cd src/pxc/notebook/frontend && npm run build
 
 format: ## Format code with black
 	black src/
@@ -38,26 +38,26 @@ test-format: ## Run formatting tests
 	black --check src/
 
 test-manifests: ## Validate all manifest.json files
-	@for f in samples/*/manifest.json src/xpla/notebook/samples/courseactivities/*/manifest.json; do echo "$$f" && ./src/xpla/tools/validate_manifest.py "$$f" || exit 1; done
+	@for f in samples/*/manifest.json src/pxc/notebook/samples/courseactivities/*/manifest.json; do echo "$$f" && ./src/pxc/tools/validate_manifest.py "$$f" || exit 1; done
 
 test-codegen: ## Make sure that manifest types are up-to-date
 	$(MAKE) --always-make manifest-types CODEGEN_OPTIONS="--check"
 
 load-test: ## Run a crude WASM component load testing script
-	python src/xpla/lib/tests/samples/load_test.py
+	python src/pxc/lib/tests/samples/load_test.py
 
 # This command must be run every time the schema is updated
 .PHONY: manifest-types
-manifest-types: src/xpla/lib/manifest_types.py ## Generate manifest types based on schema
-src/xpla/lib/manifest_types.py: src/xpla/lib/sandbox/manifest.schema.json
+manifest-types: src/pxc/lib/manifest_types.py ## Generate manifest types based on schema
+src/pxc/lib/manifest_types.py: src/pxc/lib/sandbox/manifest.schema.json
 	datamodel-codegen $(CODEGEN_OPTIONS) \
-		--input=src/xpla/lib/sandbox/manifest.schema.json \
+		--input=src/pxc/lib/sandbox/manifest.schema.json \
 		--input-file-type=jsonschema \
 		--use-double-quotes \
 		--formatters black isort \
 		--output-model-type=pydantic_v2.BaseModel \
 		--use-annotated \
-		--output=src/xpla/lib/manifest_types.py \
+		--output=src/pxc/lib/manifest_types.py \
 		--disable-timestamp
 
 ###### Additional commands

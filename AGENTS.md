@@ -1,10 +1,10 @@
-# xPLA
+# PXC
 
-This file provides guidance to AI agents working on the xPLA codebase — runtime library, demo app, notebook app, tools, and manifest schema. For creating new sample activities, see the `xpla-build-activity` skill.
+This file provides guidance to AI agents working on the PXC codebase — runtime library, demo app, notebook app, tools, and manifest schema. For creating new sample activities, see the `pxc-build-activity` skill.
 
-## What is xPLA
+## What is PXC
 
-Cross-Platform Learning Activities — a standard for portable, sandboxed online learning activities. Activities are self-contained packages with:
+Portable, SandboXed Components — a standard for portable, sandboxed online learning activities. Activities are self-contained packages with:
 
 - **manifest.json** (required) — declares fields, actions, events, capabilities, assets
 - **ui.js** (required) — exports `setup(activity)`, renders UI in the browser
@@ -15,7 +15,7 @@ The runtime loads manifests, validates actions/events/fields at runtime, execute
 ## Codebase layout
 
 ```
-src/xpla/
+src/pxc/
   lib/                    Core runtime library (Python)
     runtime.py            ActivityRuntime — central orchestrator
     sandbox.py            WASM Component Model executor (wasmtime)
@@ -30,7 +30,7 @@ src/xpla/
     manifest_types.py     Auto-generated Pydantic models from schema (DO NOT EDIT)
     sandbox/
       manifest.schema.json  JSON Schema for activity manifests
-      xpla.wit              Canonical WIT: types + state/grading/http/storage/analytics interfaces
+      pxc.wit              Canonical WIT: types + state/grading/http/storage/analytics interfaces
       index.js              JS sandbox helper lib
     tests/
       runtime/            Runtime integration tests
@@ -44,7 +44,7 @@ src/xpla/
     templates/            Jinja2 templates
     tests/
 
-  notebook/               xPLN notebook app (port 9753)
+  notebook/               PXC notebook app (port 9753)
     app.py                FastAPI server — REST API + WebSocket + activity execution
     models.py             SQLModel: Course, Page, PageActivity
     db.py                 SQLite database setup + engine
@@ -68,7 +68,7 @@ src/xpla/
       db.py               Platform storage
     templates/            Jinja2 templates (admin UI, activity render, launch error)
 
-  static/js/xpla.js      <xpl-activity> web component (shared across apps)
+  static/js/pxc.js      <pxc-activity> web component (shared across apps)
   tools/
     validate_manifest.py  Manifest validation script
 
@@ -95,7 +95,7 @@ ActivityRuntime(
 ```
 
 On construction:
-1. Loads and validates `manifest.json` via `XplaActivityManifest.model_validate_json()`
+1. Loads and validates `manifest.json` via `PxcActivityManifest.model_validate_json()`
 2. Creates checkers: `CapabilityChecker`, `FieldChecker`, `ActionChecker`, `EventChecker`
 3. If `manifest.sandbox` is declared, loads WASM via `get_sandbox_executor(wasm_path, host_functions)` where `host_functions()` returns a `dict[interface_name, dict[fn_name, callable]]` grouped by WIT interface
 
@@ -108,7 +108,7 @@ Key methods:
 - `get_asset_path(path) -> Path` — validates and resolves asset paths
 - Host functions: `get_field`, `set_field`, `send_event`, `log_*`, `storage_*`, `http_request`, `submit_grade`
 
-**Scope resolution**: `_scope_key_segments(scope, context)` maps field scope + optional context overrides to `(activity_id, course_id, user_id)` tuple. KV key pattern: `xpla.<activity_name>.<course_id>.<activity_id>.<user_id>.<key>`.
+**Scope resolution**: `_scope_key_segments(scope, context)` maps field scope + optional context overrides to `(activity_id, course_id, user_id)` tuple. KV key pattern: `pxc.<activity_name>.<course_id>.<activity_id>.<user_id>.<key>`.
 
 **Events flow**: sandbox calls `send_event()` → validated by `EventChecker` → appended to `_pending_events` → caller retrieves via `clear_pending_events()` → published through `EventBus`.
 
@@ -116,7 +116,7 @@ Key methods:
 
 Executes WASM Component Model modules via wasmtime.
 
-- `call_function(name, *args)` — creates a fresh `Store` + `Instance` per call (no state reuse), registers host functions with one `linker.add_instance("xpla:sandbox/<interface>")` per declared interface (e.g. `state`, `grading`, `storage`), calls the exported function. A sandbox that imports an interface without the matching capability fails at instantiation.
+- `call_function(name, *args)` — creates a fresh `Store` + `Instance` per call (no state reuse), registers host functions with one `linker.add_instance("pxc:sandbox/<interface>")` per declared interface (e.g. `state`, `grading`, `storage`), calls the exported function. A sandbox that imports an interface without the matching capability fails at instantiation.
 - `load_component()` — caches compiled WASM as `.bin` file for faster subsequent loads
 - `make_host_function()` — wraps Python functions for wasmtime (adds Store arg, converts Record ↔ dict)
 - `call_sandbox_function()` — converts dict args to `RecordArg`, always calls `post_return()` to prevent memory leaks
@@ -136,7 +136,7 @@ All checkers follow the same pattern: initialized from manifest declarations, ex
 Abstract base with methods: `get`, `set`, `delete`, `keys` (scalar), `log_get`, `log_get_range`, `log_append`, `log_delete`, `log_delete_range`. All methods take `(course_id, activity_name, activity_id, user_id, key, ...)`.
 
 Implementations:
-- `MemoryKVStore` — in-memory dict, composite key pattern `xpla.<name>.<course>.<activity>.<user>.<key>`. Log fields stored under `__log__.<key>` as `{"next_id": N, "entries": {"0": val, ...}}`.
+- `MemoryKVStore` — in-memory dict, composite key pattern `pxc.<name>.<course>.<activity>.<user>.<key>`. Log fields stored under `__log__.<key>` as `{"next_id": N, "entries": {"0": val, ...}}`.
 - `KVStore` (demo/kv.py) — extends MemoryKVStore, persists to JSON file on every write
 - `SQLiteFieldStore` (notebook/field_store.py) — three SQLModel tables: `FieldEntry` (scalar), `FieldLogEntry` (log entries), `FieldLogSeq` (auto-increment sequences). Bulk delete helpers: `delete_by_course()`, `delete_by_activity()`, `delete_by_activity_name()`.
 
@@ -164,7 +164,7 @@ class Permission(Enum):
 
 ## WIT interfaces
 
-The canonical WIT lives in `src/xpla/lib/sandbox/xpla.wit`. It defines `types` plus one interface per functional area. Samples copy this file and declare a `world activity` that imports only the interfaces they use.
+The canonical WIT lives in `src/pxc/lib/sandbox/pxc.wit`. It defines `types` plus one interface per functional area. Samples copy this file and declare a `world activity` that imports only the interfaces they use.
 
 | Interface | Gating | Functions |
 |---|---|---|
@@ -189,7 +189,7 @@ world activity {
 }
 ```
 
-Corresponding sandbox imports in JS: `import { getField } from "xpla:sandbox/state"`, `import { submitGrade } from "xpla:sandbox/grading"`, etc.
+Corresponding sandbox imports in JS: `import { getField } from "pxc:sandbox/state"`, `import { submitGrade } from "pxc:sandbox/grading"`, etc.
 
 **Critical**: all values cross the WASM boundary as JSON strings. Host functions in `runtime.py` do `json.dumps()`/`json.loads()` at the boundary.
 
@@ -226,15 +226,15 @@ Routes:
 
 Full courseware app. Uses `SQLiteFieldStore`, `LocalFileStorage`, `EventBus`. SQLite database with Course/Page/PageActivity models. Alembic migrations run on startup.
 
-Frontend is a Next.js static export served by FastAPI. The `<xpl-activity>` web component connects via WebSocket.
+Frontend is a Next.js static export served by FastAPI. The `<pxc-activity>` web component connects via WebSocket.
 
 ### LTI app (lti/app.py)
 
-LTI 1.3 tool provider for integrating xPLA activities into LMS platforms (Canvas, Moodle, Open edX, etc.). Implements OIDC authentication, JWT validation, nonce replay protection, deep linking (instructor selects activities to embed), and resource link launches (students launch with identity + context). Multi-tenant: multiple platforms registered via an admin UI at `/admin/platforms`. Configured via `LTI_BASE_URL` env var. Launched activities run through the same `ActivityRuntime`; user/course context comes from the validated LTI launch claims. See `src/xpla/lti/README.md` for platform registration and endpoint details.
+LTI 1.3 tool provider for integrating PXC activities into LMS platforms (Canvas, Moodle, Open edX, etc.). Implements OIDC authentication, JWT validation, nonce replay protection, deep linking (instructor selects activities to embed), and resource link launches (students launch with identity + context). Multi-tenant: multiple platforms registered via an admin UI at `/admin/platforms`. Configured via `LTI_BASE_URL` env var. Launched activities run through the same `ActivityRuntime`; user/course context comes from the validated LTI launch claims. See `src/pxc/lti/README.md` for platform registration and endpoint details.
 
-### Client web component (static/js/xpla.js)
+### Client web component (static/js/pxc.js)
 
-`XPLA extends HTMLElement`. On `connectedCallback()`: parses data attributes (`data-context`, `data-state`, `data-permission`, `data-src`), sets up shadow DOM or native mode, connects WebSocket, loads activity script.
+`PXC extends HTMLElement`. On `connectedCallback()`: parses data attributes (`data-context`, `data-state`, `data-permission`, `data-src`), sets up shadow DOM or native mode, connects WebSocket, loads activity script.
 
 Key API exposed to activity UI scripts:
 - `element` — DOM element to render into
@@ -306,8 +306,8 @@ make test-manifests          # Validate all sample manifests
 make test-codegen            # Check manifest_types.py is up to date
 make format                  # Format code with black
 
-pytest src/xpla/lib/tests/test_fields.py                 # Single file
-pytest src/xpla/lib/tests/test_fields.py -k test_name    # Single test
+pytest src/pxc/lib/tests/test_fields.py                 # Single file
+pytest src/pxc/lib/tests/test_fields.py -k test_name    # Single test
 
 make manifest-types          # Regenerate manifest_types.py after schema changes
 ```
@@ -327,7 +327,7 @@ make manifest-types          # Regenerate manifest_types.py after schema changes
 - After changing `manifest.schema.json`, run `make manifest-types` then `make test-codegen`
 
 **WIT interface:**
-- `xpla.wit` must NOT have a version suffix on the package name (jco fails with versions)
+- `pxc.wit` must NOT have a version suffix on the package name (jco fails with versions)
 
 **Makefile:**
 - Do not use automatic variables (`$<`, `$@`, etc.) in recipes
@@ -341,7 +341,7 @@ make manifest-types          # Regenerate manifest_types.py after schema changes
 
 - Always run `make samples` after changes to `manifest.schema.json` or sample activities
 - Always create unit tests when implementing a feature, fixing a bug, or changing behaviour. Tests live in `tests/` folders of each application
-- Always update `src/xpla/lib/README.md` when making feature changes to the core library
+- Always update `src/pxc/lib/README.md` when making feature changes to the core library
 
 ## Workflow
 

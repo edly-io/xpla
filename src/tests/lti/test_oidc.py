@@ -5,8 +5,8 @@ from urllib.parse import parse_qs, urlparse
 
 from sqlmodel import Session, select
 
-from xpla.lti.core.models import Nonce, Platform
-from xpla.lti.core.oidc import build_auth_redirect, consume_nonce, store_nonce
+from pxc.lti.core.models import Nonce, Platform
+from pxc.lti.core.oidc import build_auth_redirect, consume_nonce, store_nonce
 
 
 class TestBuildAuthRedirect:

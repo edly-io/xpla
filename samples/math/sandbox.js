@@ -1,7 +1,7 @@
 // Math quiz plugin - validates answers and submits grades via WASM backend
 
-import { reportScored, submitGrade } from "xpla:sandbox/grading";
-import { getField, sendEvent, setField } from "xpla:sandbox/state";
+import { reportScored, submitGrade } from "pxc:sandbox/grading";
+import { getField, sendEvent, setField } from "pxc:sandbox/state";
 
 // Return state visible to the current user.
 export function getState() {

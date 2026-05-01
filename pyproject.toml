@@ -1,5 +1,5 @@
 [project]
-name = "xpla-demo"
+name = "pxc-demo"
 version = "0.1.0"
 dependencies = [
     "alembic",
@@ -35,8 +35,8 @@ where = ["src"]
 
 [tool.pylint.MAIN]
 ignore-paths=[
-    "src/xpla/notebook/frontend",
-    "src/xpla/notebook/migrations/versions",
+    "src/pxc/notebook/frontend",
+    "src/pxc/notebook/migrations/versions",
 ]
 
 [tool.pylint.'MESSAGES CONTROL']
@@ -66,9 +66,9 @@ warn_unused_configs = true
 ignore_missing_imports = true
 strict = true
 exclude = [
-    "src/xpla/notebook/frontend",
-    "src/xpla/notebook/migrations/versions",
+    "src/pxc/notebook/frontend",
+    "src/pxc/notebook/migrations/versions",
 ]
 
 [tool.black]
-extend-exclude = "src/xpla/notebook/frontend, src/xpla/notebook/migrations/versions"
+extend-exclude = "src/pxc/notebook/frontend, src/pxc/notebook/migrations/versions"

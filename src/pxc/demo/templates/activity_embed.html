@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ activity_context.title or "Activity" }}</title>
+    <style>
+        body { margin: 0; padding: 0; }
+    </style>
+</head>
+<body>
+<script type="module">
+import { PXC } from "{{ url_for('static', path='js/pxc.js') }}";
+customElements.define("pxc-activity", PXC);
+</script>
+<pxc-activity
+    embed="native"
+    data-context="{{ context_json | escape }}"
+    data-src="{{ url_for('activity_ui', activity_type=activity_context.name) }}"
+    data-state="{{ state_json | escape }}"
+    data-permission="{{ current_permission }}"
+></pxc-activity>
+</body>
+</html>

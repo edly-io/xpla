@@ -10,9 +10,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, Session, create_engine, select
 
-from xpla.lti.core.keys import load_or_create_key
-from xpla.lti.core.models import Platform
-from xpla.lti.core.routes import create_lti_router
+from pxc.lti.core.keys import load_or_create_key
+from pxc.lti.core.models import Platform
+from pxc.lti.core.routes import create_lti_router
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def admin_client(admin_test_engine: Engine, tmp_path: Path) -> TestClient:
     SQLModel.metadata.create_all(admin_test_engine)
 
     key_set = load_or_create_key(tmp_path / "test_key.pem")
-    templates_dir = Path(__file__).parent.parent.parent / "xpla" / "lti" / "templates"
+    templates_dir = Path(__file__).parent.parent.parent / "pxc" / "lti" / "templates"
     templates = Jinja2Templates(directory=str(templates_dir))
 
     # Create a simple launch handler

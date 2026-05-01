@@ -1,0 +1,81 @@
+// Canonical PXC host WIT definitions.
+//
+// The host surface is split into one interface per functional area.
+// Each sample's world imports only the interfaces it actually uses; the
+// executor wires up only the interfaces that the manifest declares
+// (via `capabilities.*`), with `state` always available.
+//
+// See src/pxc/lib/README.md for the full catalog and capability gating.
+
+package pxc:sandbox;
+
+interface types {
+    enum permission {
+        view,
+        play,
+        edit,
+    }
+
+    record context {
+        activity-id: option<string>,
+        course-id: option<string>,
+        user-id: option<string>,
+    }
+}
+
+// Always available — every sandbox gets state implicitly.
+interface state {
+    use types.{context, permission};
+
+    send-event: func(name: string, value: string, context: option<context>, permission: permission) -> string;
+
+    get-field: func(name: string, context: option<context>) -> string;
+    set-field: func(name: string, value: string, context: option<context>) -> bool;
+
+    log-get: func(name: string, entry-id: u32, context: option<context>) -> string;
+    log-get-range: func(name: string, from-id: u32, to-id: u32, context: option<context>) -> string;
+    log-append: func(name: string, value: string, context: option<context>) -> u32;
+    log-delete: func(name: string, entry-id: u32, context: option<context>) -> bool;
+    log-delete-range: func(name: string, from-id: u32, to-id: u32, context: option<context>) -> u32;
+}
+
+// Opt-in via `capabilities.grading: {}`.
+interface grading {
+    submit-grade: func(score: f64) -> bool;
+    report-completed: func() -> bool;
+    report-passed: func(score: option<f64>) -> bool;
+    report-failed: func(score: option<f64>) -> bool;
+    report-progressed: func(progress: f64) -> bool;
+    report-scored: func(score: f64) -> bool;
+}
+
+// Notebook-only. Not declared in the core manifest schema; course activities
+// opt in via `capabilities.analytics: {}` in their own manifests.
+interface analytics {
+    report-query: func(filters: string) -> string;
+}
+
+// Opt-in via `capabilities.http`.
+interface http {
+    http-request: func(url: string, method: string, body: string, headers: string) -> string;
+}
+
+// Opt-in via `capabilities.storage`.
+interface storage {
+    use types.{context};
+
+    storage-read: func(name: string, path: string, context: option<context>) -> list<u8>;
+    storage-exists: func(name: string, path: string, context: option<context>) -> bool;
+    storage-url: func(name: string, path: string, context: option<context>) -> string;
+    storage-list: func(name: string, path: string, context: option<context>) -> tuple<list<string>, list<string>>;
+    storage-write: func(name: string, path: string, content: list<u8>, context: option<context>) -> bool;
+    storage-delete: func(name: string, path: string, context: option<context>) -> bool;
+}
+
+world activity {
+    use types.{context, permission};
+    import state;
+    import storage;
+    export on-action: func(name: string, value: string, context: context, permission: permission) -> string;
+    export get-state: func(context: context, permission: permission) -> string;
+}

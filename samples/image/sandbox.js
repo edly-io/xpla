@@ -3,8 +3,8 @@
 // Actions handled:
 // - image.upload: Save an image from a data URI
 
-import { getField, sendEvent, setField } from "xpla:sandbox/state";
-import { storageUrl, storageWrite } from "xpla:sandbox/storage";
+import { getField, sendEvent, setField } from "pxc:sandbox/state";
+import { storageUrl, storageWrite } from "pxc:sandbox/storage";
 
 const MIME_TO_EXT = {
   "image/jpeg": "jpg",

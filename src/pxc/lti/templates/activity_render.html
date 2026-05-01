@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ activity_context.name }}{% endblock %}
+
+{% block body %}
+<script type="module">
+import { PXC } from "{{ url_for('static', path='js/pxc.js') }}";
+customElements.define("pxc-activity", PXC);
+</script>
+<pxc-activity
+    data-context="{{ scope_json | escape }}"
+    data-src="{{ url_for('activity_ui', token=token) }}"
+    data-state="{{ state_json | escape }}"
+    data-permission="{{ permission }}"
+    data-action-url="{{ url_for('send_action', token=token, action_name='__NAME__') }}"
+    data-ws-url="{{ ws_url }}"
+    data-asset-base-url="{{ asset_base_url }}"
+></pxc-activity>
+{% endblock %}
