@@ -25,7 +25,13 @@ class TestEventChecker:
 
     def test_valid_event_passes(self) -> None:
         """Should not raise for valid event with matching payload."""
-        checker = EventChecker({"my.event": type_schema(type="object", properties={})})
+        checker = EventChecker(
+            {
+                "my.event": type_schema(
+                    type="object", properties={"key": {"type": "string"}}
+                )
+            }
+        )
         checker.validate("my.event", {"key": "value"})
 
     def test_undeclared_values_change_rejected(self) -> None:

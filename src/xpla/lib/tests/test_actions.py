@@ -28,6 +28,10 @@ class TestActionChecker:
     def test_valid_action_passes(self) -> None:
         """Should not raise for valid action with matching payload."""
         checker = ActionChecker(
-            {"my.action": type_schema(type="object", properties={})}
+            {
+                "my.action": type_schema(
+                    type="object", properties={"key": {"type": "string"}}
+                )
+            }
         )
         checker.validate("my.action", {"key": "value"})
