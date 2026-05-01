@@ -147,3 +147,25 @@ class TestActionEndpoint:
             json="not an integer",
         )
         assert response.status_code == 422
+
+    def test_returns_422_in_view_mode(
+        self, samples_dir: Path, client: TestClient
+    ) -> None:
+        """Should return 422 when action is sent in view mode."""
+        activity_path = samples_dir / "test-activity"
+        manifest: dict[str, Any] = {
+            "name": "test-activity",
+            "ui": "ui.js",
+            "capabilities": {},
+            "actions": {
+                "known.action": {"type": "object", "properties": {}},
+            },
+        }
+        (activity_path / "manifest.json").write_text(json.dumps(manifest))
+
+        response = client.post(
+            "/api/activity/test-activity/actions/known.action",
+            json={},
+            cookies={"pxc_permission": "view"},
+        )
+        assert response.status_code == 422

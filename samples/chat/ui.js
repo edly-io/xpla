@@ -6,6 +6,7 @@ export function setup(activity) {
   const messages = activity.state.messages || [];
 
   function render() {
+    const canPost = activity.permission !== "view";
     element.innerHTML = `
       <style>
         .chat-container { font-family: sans-serif; max-width: 500px; }
@@ -18,10 +19,11 @@ export function setup(activity) {
       </style>
       <div class="chat-container">
         <div class="chat-messages" id="chat-messages"></div>
+        ${canPost ? `
         <form class="chat-form" id="chat-form">
           <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
           <button type="submit">Send</button>
-        </form>
+        </form>` : ""}
       </div>
     `;
 
@@ -30,14 +32,16 @@ export function setup(activity) {
       appendMessage(messagesEl, msg.value);
     }
 
-    element.querySelector("#chat-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const input = element.querySelector("#chat-input");
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = "";
-      await activity.sendAction("chat.post", { text });
-    });
+    if (canPost) {
+      element.querySelector("#chat-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const input = element.querySelector("#chat-input");
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = "";
+        await activity.sendAction("chat.post", { text });
+      });
+    }
   }
 
   function appendMessage(container, msg) {

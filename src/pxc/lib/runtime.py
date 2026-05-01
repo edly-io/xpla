@@ -15,7 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from pxc.lib.actions import ActionChecker
+from pxc.lib.actions import ActionChecker, ActionValidationError
 from pxc.lib.capabilities import CapabilityChecker, CapabilityError, InterfaceName
 from pxc.lib.events import EventChecker
 from pxc.lib.field_store import FieldStore
@@ -395,6 +395,8 @@ class ActivityRuntime:
 
         Raise ActionValidationError if action is not valid.
         """
+        if self._permission == Permission.view:
+            raise ActionValidationError("Actions are not allowed in view mode")
         self.action_checker.validate(action_name, action_value)
         if self.sandbox is not None:
             try:

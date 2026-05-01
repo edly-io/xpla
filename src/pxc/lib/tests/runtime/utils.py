@@ -48,7 +48,11 @@ def make_field_store() -> FieldStore:
     return MemoryKVStore()
 
 
-def make_activity_runtime(tmp_path: Path, manifest: dict[str, Any]) -> ActivityRuntime:
+def make_activity_runtime(
+    tmp_path: Path,
+    manifest: dict[str, Any],
+    permission: Permission = Permission.play,
+) -> ActivityRuntime:
     """Create an ActivityRuntime with a dummy key-value store and activity directory for tests"""
     activity_dir = setup_activity_dir(tmp_path, manifest)
     return ActivityRuntime(
@@ -58,5 +62,5 @@ def make_activity_runtime(tmp_path: Path, manifest: dict[str, Any]) -> ActivityR
         "activityid",
         "courseid",
         "userid",
-        Permission.play,
+        permission,
     )

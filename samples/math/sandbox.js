@@ -15,10 +15,6 @@ export function getState() {
 export function onAction(name, data, context, permission) {
   const value = JSON.parse(data);
   if (name === "answer.submit") {
-    if (permission === "view") {
-      console.log("answer.submit rejected: permission is view");
-      return "";
-    }
     // Parse the submission: { question: "2+2", answer: "4" }
     const submission = value;
     const result = checkAnswer(submission.question, submission.answer);

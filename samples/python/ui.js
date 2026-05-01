@@ -255,10 +255,11 @@ export function setup(activity) {
 
         <div class="cm-wrap" id="code-editor"></div>
 
+        ${permission !== "view" ? `
         <div class="py-buttons">
           <button type="button" id="run-btn">Run</button>
           <button type="button" id="check-btn">Check</button>
-        </div>
+        </div>` : ""}
 
         <div class="py-status">Loading Python runtime...</div>
 
@@ -283,6 +284,8 @@ export function setup(activity) {
     const container = element.querySelector(".py-container");
     const outputContent = element.querySelector("#output-content");
     const resultsContent = element.querySelector("#results-content");
+
+    if (permission === "view") return;
 
     element.querySelector("#run-btn").addEventListener("click", async () => {
       container.className = "py-container state-loading";

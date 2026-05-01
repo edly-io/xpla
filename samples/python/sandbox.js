@@ -28,10 +28,6 @@ export function onAction(name, data, context, permission) {
   }
 
   if (name === "code.run" || name === "code.check") {
-    if (permission === "view") {
-      console.log(name + " rejected: permission is view");
-      return;
-    }
     saveUserCode(value.code);
   }
   return "";

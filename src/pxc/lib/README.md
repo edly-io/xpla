@@ -136,11 +136,15 @@ Each field must have a `type` and `scope`. An optional `default` can be provided
 
 Access control is handled at runtime through **permissions** rather than per-field declarations. The platform sets a permission level for each request:
 
-- `"view"`: Read-only / anonymous access. Can see the activity but not interact.
+- `"view"`: Read-only / anonymous access. Can see the activity but not send any actions. Intended for anonymous users for whom the platform may not provide a stable `user_id`. Activities can still receive events in view mode.
 - `"play"`: Active participant (student). Can submit answers.
 - `"edit"`: Course author. Can configure the activity.
 
-The sandbox controls what state to expose to the client via an exported `getState()` function, which receives the current permission level as input. Similarly, the sandbox can guard actions using the `permission` value included in the `on-action` input (e.g. reject submissions when permission is `"view"`).
+**`view` mode is read-only.** The runtime rejects any action sent with `permission === "view"` — `on_action` raises `ActionValidationError` before the sandbox is called, and the client's `sendAction` silently drops the call. Activity scripts are responsible for not rendering interactive controls (buttons, forms, etc.) when `activity.permission === "view"`.
+
+The sandbox's `on-action` function will therefore never be called with `permission === "view"`. Sandbox scripts do not need to guard against it.
+
+The sandbox controls what state to expose to the client via an exported `getState()` function, which receives the current permission level as input.
 
 #### Actions & Events
 
@@ -292,7 +296,7 @@ storageDelete("media", "photo.png", null);                      // delete a file
 
 The sandbox script can export the following functions:
 
-- `on-action(input)`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The `input` parameter is a JSON string with four keys: `name` (the action name), `value` (the action payload), `context` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"view"`, `"play"`, or `"edit"`). Returns a string (typically empty).
+- `on-action(input)`: Called when the frontend sends an action via `activity.sendAction(name, value)`. The `input` parameter is a JSON string with four keys: `name` (the action name), `value` (the action payload), `context` (a dict with `user_id`, `course_id`, `activity_id` identifying the current context), and `permission` (the current permission level: `"play"` or `"edit"` — `"view"` is never passed here because the runtime rejects all actions in view mode before reaching the sandbox). Returns a string (typically empty).
 - `get-state(input)`: Called when the activity page loads. The `input` parameter is a JSON string with two keys: `context` (a dict with `user_id`, `course_id`, `activity_id`) and `permission` (the current permission level). Returns a JSON string of fields to send to the client. Use this to filter fields based on permission (e.g., hide correct answers from students). If not exported, the server falls back to sending all declared fields.
 
 ```javascript
@@ -313,7 +317,7 @@ export function onAction(name, data, context, permission) {
   // context.userId: current user ID
   // context.courseId: current course ID
   // context.activityId: current activity instance ID
-  // permission: "view", "play", or "edit"
+  // permission: "play" or "edit" (never "view" — runtime rejects view-mode actions)
   return "";
 }
 ```
@@ -361,7 +365,7 @@ The backend is responsible for loading activities, executing sandboxed code, pro
 The exact API is platform-specific and does not need to follow a standard. The platform must support:
 
 - **Get state**: called on page load. The backend calls the sandbox's `get-state()` function and returns the result as JSON. If `get-state` is not exported, all declared fields are returned.
-- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend validates the action, then calls the sandbox's `onAction()` function with `name`, `value`, `context` (a dict with `user-id`, `course-id`, `activity-id`), and `permission` (the current permission level).
+- **Send action**: called when the frontend sends an action via `sendAction(name, value)`. The backend rejects any action sent in `"view"` mode with a validation error. For other permission levels it validates the action against the manifest, then calls the sandbox's `onAction()` function with `name`, `value`, `context` (a dict with `user-id`, `course-id`, `activity-id`), and `permission`.
 - **Event delivery**: events emitted by the sandbox (via `sendEvent`) are broadcast to connected clients via WebSocket, filtered by context and permission. The platform maintains a WebSocket connection per client and routes events to matching subscribers.
 
 Our reference implementation exposes these as FastAPI endpoints in [the demo application](../demo/app.py). Event routing is handled by the [`EventBus`](./event_bus.py).
@@ -456,7 +460,7 @@ The runtime must provide an `activity` object to each activity's `setup(activity
 | `context` | `object` | Context identifying the activity instance: `{ user_id, course_id, activity_id }`. Parsed from the `data-context` attribute. |
 | `state` | `object` | The activity state, populated by the backend's `get-state()` response. |
 | `permission` | `string` | Current permission level: `"view"`, `"play"`, or `"edit"`. |
-| `sendAction(name, value)` | `(string, any) => Promise<void>` | Sends an action to the backend sandbox via WebSocket. The current `permission` is included in the payload. Fire-and-forget: callers are not required to `await` the returned promise. Events are delivered asynchronously through the `onEvent` callback. |
+| `sendAction(name, value)` | `(string, any) => Promise<void>` | Sends an action to the backend sandbox via WebSocket. No-op in `"view"` mode (logs a warning). Fire-and-forget: callers are not required to `await` the returned promise. Events are delivered asynchronously through the `onEvent` callback. Activity scripts must not render interactive controls that call `sendAction` when `activity.permission === "view"`. |
 | `getAssetUrl(path)` | `(string) => string` | Returns the URL for a static asset declared in the activity's manifest. |
 | `onEvent(name, value)` | `(string, any) => void` | Callback invoked for every event emitted by the server. Default is a no-op; activity code overrides it. |
 

@@ -27,6 +27,7 @@ function generateQuestion() {
 
 export function setup(activity) {
   var element = activity.element;
+  const canSubmit = activity.permission !== "view";
 
   element.innerHTML = `
     <p>Answer the math question below. Your answer will be validated by the WASM backend and your grade will be submitted to the LMS.</p>
@@ -39,8 +40,8 @@ export function setup(activity) {
     <form id="quiz-form">
       <div class="question" id="question">Loading...</div>
       <label for="answer">Your answer: </label>
-      <input type="number" id="answer" name="answer" required>
-      <button type="submit">Submit</button>
+      <input type="number" id="answer" name="answer" required ${canSubmit ? "" : "disabled"}>
+      <button type="submit" ${canSubmit ? "" : "disabled"}>Submit</button>
     </form>
 
     <div id="feedback" style="display: none;"></div>

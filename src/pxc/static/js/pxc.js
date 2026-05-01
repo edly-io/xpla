@@ -232,6 +232,10 @@ export class PXC extends HTMLElement {
   }
 
   async sendAction(name, value = "") {
+    if (this.permission === "view") {
+      console.warn("sendAction called in view mode — ignored:", name);
+      return;
+    }
     await this._pushAction({ action: name, value, permission: this.permission });
   }
 
