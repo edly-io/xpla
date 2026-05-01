@@ -36,7 +36,7 @@ where = ["src"]
 [tool.pylint.MAIN]
 ignore-paths=[
     "src/xpla/notebook/frontend",
-    "src/xpla/notebook/migrations",
+    "src/xpla/notebook/migrations/versions",
 ]
 
 [tool.pylint.'MESSAGES CONTROL']
@@ -67,8 +67,8 @@ ignore_missing_imports = true
 strict = true
 exclude = [
     "src/xpla/notebook/frontend",
-    "src/xpla/notebook/migrations",
+    "src/xpla/notebook/migrations/versions",
 ]
 
 [tool.black]
-extend-exclude = "src/xpla/notebook/frontend, src/xpla/notebook/migrations"
+extend-exclude = "src/xpla/notebook/frontend, src/xpla/notebook/migrations/versions"
