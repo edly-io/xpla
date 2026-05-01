@@ -1,5 +1,6 @@
 """Tests for activity report statements persisted in the notebook app."""
 
+from collections.abc import Generator
 from contextlib import contextmanager
 import json
 from datetime import datetime, timezone
@@ -7,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from sqlmodel import Session, col, select
+from sqlalchemy.engine import Engine
 
 from pxc.lib.permission import Permission
 from pxc.notebook.models import ActivityStatement
@@ -15,12 +17,12 @@ from pxc.notebook.views.course_activities import (
     list_course_activity_types,
 )
 from pxc.notebook.runtime import NotebookActivityRuntime
-from pxc.notebook.tests.conftest import _make_engine, Engine
+from pxc.notebook.tests.conftest import _make_engine
 
 
 def _make_notebook_runtime(
     tmp_path: Path,
-    engine: object,
+    engine: Engine,
     *,
     is_course_activity: bool = False,
     activity_id: str = "a1",
@@ -46,7 +48,7 @@ def _make_notebook_runtime(
 
 
 @contextmanager
-def patch_engine(engine: Engine):
+def patch_engine(engine: Engine) -> Generator[None]:
     with patch("pxc.notebook.db._engine", engine):
         yield
 
@@ -138,7 +140,7 @@ class TestActivityStatements:
 
 
 class TestReportQuery:
-    def _setup(self, tmp_path: Path, engine: object) -> NotebookActivityRuntime:
+    def _setup(self, tmp_path: Path, engine: Engine) -> NotebookActivityRuntime:
         """Create a course-activity runtime and seed some statements."""
         rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
         rt.report_completed()
