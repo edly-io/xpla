@@ -33,7 +33,7 @@ def _make_notebook_runtime(
     manifest = {"name": "test-activity", "ui": "ui.js", "capabilities": capabilities}
     (activity_dir / "manifest.json").write_text(json.dumps(manifest))
 
-    with patch("xpla.notebook.runtime.engine", engine):
+    with patch("xpla.notebook.db._engine", engine):
         return NotebookActivityRuntime(
             activity_dir,
             activity_id=activity_id,
@@ -47,7 +47,7 @@ def _make_notebook_runtime(
 class TestActivityStatements:
     def test_report_completed(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_completed()
         with Session(engine) as session:
@@ -62,7 +62,7 @@ class TestActivityStatements:
 
     def test_report_passed_with_score(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_passed(0.85)
         with Session(engine) as session:
@@ -73,7 +73,7 @@ class TestActivityStatements:
 
     def test_report_passed_without_score(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_passed(None)
         with Session(engine) as session:
@@ -84,7 +84,7 @@ class TestActivityStatements:
 
     def test_report_failed(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_failed(0.3)
         with Session(engine) as session:
@@ -95,7 +95,7 @@ class TestActivityStatements:
 
     def test_report_progressed(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_progressed(0.5)
         with Session(engine) as session:
@@ -106,7 +106,7 @@ class TestActivityStatements:
 
     def test_report_scored(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_scored(0.75)
         with Session(engine) as session:
@@ -117,7 +117,7 @@ class TestActivityStatements:
 
     def test_multiple_statements(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine)
             rt.report_progressed(0.5)
             rt.report_completed()
@@ -141,14 +141,14 @@ class TestReportQuery:
 
     def test_empty_result(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
             results = json.loads(rt.report_query("{}"))
         assert results == []
 
     def test_returns_all_course_statements(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             results = json.loads(rt.report_query("{}"))
         assert len(results) == 3
@@ -156,7 +156,7 @@ class TestReportQuery:
 
     def test_filter_by_verb(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             results = json.loads(rt.report_query('{"verb": "passed"}'))
         assert len(results) == 1
@@ -165,7 +165,7 @@ class TestReportQuery:
 
     def test_filter_by_user_id(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             results = json.loads(rt.report_query('{"user_id": "u1"}'))
             assert len(results) == 3
@@ -174,7 +174,7 @@ class TestReportQuery:
 
     def test_filter_by_activity_id(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             results = json.loads(rt.report_query('{"activity_id": "a1"}'))
             assert len(results) == 3
@@ -183,7 +183,7 @@ class TestReportQuery:
 
     def test_filter_by_activity_name(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             results = json.loads(rt.report_query('{"activity_name": "test-activity"}'))
             assert len(results) == 3
@@ -192,7 +192,7 @@ class TestReportQuery:
 
     def test_course_scoping(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt_c1 = _make_notebook_runtime(
                 tmp_path, engine, is_course_activity=True, course_id="c1"
             )
@@ -212,7 +212,7 @@ class TestReportQuery:
 
     def test_pagination_after_id(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             all_results = json.loads(rt.report_query("{}"))
             first_id = all_results[0]["id"]
@@ -222,26 +222,26 @@ class TestReportQuery:
 
     def test_pagination_limit(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = self._setup(tmp_path, engine)
             results = json.loads(rt.report_query('{"limit": 2}'))
             assert len(results) == 2
 
     def test_not_registered_for_page_activity(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=False)
             assert "analytics" not in rt.host_functions()
 
     def test_registered_for_course_activity(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
             assert "report-query" in rt.host_functions()["analytics"]
 
     def test_filter_before_date(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
             rt.report_completed()
         # Set the created_at to a known time for testing
@@ -250,7 +250,7 @@ class TestReportQuery:
             row.created_at = datetime(2026, 1, 15, tzinfo=timezone.utc)
             session.add(row)
             session.commit()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             # before_date excludes the row
             results = json.loads(
                 rt.report_query('{"before_date": "2026-01-01T00:00:00+00:00"}')
@@ -264,7 +264,7 @@ class TestReportQuery:
 
     def test_filter_after_date(self, tmp_path: Path) -> None:
         engine = _make_engine()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             rt = _make_notebook_runtime(tmp_path, engine, is_course_activity=True)
             rt.report_completed()
         with Session(engine) as session:
@@ -272,7 +272,7 @@ class TestReportQuery:
             row.created_at = datetime(2026, 1, 15, tzinfo=timezone.utc)
             session.add(row)
             session.commit()
-        with patch("xpla.notebook.runtime.engine", engine):
+        with patch("xpla.notebook.db._engine", engine):
             # after_date excludes the row
             results = json.loads(
                 rt.report_query('{"after_date": "2026-02-01T00:00:00+00:00"}')

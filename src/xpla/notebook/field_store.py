@@ -5,11 +5,11 @@ from typing import Any
 
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import event
-from sqlmodel import Field, Session, SQLModel, UniqueConstraint, col, select
+from sqlmodel import Field, SQLModel, UniqueConstraint, col, select
 
 from xpla.lib.field_store import FieldStore
 from xpla.lib.fields import FieldType
-from xpla.notebook.db import engine
+from xpla.notebook import db
 
 
 class FieldEntry(SQLModel, table=True):
@@ -92,7 +92,7 @@ class SQLiteFieldStore(FieldStore):
         user_id: str,
         key: str,
     ) -> FieldType | None:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldEntry),
                 FieldEntry,
@@ -117,7 +117,7 @@ class SQLiteFieldStore(FieldStore):
         key: str,
         value: FieldType,
     ) -> None:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldEntry),
                 FieldEntry,
@@ -151,7 +151,7 @@ class SQLiteFieldStore(FieldStore):
         user_id: str,
         key: str,
     ) -> bool:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldEntry),
                 FieldEntry,
@@ -169,7 +169,7 @@ class SQLiteFieldStore(FieldStore):
             return True
 
     def keys(self) -> list[str]:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             entries = session.exec(select(FieldEntry.key)).all()
             return list(entries)
 
@@ -182,7 +182,7 @@ class SQLiteFieldStore(FieldStore):
         key: str,
         entry_id: int,
     ) -> FieldType | None:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldLogEntry),
                 FieldLogEntry,
@@ -208,7 +208,7 @@ class SQLiteFieldStore(FieldStore):
         from_id: int,
         to_id: int,
     ) -> list[dict[str, Any]]:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = (
                 _key_filter(
                     select(FieldLogEntry),
@@ -237,7 +237,7 @@ class SQLiteFieldStore(FieldStore):
         key: str,
         value: FieldType,
     ) -> int:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldLogSeq),
                 FieldLogSeq,
@@ -282,7 +282,7 @@ class SQLiteFieldStore(FieldStore):
         key: str,
         entry_id: int,
     ) -> bool:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldLogEntry),
                 FieldLogEntry,
@@ -309,7 +309,7 @@ class SQLiteFieldStore(FieldStore):
         from_id: int,
         to_id: int,
     ) -> int:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             stmt = _key_filter(
                 select(FieldLogEntry),
                 FieldLogEntry,
@@ -337,7 +337,7 @@ def delete_fields_by(
     course_id: str | None = None,
 ) -> None:
     """Delete all field data for a given course/activity type/id."""
-    with Session(engine) as session:
+    with db.session_scope() as session:
         for model in (FieldEntry, FieldLogEntry, FieldLogSeq):
             select_filter = select(model)
             if course_id:

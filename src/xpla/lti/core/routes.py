@@ -6,12 +6,12 @@ The application plugs in a launch_handler callback.
 
 import logging
 from collections.abc import Awaitable, Callable
+from contextlib import AbstractContextManager
 
 import jwt as pyjwt
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from xpla.lti.core.keys import KeySet
@@ -21,10 +21,12 @@ from xpla.lti.core.oidc import build_auth_redirect, consume_nonce, store_nonce
 
 logger = logging.getLogger(__name__)
 
+SessionFactory = Callable[[], AbstractContextManager[Session]]
+
 
 def create_lti_router(
     *,
-    db_engine: Engine,
+    session_factory: SessionFactory,
     key_set: KeySet,
     launch_handler: Callable[[LaunchData, Request], Awaitable[Response]],
     base_url: str,
@@ -51,7 +53,7 @@ def create_lti_router(
         target_link_uri = params.get("target_link_uri", base_url + "/auth/callback")
         lti_message_hint = params.get("lti_message_hint")
 
-        platform = _find_platform(db_engine, issuer, client_id)
+        platform = _find_platform(session_factory, issuer, client_id)
         if platform is None:
             raise HTTPException(status_code=400, detail="Unknown platform")
 
@@ -65,7 +67,7 @@ def create_lti_router(
             redirect_uri=redirect_uri,
         )
 
-        with Session(db_engine) as session:
+        with session_factory() as session:
             store_nonce(session, nonce, platform.id)
 
         response = RedirectResponse(url=url, status_code=302)
@@ -100,7 +102,7 @@ def create_lti_router(
         if isinstance(client_id, list):
             client_id = client_id[0] if client_id else ""
 
-        platform = _find_platform(db_engine, issuer, client_id)
+        platform = _find_platform(session_factory, issuer, client_id)
         if platform is None:
             return _error_response(templates, request, "Unknown platform")
 
@@ -116,19 +118,19 @@ def create_lti_router(
 
         nonce = unverified.get("nonce", "")
         assert platform.id is not None
-        with Session(db_engine) as session:
+        with session_factory() as session:
             if not consume_nonce(session, nonce, platform.id):
                 return _error_response(templates, request, "Nonce replay or expired")
 
         return await launch_handler(launch_data, request)
 
-    _register_admin_routes(router, db_engine, base_url, templates, prefix)
+    _register_admin_routes(router, session_factory, base_url, templates, prefix)
     return router
 
 
 def _register_admin_routes(
     router: APIRouter,
-    db_engine: Engine,
+    session_factory: SessionFactory,
     base_url: str,
     templates: Jinja2Templates,
     prefix: str,
@@ -137,7 +139,7 @@ def _register_admin_routes(
 
     @router.get("/admin/platforms", response_class=HTMLResponse)
     async def admin_list_platforms(request: Request) -> HTMLResponse:
-        with Session(db_engine) as session:
+        with session_factory() as session:
             platforms = list(session.exec(select(Platform)).all())
         return templates.TemplateResponse(
             request=request,
@@ -178,14 +180,14 @@ def _register_admin_routes(
             jwks_url=jwks_url,
             access_token_url=access_token_url,
         )
-        with Session(db_engine) as session:
+        with session_factory() as session:
             session.add(platform)
             session.commit()
         return RedirectResponse(url=f"{prefix}/admin/platforms", status_code=303)
 
     @router.get("/admin/platforms/{platform_id}/edit", response_class=HTMLResponse)
     async def admin_edit_platform(request: Request, platform_id: int) -> HTMLResponse:
-        with Session(db_engine) as session:
+        with session_factory() as session:
             platform = session.get(Platform, platform_id)
         if platform is None:
             raise HTTPException(status_code=404, detail="Platform not found")
@@ -209,7 +211,7 @@ def _register_admin_routes(
         jwks_url: str = Form(...),
         access_token_url: str = Form(""),
     ) -> RedirectResponse:
-        with Session(db_engine) as session:
+        with session_factory() as session:
             platform = session.get(Platform, platform_id)
             if platform is None:
                 raise HTTPException(status_code=404, detail="Platform not found")
@@ -225,7 +227,7 @@ def _register_admin_routes(
 
     @router.post("/admin/platforms/{platform_id}/delete")
     async def admin_delete_platform(platform_id: int) -> RedirectResponse:
-        with Session(db_engine) as session:
+        with session_factory() as session:
             platform = session.get(Platform, platform_id)
             if platform is not None:
                 session.delete(platform)
@@ -233,8 +235,10 @@ def _register_admin_routes(
         return RedirectResponse(url=f"{prefix}/admin/platforms", status_code=303)
 
 
-def _find_platform(engine: Engine, issuer: str, client_id: str) -> Platform | None:
-    with Session(engine) as session:
+def _find_platform(
+    session_factory: SessionFactory, issuer: str, client_id: str
+) -> Platform | None:
+    with session_factory() as session:
         stmt = select(Platform).where(
             Platform.issuer == issuer, Platform.client_id == client_id
         )

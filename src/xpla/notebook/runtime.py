@@ -4,14 +4,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlmodel import Session, col, select
+from sqlmodel import col, select
 
 from xpla.lib.file_storage import LocalFileStorage
 from xpla.lib.permission import Permission
 from xpla.lib.manifest_types import Scope
 from xpla.lib.runtime import ActivityRuntime
-from xpla.notebook import constants
-from xpla.notebook.db import engine
+from xpla.notebook import constants, db
 from xpla.notebook.field_store import SQLiteFieldStore
 from xpla.notebook.models import ActivityStatement
 
@@ -71,7 +70,7 @@ class NotebookActivityRuntime(ActivityRuntime):
         return True
 
     def _record_statement(self, verb: str, score: float | None) -> None:
-        with Session(engine) as session:
+        with db.session_scope() as session:
             session.add(
                 ActivityStatement(
                     course_id=self._course_id,
@@ -116,7 +115,7 @@ class NotebookActivityRuntime(ActivityRuntime):
             MAX_REPORT_QUERY_LIMIT,
         )
         query = query.order_by(col(ActivityStatement.id)).limit(limit)
-        with Session(engine) as session:
+        with db.session_scope() as session:
             rows = session.exec(query).all()
         return json.dumps(
             [

@@ -13,7 +13,6 @@ import jwt
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session
 
 from xpla.lib.actions import ActionValidationError
 from xpla.lib.event_bus import EventBus
@@ -22,8 +21,7 @@ from xpla.lib.runtime import AssetAccessError
 from xpla.lti.core.keys import load_or_create_key
 from xpla.lti.core.launch import LaunchData
 from xpla.lti.core.routes import create_lti_router
-from xpla.notebook import constants
-from xpla.notebook.db import engine
+from xpla.notebook import constants, db
 from xpla.notebook.models import CourseActivity, Page, PageActivity
 from xpla.notebook.runtime import NotebookActivityRuntime
 from xpla.notebook.views.activities import find_activity_dir
@@ -63,7 +61,7 @@ def _is_instructor(roles: list[str]) -> bool:
 
 def _resolve_activity(activity_id: str) -> tuple[str, str, bool]:
     """Look up an activity and return (activity_type, course_id, is_course_activity)."""
-    with Session(engine) as session:
+    with db.session_scope() as session:
         pa = session.get(PageActivity, activity_id)
         if pa is not None:
             page = session.get(Page, pa.page_id)
@@ -255,7 +253,7 @@ async def lti_activity_ws(websocket: WebSocket, token: str) -> None:
 # ── Router assembly ──────────────────────────────────────────────────
 
 _lti_core_router = create_lti_router(
-    db_engine=engine,
+    session_factory=db.session_scope,
     key_set=_key_set,
     launch_handler=_launch_handler,
     base_url=constants.LTI_BASE_URL,

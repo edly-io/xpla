@@ -46,8 +46,16 @@ def admin_client(admin_test_engine: Engine, tmp_path: Path) -> TestClient:
     ) -> HTMLResponse:
         return HTMLResponse("Launch handled")
 
+    from contextlib import contextmanager
+    from collections.abc import Iterator
+
+    @contextmanager
+    def session_factory() -> Iterator[Session]:
+        with Session(admin_test_engine) as session:
+            yield session
+
     router = create_lti_router(
-        db_engine=admin_test_engine,
+        session_factory=session_factory,
         key_set=key_set,
         launch_handler=dummy_launch_handler,
         base_url="http://testserver",

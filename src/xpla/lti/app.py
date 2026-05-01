@@ -3,6 +3,10 @@
 import json
 import logging
 import secrets
+from collections.abc import Iterator
+from contextlib import contextmanager
+
+from sqlmodel import Session
 
 from fastapi import (
     FastAPI,
@@ -53,8 +57,15 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 
+
+@contextmanager
+def _session_factory() -> Iterator[Session]:
+    with Session(db_engine) as session:
+        yield session
+
+
 lti_router = create_lti_router(
-    db_engine=db_engine,
+    session_factory=_session_factory,
     key_set=key_set,
     launch_handler=launch_handler,
     base_url=config.BASE_URL,

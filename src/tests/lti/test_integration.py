@@ -72,8 +72,16 @@ def integration_client(
             f"<html><body>Launched: {launch_data.user_id}</body></html>"
         )
 
+    from contextlib import contextmanager
+    from collections.abc import Iterator
+
+    @contextmanager
+    def session_factory() -> Iterator[Session]:
+        with Session(integration_engine) as session:
+            yield session
+
     router = create_lti_router(
-        db_engine=integration_engine,
+        session_factory=session_factory,
         key_set=integration_key_set,
         launch_handler=test_launch_handler,
         base_url="http://testserver",

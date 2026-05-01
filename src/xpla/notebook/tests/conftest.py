@@ -9,8 +9,8 @@ from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
+from xpla.notebook import db
 from xpla.notebook.app import app
-from xpla.notebook.db import get_session
 
 
 def _make_engine() -> Any:
@@ -31,17 +31,16 @@ def _make_engine() -> Any:
 
 
 @pytest.fixture(name="session")
-def session_fixture() -> Generator[Session, None, None]:
+def session_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[Session, None, None]:
     engine = _make_engine()
+    monkeypatch.setattr(db, "_engine", engine)
     with Session(engine) as session:
         yield session
 
 
 @pytest.fixture(name="client")
 def client_fixture(session: Session) -> Generator[TestClient, None, None]:
-    def override_get_session() -> Generator[Session, None, None]:
-        yield session
-
-    app.dependency_overrides[get_session] = override_get_session
+    del session  # the monkeypatch in session_fixture is what makes this work
     yield TestClient(app)
-    app.dependency_overrides.clear()

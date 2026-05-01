@@ -1,4 +1,5 @@
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -9,10 +10,10 @@ from sqlmodel import Session, create_engine
 
 from xpla.notebook.constants import DB_PATH
 
-engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+_engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
 
 
-@event.listens_for(engine, "connect")
+@event.listens_for(_engine, "connect")
 def _set_sqlite_pragma(dbapi_connection: Any, _connection_record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys = ON")
@@ -27,6 +28,12 @@ def run_migrations() -> None:
     command.upgrade(cfg, "head")
 
 
+@contextmanager
+def session_scope() -> Iterator[Session]:
+    with Session(_engine) as session:
+        yield session
+
+
 def get_session() -> Generator[Session, None, None]:
-    with Session(engine) as session:
+    with session_scope() as session:
         yield session
