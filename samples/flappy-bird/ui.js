@@ -133,7 +133,7 @@ export function setup(activity) {
       flap();
     }
   }
-  window.addEventListener("keydown", onKey);
+  canvas.addEventListener("keydown", onKey);
 
   function step(dt) {
     if (game.state !== "playing") return;
