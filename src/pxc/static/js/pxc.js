@@ -43,6 +43,8 @@ export class PXC extends HTMLElement {
     this.permission = "view";
     this._ws = null;
     this._reconnectDelay = 500;
+    this._flushing = false;
+    this._flushAgain = false;
   }
 
   async connectedCallback() {
@@ -178,45 +180,58 @@ export class PXC extends HTMLElement {
   }
 
   async _flushQueue() {
-    const db = await _openDB();
-    const key = [this.context.activity_id, this.context.user_id];
-
-    // Read all pending records in one shot (no await between IDB operations)
-    const tx = db.transaction("pending-actions", "readonly");
-    const index = tx.objectStore("pending-actions").index("owner");
-    const [records, primaryKeys] = await Promise.all([
-      _idbReq(index.getAll(key)),
-      _idbReq(index.getAllKeys(key)),
-    ]);
-
-    // Send via WS, falling back to HTTP POST for large payloads.
-    // Uvicorn's websockets implementation caps incoming frames at 1 MiB by
-    // default; a frame above that ceiling closes the connection with code
-    // 1006 before the server can read it. The POST actions endpoint has no
-    // such limit, so we route anything approaching the cap through HTTP.
-    const WS_PAYLOAD_MAX = 512 * 1024;
-    const sentKeys = [];
-    for (let i = 0; i < records.length; i++) {
-      const { action, value, permission } = records[i];
-      const payload = JSON.stringify({ action, value, permission });
-      if (payload.length > WS_PAYLOAD_MAX) {
-        const ok = await this._postAction(action, value);
-        if (!ok) break;
-      } else {
-        if (this._ws.readyState !== WebSocket.OPEN) break;
-        this._ws.send(payload);
-      }
-      sentKeys.push(primaryKeys[i]);
+    if (this._flushing) {
+      this._flushAgain = true;
+      return;
     }
+    this._flushing = true;
+    try {
+      do {
+        this._flushAgain = false;
 
-    // Delete sent records
-    if (sentKeys.length > 0) {
-      const delTx = db.transaction("pending-actions", "readwrite");
-      const store = delTx.objectStore("pending-actions");
-      for (const pk of sentKeys) {
-        store.delete(pk);
-      }
-      await _idbTxDone(delTx);
+        const db = await _openDB();
+        const key = [this.context.activity_id, this.context.user_id];
+
+        // Read all pending records in one shot (no await between IDB operations)
+        const tx = db.transaction("pending-actions", "readonly");
+        const index = tx.objectStore("pending-actions").index("owner");
+        const [records, primaryKeys] = await Promise.all([
+          _idbReq(index.getAll(key)),
+          _idbReq(index.getAllKeys(key)),
+        ]);
+
+        // Send via WS, falling back to HTTP POST for large payloads.
+        // Uvicorn's websockets implementation caps incoming frames at 1 MiB by
+        // default; a frame above that ceiling closes the connection with code
+        // 1006 before the server can read it. The POST actions endpoint has no
+        // such limit, so we route anything approaching the cap through HTTP.
+        const WS_PAYLOAD_MAX = 512 * 1024;
+        const sentKeys = [];
+        for (let i = 0; i < records.length; i++) {
+          const { action, value, permission } = records[i];
+          const payload = JSON.stringify({ action, value, permission });
+          if (payload.length > WS_PAYLOAD_MAX) {
+            const ok = await this._postAction(action, value);
+            if (!ok) break;
+          } else {
+            if (this._ws.readyState !== WebSocket.OPEN) break;
+            this._ws.send(payload);
+          }
+          sentKeys.push(primaryKeys[i]);
+        }
+
+        // Delete sent records
+        if (sentKeys.length > 0) {
+          const delTx = db.transaction("pending-actions", "readwrite");
+          const store = delTx.objectStore("pending-actions");
+          for (const pk of sentKeys) {
+            store.delete(pk);
+          }
+          await _idbTxDone(delTx);
+        }
+      } while (this._flushAgain);
+    } finally {
+      this._flushing = false;
     }
   }
 
