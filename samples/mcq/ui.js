@@ -28,7 +28,6 @@ export function setup(activity) {
       <style>
         #mcq-container { font-family: sans-serif; max-width: 600px; }
         .toggle-btn { margin-bottom: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
-        .author-view, .student-view { padding: 1rem; border: 1px solid #ccc; border-radius: 4px; }
         .answer-item { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
         .answer-item input[type="text"] { flex: 1; padding: 0.25rem; }
         .answer-item button { padding: 0.25rem 0.5rem; }
@@ -168,7 +167,6 @@ export function setup(activity) {
 
     container.innerHTML = `
       <div class="student-view">
-        <h3>Student View</h3>
         <p><strong>${escapeHtml(config.question)}</strong></p>
         <div id="student-answers">${answersHtml}</div>
         ${submitHtml}
