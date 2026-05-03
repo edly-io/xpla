@@ -32,6 +32,11 @@ customElements.define("pxc-activity", PXC);
   <div class="offline-banner">Offline - reconnecting...</div>
 </div>
 <script>
+window.addEventListener("pxc:connection", function(e) {
+  document.querySelector(".offline-banner").classList.toggle("offline", !e.detail.connected);
+});
+</script>
+<script>
   document.getElementById("sim-user").addEventListener("change", function () {
     document.cookie = "{{ USER_ID_COOKIE }}=" + this.value + "; path=/";
     location.reload();

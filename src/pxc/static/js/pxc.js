@@ -162,14 +162,9 @@ export class PXC extends HTMLElement {
   }
 
   _setOfflineBanner(visible) {
-    var elements = document.getElementsByClassName("offline-banner");
-    for (var element of elements) {
-      if (visible) {
-        element.classList.add("offline");
-      } else {
-        element.classList.remove("offline");
-      }
-    }
+    window.dispatchEvent(new CustomEvent("pxc:connection", {
+      detail: { connected: !visible },
+    }));
   }
 
   _scheduleReconnect() {
@@ -298,5 +293,6 @@ export class PXC extends HTMLElement {
       // Disconnect from websocket on removal from DOM
       this._ws.close();
     }
+    this._setOfflineBanner(false);
   }
 }
