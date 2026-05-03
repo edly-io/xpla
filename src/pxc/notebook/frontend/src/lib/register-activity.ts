@@ -12,10 +12,6 @@ export async function registerPxcActivity(): Promise<void> {
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       return `${proto}//${location.host}/api/activity/${this.context.activity_id}/${this.permission}/ws`;
     }
-
-    getAssetUrl(path: string): string {
-      return `/a/${this.context.activity_id}/${path}`;
-    }
   }
 
   customElements.define("pxc-activity", NotebookPXC as unknown as CustomElementConstructor);
