@@ -41,7 +41,7 @@ class WitWorld(wit_world.WitWorld):
                 "fields.change.rendered_html",
                 json.dumps(rendered_html),
                 None,
-                Permission.EDIT,
+                Permission.VIEW,
             )
         return ""
 

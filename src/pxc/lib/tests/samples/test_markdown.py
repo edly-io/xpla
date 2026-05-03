@@ -24,3 +24,14 @@ def test_config_save_renders_html() -> None:
     state = rt.get_state()
     rendered: str = state["rendered_html"]  # type: ignore[assignment]
     assert "<h" in rendered
+
+
+def test_config_save_broadcasts_rendered_html_to_view_users() -> None:
+    rt = make_runtime("markdown", permission=Permission.edit)
+    rt.on_action("config.save", {"markdown_content": "# Hello"})
+    events = rt.clear_pending_events()
+    rendered_html_events = [
+        e for e in events if e["name"] == "fields.change.rendered_html"
+    ]
+    assert len(rendered_html_events) == 1
+    assert rendered_html_events[0]["permission"] == "view"
