@@ -143,8 +143,14 @@ def load_component(
     """
     bin_path = plugin_path.parent / (plugin_path.name + ".bin")
     if bin_path.exists() and bin_path.stat().st_mtime > plugin_path.stat().st_mtime:
-        # Load serialized file
-        return wasmtime.component.Component.deserialize_file(engine, str(bin_path))
+        try:
+            # Load serialized file
+            return wasmtime.component.Component.deserialize_file(engine, str(bin_path))
+        except wasmtime.WasmtimeError as e:
+            # This might happen for files that were serialized with a different version.
+            # In such cases we need to re-serialize it.
+            logger.exception(e)
+            logger.warn("Failed to load serialized file, serializing again")
 
     # Create new component and serialize
     component = wasmtime.component.Component.from_file(engine, str(plugin_path))
