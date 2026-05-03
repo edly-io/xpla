@@ -75,12 +75,7 @@ class SandboxComponentExecutor(SandboxExecutor):
         """
         Create a wasmtime store, engine with wasi features, component, etc.
         """
-        # Create config
-        engine_config = wasmtime.Config()
-        # engine_config.cache = True # Cache to directory. Do we need this?
-
-        # Create engine
-        engine = wasmtime.Engine(engine_config)
+        engine = create_engine()
 
         # Create WASI config
         wasi_config = wasmtime.WasiConfig()
@@ -134,6 +129,16 @@ class SandboxComponentExecutor(SandboxExecutor):
         return result.encode("utf-8") if isinstance(result, str) else b""
 
 
+def create_engine() -> wasmtime.Engine:
+    # Create config
+    engine_config = wasmtime.Config()
+    # engine_config.cache = True # Cache to directory. Do we need this?
+
+    # Create engine
+    engine = wasmtime.Engine(engine_config)
+    return engine
+
+
 def load_component(
     engine: wasmtime.Engine, plugin_path: Path
 ) -> wasmtime.component.Component:
@@ -142,7 +147,10 @@ def load_component(
     load this file if it's more recent than the plugin file. Else, update it.
     """
     bin_path = plugin_path.parent / (plugin_path.name + ".bin")
-    if bin_path.exists() and bin_path.stat().st_mtime > plugin_path.stat().st_mtime:
+    load_cache = (
+        bin_path.exists() and bin_path.stat().st_mtime > plugin_path.stat().st_mtime
+    )
+    if load_cache:
         try:
             # Load serialized file
             return wasmtime.component.Component.deserialize_file(engine, str(bin_path))
@@ -150,7 +158,7 @@ def load_component(
             # This might happen for files that were serialized with a different version.
             # In such cases we need to re-serialize it.
             logger.exception(e)
-            logger.warn("Failed to load serialized file, serializing again")
+            logger.warning("Failed to load serialized file, serializing again")
 
     # Create new component and serialize
     component = wasmtime.component.Component.from_file(engine, str(plugin_path))

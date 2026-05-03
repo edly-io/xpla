@@ -5,8 +5,14 @@
 
 SAMPLE_DIRS := $(dir $(wildcard samples/*/Makefile)) $(dir $(wildcard src/pxc/notebook/samples/courseactivities/*/Makefile))
 
-samples: ## Build all sample activities
-	@for dir in $(SAMPLE_DIRS); do echo "Building $$dir" && $(MAKE) -C $$dir build || exit 1; done
+samples: samples-build samples-cache ## Build and cache all sample activities
+
+samples-build: ## Build all sample activities
+	@for dir in $(SAMPLE_DIRS); do echo "======= Building $$dir" && $(MAKE) -C $$dir build || exit 1; done
+	$(MAKE) samples-cache
+
+samples-cache: ## Build .wasm.bin cache files
+	for path in $(wildcard samples/*/sandbox.wasm); do ./src/pxc/tools/cache_component.py $$path; done
 
 demo-server: ## Run a development server for the demo app
 	fastapi dev src/pxc/demo/app.py --host=127.0.0.1 --port=9752
