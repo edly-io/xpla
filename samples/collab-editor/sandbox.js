@@ -62,8 +62,8 @@ export function onAction(name, data, context, permission) {
 }
 
 function sendEventToAllViewers(name, value) {
-  // Send the same event to both viewers and players
-  sendEvent(name, JSON.stringify(value), null, "play");
+  // Send the same event to both viewers and players by sending a single event
+  // with the "view" permission.
   sendEvent(name, JSON.stringify(value), null, "view");
 }
 
